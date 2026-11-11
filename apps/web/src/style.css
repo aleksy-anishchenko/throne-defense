@@ -22,6 +22,8 @@ html,
 body {
   height: 100%;
   margin: 0;
+  /* Свайп вниз мимо поля на Android перезагрузил бы страницу, и партия пропала бы */
+  overscroll-behavior: none;
 }
 body {
   background: var(--wall);
@@ -329,8 +331,11 @@ button {
   inset: 0;
   z-index: 10;
   display: grid;
-  place-items: center;
-  padding: 24px;
+  /* На очень низком экране содержимое не влезает — тогда его можно прокрутить */
+  overflow-y: auto;
+  /* 24px от краёв, но не меньше выреза и скруглений экрана телефона */
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
   background: rgba(16, 17, 28, 0.78);
   animation: fade 0.25s;
 }
@@ -341,10 +346,17 @@ button {
 }
 .sheet {
   width: min(100%, 430px);
+  /* По центру через margin: auto, а не place-items: center — если содержимое выше экрана,
+     верх не уходит за край, куда прокрутка не достаёт */
+  margin: auto;
   display: grid;
   gap: 16px;
   justify-items: center;
   text-align: center;
+}
+/* Фокус на самом экране ставит программа (см. ScreenOverlay.vue) — рамка вокруг всего текста не нужна */
+.sheet:focus {
+  outline: none;
 }
 .sheet h1 {
   margin: 0;

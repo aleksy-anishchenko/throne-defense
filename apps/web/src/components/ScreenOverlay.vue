@@ -7,6 +7,7 @@ import { shareResult } from '@/utils/share'
 
 const store = useGameStore()
 const buttonsRow = useTemplateRef('buttonsRow')
+const sheet = useTemplateRef('sheet')
 /** Подсказка после «Поделиться» (заменяет обычную) */
 const shareNote = ref('')
 
@@ -59,26 +60,43 @@ const screenContent = computed(() => {
   }
 })
 
-/** Фокус на главную кнопку — чтобы можно было сразу нажать Enter */
-async function focusPrimaryButton() {
+/**
+ * Куда поставить фокус, когда экран открылся.
+ * В меню — на «Играть», чтобы можно было сразу нажать Enter.
+ * После поражения и победы — на сам экран: игрок мог в этот момент жать Enter
+ * (ставил стража с клавиатуры), и партия перезапустилась бы сама. Tab ведёт к кнопкам
+ */
+async function focusScreen() {
   await nextTick()
-  buttonsRow.value?.querySelector('button')?.focus({ preventScroll: true })
+  if (store.screen === 'menu') {
+    buttonsRow.value?.querySelector('button')?.focus({ preventScroll: true })
+  } else {
+    sheet.value?.focus({ preventScroll: true })
+  }
 }
 
-onMounted(focusPrimaryButton)
+onMounted(focusScreen)
 watch(
   () => store.screen,
   () => {
     shareNote.value = ''
-    focusPrimaryButton()
+    focusScreen()
   },
 )
 </script>
 
 <template>
   <div v-if="screenContent" class="overlay">
-    <div class="sheet">
-      <h1>{{ screenContent.title }}</h1>
+    <!-- role="dialog" и aria-modal: скринридер понимает, что под экраном ничего нет -->
+    <div
+      ref="sheet"
+      class="sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="screen-title"
+      tabindex="-1"
+    >
+      <h1 id="screen-title">{{ screenContent.title }}</h1>
       <p>{{ screenContent.text }}</p>
       <p v-if="shareNote || screenContent.note" class="note">
         {{ shareNote || screenContent.note }}

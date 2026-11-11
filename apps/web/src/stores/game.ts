@@ -127,7 +127,10 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function saveResultIfBest() {
-    isNewBest.value = !bestResult.value || state.score > bestResult.value.score
+    // Перечитываем из хранилища: в другой вкладке рекорд мог обновиться, и мы бы его затёрли
+    bestResult.value = loadBest()
+    // Партия без единого очка — не рекорд, даже если рекорда ещё нет
+    isNewBest.value = state.score > 0 && (!bestResult.value || state.score > bestResult.value.score)
     if (isNewBest.value) {
       bestResult.value = { score: state.score, wave: state.wavesCleared }
       saveBest(bestResult.value)
@@ -219,9 +222,11 @@ export const useGameStore = defineStore('game', () => {
     selectedEmptyCell.value = isSameCell(selectedEmptyCell.value, col, row) ? null : { col, row }
   }
 
+  // Проверка «партия идёт» — как в chooseShopTower и tapCell: кнопки под экраном итогов
+  // выключены (inert), но действие можно вызвать и не кнопкой
   function upgradeSelected() {
     const tower = selectedTower()
-    if (!tower) return
+    if (!tower || !isPlaying()) return
     if (!game.upgrade(tower.col, tower.row) && upgradeCost(tower) !== null) {
       rejectAction('Не хватает золота на улучшение')
     }
@@ -229,7 +234,7 @@ export const useGameStore = defineStore('game', () => {
 
   function sellSelected() {
     const tower = selectedTower()
-    if (!tower) return
+    if (!tower || !isPlaying()) return
     game.sell(tower.col, tower.row)
     selectedTowerCell.value = null
   }

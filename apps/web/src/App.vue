@@ -31,8 +31,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <HudBar />
-  <GameBoard />
-  <SidePanel />
+  <!-- Пока открыт экран поверх поля (меню, итоги), всё под ним выключено атрибутом inert:
+       ни кликнуть, ни дойти клавишей Tab. Атрибут ляжет на корневой элемент компонента -->
+  <HudBar :inert="store.screen !== null" />
+  <GameBoard :inert="store.screen !== null" />
+  <SidePanel :inert="store.screen !== null" />
   <ScreenOverlay />
 </template>

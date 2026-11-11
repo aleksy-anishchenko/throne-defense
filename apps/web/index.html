@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#1c1f30" />
+    <!-- Игра всегда тёмная: браузер красит полосы прокрутки и поля ввода под тёмную тему -->
+    <meta name="color-scheme" content="dark" />
     <title>Защита трона</title>
     <meta
       name="description"
@@ -11,9 +13,23 @@
     />
     <meta property="og:title" content="Защита трона" />
     <meta property="og:description" content="Сколько волн выдержит ваш трон?" />
+    <!-- Превью ссылки в мессенджерах. Адреса полные: мессенджер не знает, с какого сайта ссылка -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://throne-defense.ru/" />
+    <meta property="og:image" content="https://throne-defense.ru/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="ru_RU" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Значок для iPhone и iPad («На экран Домой»): iOS не берёт SVG, нужен PNG 180×180 -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   </head>
   <body>
+    <noscript>
+      <p style="padding: 24px; text-align: center">
+        Чтобы играть в «Защиту трона», включите JavaScript в браузере.
+      </p>
+    </noscript>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -122,9 +122,21 @@ async function desktop(browser, url) {
     await page.evaluate(() => document.activeElement?.textContent?.trim() === 'Играть'),
   )
 
+  check(
+    'меню — диалог, поле и панель под ним выключены (inert)',
+    (await page.getByRole('dialog', { name: 'Защита трона' }).count()) === 1 &&
+      (await page.evaluate(() =>
+        ['.hud', '.stage', '.panel'].every((selector) => document.querySelector(selector).inert),
+      )),
+  )
+
   await playButton.click()
   await waitForFrames(page)
   check('меню закрылось', (await page.locator('.overlay').count()) === 0)
+  check(
+    'поле и панель снова доступны',
+    await page.evaluate(() => !document.querySelector('.panel').inert),
+  )
   check(
     'подсказка для новичка',
     (await page.locator('#hint').textContent()) === 'Выберите стража и нажмите на плиту у ковра',
@@ -249,6 +261,10 @@ async function desktop(browser, url) {
   check(
     'экран поражения',
     (await page.locator('.sheet p').first().textContent()).startsWith('Отбито волн: 1.'),
+  )
+  check(
+    'после поражения фокус на экране, а не на кнопке (Enter не перезапустит партию)',
+    await page.evaluate(() => document.activeElement?.getAttribute('role') === 'dialog'),
   )
   check(
     'рекорд сохранён',
