@@ -35,6 +35,10 @@ const SHAKE_AMPLITUDE = 0.5
 export interface Renderer {
   /** Подогнать поле под размер области (в CSS-пикселях) */
   resize(width: number, height: number): void
+  /**
+   * Нарисовать кадр. Если с прошлого кадра ничего не поменялось (меню, пауза) — ничего не делает:
+   * незачем перерисовывать то же самое 60 раз в секунду
+   */
   draw(realDt: number, boardView: BoardView): void
   dispose(): void
 }
@@ -49,6 +53,29 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   let cellDevicePx = INITIAL_CELL_CSS_PX // размер клетки в настоящих пикселях
   let hallLayer: HTMLCanvasElement | null = null
   let lastGameTime = 0
+  /** «Отпечаток» прошлого нарисованного кадра, см. frameFingerprint */
+  let lastFingerprint = ''
+
+  /**
+   * Всё, от чего зависит картинка, одной строкой. Пока идёт бой, время меняется
+   * каждый кадр, и отпечаток всегда новый. На паузе и в меню время стоит, и кадр
+   * меняется, только если игрок что-то сделал: построил, навёл мышь, выбрал башню.
+   * Тряска и красная вспышка идут в реальном времени — пока они есть, рисуем всегда
+   */
+  function frameFingerprint(boardView: BoardView): string | null {
+    if (effects.shakeTime > 0 || effects.throneHurtTime > 0) return null
+    const state = game.state
+    return [
+      state.time,
+      state.phase,
+      state.gold,
+      state.lives,
+      state.towers.length,
+      state.enemies.length,
+      state.shots.length,
+      JSON.stringify(boardView),
+    ].join('|')
+  }
 
   /** isAllowed = false — красная подсветка: поставить нельзя, не хватает золота */
   function drawRange(x: number, y: number, range: number, isAllowed: boolean) {
@@ -175,9 +202,14 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       canvas.height = Math.round(rows * cellCssPx * pixelRatio)
       cellDevicePx = canvas.width / cols
       hallLayer = buildHall(game.level, canvas.width, canvas.height, cellDevicePx)
+      // Смена размера canvas стирает его — следующий кадр нужно нарисовать обязательно
+      lastFingerprint = ''
     },
 
     draw(realDt, boardView) {
+      const fingerprint = frameFingerprint(boardView)
+      if (fingerprint !== null && fingerprint === lastFingerprint) return
+      lastFingerprint = fingerprint ?? ''
       const state = game.state
       const time = state.time
       const simDt = Math.max(0, time - lastGameTime)

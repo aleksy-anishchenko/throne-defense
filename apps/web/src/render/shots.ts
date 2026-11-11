@@ -29,6 +29,10 @@ const SHOT_ART: Record<string, (ctx: Canvas2D, shot: Shot) => void> = {
 
 export function drawShot(ctx: Canvas2D, shot: Shot): void {
   // Неизвестный вид снаряда рисуем как стрелу
-  const drawLook = SHOT_ART[shot.look] ?? SHOT_ART.arrow
+  const drawLook = SHOT_ART[shot.look] ?? SHOT_ART['arrow']
+  // save/restore: рисунок снаряда меняет настройки кисти (скруглённые концы линий),
+  // и без этого они «протекали» бы на то, что рисуется после, — например, на пунктир дальности
+  ctx.save()
   drawLook(ctx, shot)
+  ctx.restore()
 }
