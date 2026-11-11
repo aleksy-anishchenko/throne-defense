@@ -17,7 +17,7 @@ import {
   investedGold,
   spawnEnemy,
 } from '@throne/game'
-import type { LevelDef, TowerDef } from '@throne/game'
+import type { Game, LevelDef, TowerDef } from '@throne/game'
 import { MAX_WAVE_STEPS, findBestCell, pathCoverage } from './bot.ts'
 
 interface EnemyStream {
@@ -38,6 +38,16 @@ export const STREAMS: EnemyStream[] = [
 /** «Бесконечное» число: столько золота, жизней и здоровья ставим, чтобы ничто не кончилось */
 const UNLIMITED = 1e9
 
+/**
+ * Клетка для замера: лучшая для башни первой ступени. Улучшают башню там, где её
+ * поставили, поэтому и для старших ступеней клетка та же
+ */
+function measureCell(game: Game, def: TowerDef): { col: number; row: number } {
+  const cell = findBestCell(game, def.tiers[0].range)
+  if (!cell) throw new Error(`Башню «${def.name}» некуда поставить: на поле нет свободной клетки`)
+  return cell
+}
+
 /** Урон на одну вложенную монету: башня def ступени tier против потока врагов stream */
 export function damagePerGold(
   level: LevelDef,
@@ -49,8 +59,7 @@ export function damagePerGold(
   game.reset()
   game.state.gold = UNLIMITED
   game.state.lives = UNLIMITED // трон не падает, сколько бы врагов ни дошло
-  const cell = findBestCell(game, def.tiers[0].range)
-  if (!cell) return 0
+  const cell = measureCell(game, def)
   game.build(def.id, cell.col, cell.row)
   for (let i = 0; i < tier; i++) game.upgrade(cell.col, cell.row)
 
@@ -99,8 +108,9 @@ if (import.meta.main) {
       for (let tier = 0; tier < def.tiers.length; tier++) {
         const game = createGame(level)
         game.reset()
-        const best = findBestCell(game, def.tiers[tier].range)
-        const coverage = best ? pathCoverage(game, best.col, best.row, def.tiers[tier].range) : 0
+        // Покрытие — на той же клетке, где меряется урон, но с дальностью этой ступени
+        const cell = measureCell(game, def)
+        const coverage = pathCoverage(game, cell.col, cell.row, def.tiers[tier].range)
         const tableRow = [
           (tier === 0 ? def.name : '').padEnd(10),
           padCell(ROMAN[tier] ?? tier + 1, 4),
