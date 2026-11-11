@@ -368,7 +368,7 @@ npm run format       # Prettier: оформить код (format:check — то�
 | Что | Где и как |
 |---|---|
 | Машина | VPS `77.91.113.61`, Ubuntu 24.04.5 LTS («минимальная» сборка: части привычных программ может не быть). Вход `ssh root@77.91.113.61`, только по ключу (пароль выключен в `/etc/ssh/sshd_config.d/00-hardening.conf`) |
-| Домен и DNS | reg.ru, DNS-серверы `ns1.reg.ru`/`ns2.reg.ru`, записи `A @` и `A www` → `77.91.113.61` |
+| Домен и DNS | reg.ru, DNS-серверы `ns1.reg.ru`/`ns2.reg.ru`, записи `A @` и `A www` → `77.91.113.61` (переключены с заглушки reg.ru `95.163.244.138` 12 ноября). ⚠️ TTL записей — сутки: после смены адреса часть игроков до 24 часов попадает на старый (у заглушки это выглядит как `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`). Перед переездом на другой сервер — за сутки снизить TTL до 300–3600 с («TTL и SOA» в reg.ru) |
 | Фаервол | `ufw`: открыты 22, 80, 443 (TCP). ⚠️ Порты Docker-контейнеров открыты в обход `ufw` |
 | nginx 1.24 | Конфиг сайта — `deploy/nginx/throne-defense.conf` → на сервере `/etc/nginx/sites-available/throne-defense` (+ ссылка в `sites-enabled`); заголовки — `deploy/nginx/throne-security.conf` → `/etc/nginx/snippets/`. Заглушка `default` отключена. HTTP/2 на этой версии — словом `http2` в `listen` |
 | Файлы игры | `/var/www/throne-defense`, владелец `deploy` — только сборка, больше ничего: `rsync --delete` удаляет всё, чего нет в `dist` |
