@@ -85,6 +85,45 @@ async function clickCell(page, col, row, button = 'left') {
   await waitForFrames(page)
 }
 
+/** Насколько (сумма разниц по R, G, B) должна поменяться точка, если убрать врага */
+const ENEMY_PIXEL_MIN_DIFFERENCE = 30
+
+/**
+ * Нарисован ли враг. Тесты состояния этого не видят: при чистке кода обычные враги
+ * пропали с поля, а состояние игры было верным. Поэтому смотрим на сам canvas:
+ * цвет точки в центре врага, потом убираем врагов на пару кадров и сравниваем.
+ * Игра на это время стоит на паузе, чтобы враг не ушёл с места
+ */
+const compareEnemyPixel = (page) =>
+  page.evaluate(async () => {
+    const { game } = window.__throne
+    const canvas = document.querySelector('#board')
+    const ctx = canvas.getContext('2d')
+    const nextFrames = () =>
+      new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    const wasPaused = game.state.isPaused
+    game.setPaused(true)
+    await nextFrames()
+    // Обычный враг (не босс): именно они пропадали
+    const enemy = game.state.enemies.find((candidate) => candidate.def.id === 'rebel')
+    const cellPx = canvas.width / game.level.def.cols
+    const x = Math.round(enemy.x * cellPx)
+    const y = Math.round(enemy.y * cellPx)
+    const readPixel = () => [...ctx.getImageData(x, y, 1, 1).data.slice(0, 3)]
+    const withEnemy = readPixel()
+    const enemies = game.state.enemies
+    game.state.enemies = []
+    await nextFrames()
+    const withoutEnemy = readPixel()
+    game.state.enemies = enemies
+    game.setPaused(wasPaused)
+    const difference = withEnemy.reduce(
+      (sum, value, i) => sum + Math.abs(value - withoutEnemy[i]),
+      0,
+    )
+    return { withEnemy, withoutEnemy, difference }
+  })
+
 /** Кнопка «Начать волну» целиком внутри окна (а не за краем экрана) */
 async function checkStartButtonVisible(page) {
   const { width, height } = page.viewportSize()
@@ -109,13 +148,18 @@ async function desktop(browser, url) {
   await page.goto(url)
   await playButton.waitFor()
   await page.evaluate(() => document.fonts.ready)
+  // Смотрим на список реально загруженных шрифтов: document.fonts.check() отвечает «да»
+  // и тогда, когда шрифт вообще не подключён
+  const loadedFonts = await page.evaluate(() =>
+    [...document.fonts]
+      .filter((font) => font.status === 'loaded')
+      .map((font) => `${font.family.replaceAll('"', '')} ${font.weight}`),
+  )
+  const expectedFonts = ['Alegreya Sans 500', 'Alegreya Sans 800', 'Ruslan Display 400']
   check(
     'шрифты загрузились',
-    await page.evaluate(
-      () =>
-        document.fonts.check('800 20px "Alegreya Sans"') &&
-        document.fonts.check('400 20px "Ruslan Display"'),
-    ),
+    expectedFonts.every((font) => loadedFonts.includes(font)),
+    loadedFonts.join(', '),
   )
   check(
     'фокус на «Играть»',
@@ -160,6 +204,8 @@ async function desktop(browser, url) {
 
   // Выбор, улучшение, продажа
   await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  check('Escape снял выбор в магазине', (await archerCard.getAttribute('aria-pressed')) === 'false')
   await clickCell(page, 5, 11)
   check('панель башни', (await page.locator('.tower-info b').textContent()) === 'Лучник I')
   const statLines = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
@@ -220,6 +266,12 @@ async function desktop(browser, url) {
   check(
     'подсказка «Врагов осталось»',
     (await page.locator('#hint').textContent()).startsWith('Врагов осталось'),
+  )
+  const enemyPixel = await compareEnemyPixel(page)
+  check(
+    'враг нарисован на поле',
+    enemyPixel.difference > ENEMY_PIXEL_MIN_DIFFERENCE,
+    JSON.stringify(enemyPixel),
   )
   await page.waitForFunction(() => window.__throne.game.state.phase === 'build', null, {
     timeout: 60_000,
@@ -301,6 +353,9 @@ async function desktop(browser, url) {
   await page.getByRole('button', { name: 'Играть дальше' }).click()
   await waitForFrames(page)
   check('бесконечный режим', (await page.locator('.hud .wave').textContent()) === 'Волна 21')
+  await page.getByRole('button', { name: 'Начать волну' }).click()
+  await page.waitForFunction(() => window.__throne.game.state.enemies.length > 0)
+  check('21-я волна началась, враги вышли', (await readGameSnapshot(page)).phase === 'wave')
 
   // Баллиста (баланс v2): начинаем новую партию, чтобы хватило золота
   await page.evaluate(() => window.__throne.store.newGame())
@@ -315,6 +370,8 @@ async function desktop(browser, url) {
 
   // Зажатый пробел не должен ставить паузу (повторы клавиши игнорируются)
   await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  check('Escape закрыл панель башни', (await page.locator('.tower-info').count()) === 0)
   await blurActiveElement(page)
   await page.keyboard.down('Space')
   for (let i = 0; i < 5; i++) {
@@ -332,11 +389,18 @@ async function desktop(browser, url) {
     JSON.stringify(snapshot),
   )
 
-  // Испорченный рекорд в localStorage не ломает меню
+  // Выключенный звук и испорченный рекорд переживают перезагрузку
+  await page.getByRole('button', { name: 'Звук' }).click()
   await page.evaluate(() => localStorage.setItem('throne-best', '123'))
   await page.reload()
-  await page.waitForTimeout(500)
-  check('испорченный рекорд: меню на месте', (await playButton.count()) === 1)
+  await page.waitForFunction(() => document.querySelector('#app')?.children.length > 0)
+  check('испорченный рекорд: меню на месте', await playButton.isVisible())
+  check(
+    'выключенный звук пережил перезагрузку',
+    (await page
+      .getByRole('button', { name: 'Звук', includeHidden: true })
+      .getAttribute('aria-pressed')) === 'false',
+  )
   await page.evaluate(() => localStorage.removeItem('throne-best'))
   await page.close()
 }
@@ -358,10 +422,14 @@ async function phone(browser, url) {
     bounds.x + (5.5 / COLS) * bounds.width,
     bounds.y + (11.5 / ROWS) * bounds.height,
   )
-  await page.waitForTimeout(100)
   check(
     'постройка касанием',
-    await page.evaluate(() => window.__throne.game.state.towers.length === 1),
+    await page
+      .waitForFunction(() => window.__throne.game.state.towers.length === 1, null, {
+        timeout: 2000,
+      })
+      .then(() => true)
+      .catch(() => false),
   )
 
   // Раскладка: кнопки управления не уезжают за край экрана ни в какой ориентации
