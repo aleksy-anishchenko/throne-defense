@@ -1,7 +1,7 @@
 // npm run balance — прогнать всех ботов по всем уровням и показать, как идут волны.
 // Запускается прямо в Node: он умеет выполнять TypeScript без сборки.
 
-import { BALANCE_VERSION, LEVELS } from '../src/index.ts'
+import { BALANCE_VERSION, LEVELS } from '@throne/game'
 import { STRATEGIES, playBot } from './bot.ts'
 
 /** Ширина первого столбца таблицы (номер волны) и остальных, в символах; заголовок ниже подогнан под них */

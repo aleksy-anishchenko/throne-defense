@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { TOWERS } from '../src/index.ts'
-import { throneHall } from '../src/levels/throne-hall.ts'
-import { STRATEGIES, playBot } from '../tools/bot.ts'
-import { STREAMS, damagePerGold } from '../tools/towers.ts'
+import { LEVELS, TOWERS } from '@throne/game'
+import { STRATEGIES, playBot } from './bot.ts'
+import { STREAMS, damagePerGold } from './towers.ts'
+
+const throneHall = LEVELS.find((level) => level.id === 'throne-hall')!
 
 // «Сторожа баланса»: если после правки чисел что-то сильно уехало — эти тесты упадут.
 // Упал тест — это не обязательно ошибка. Возможно, ты так и задумал; тогда поправь порог.

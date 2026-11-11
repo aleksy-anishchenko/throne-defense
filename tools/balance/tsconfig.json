@@ -1,0 +1,9 @@
+{
+  // Бот и замеры баланса запускаются в Node — им можно console и process.
+  // Настройки те же, что у логики игры: Node выполняет эти файлы напрямую, без сборки.
+  "extends": "../../packages/game/tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["."]
+}

@@ -15,9 +15,9 @@ import {
   TOWER_LIST,
   createGame,
   investedGold,
-} from '../src/index.ts'
-import type { LevelDef, TowerDef } from '../src/index.ts'
-import { spawnEnemy } from '../src/systems/enemies.ts'
+  spawnEnemy,
+} from '@throne/game'
+import type { LevelDef, TowerDef } from '@throne/game'
 import { MAX_WAVE_STEPS, findBestCell, pathCoverage } from './bot.ts'
 
 interface EnemyStream {

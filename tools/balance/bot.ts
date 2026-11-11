@@ -9,7 +9,7 @@ import {
   type Game,
   type LevelDef,
   type Tower,
-} from '../src/index.ts'
+} from '@throne/game'
 
 /** Шаг стратегии: id башни («поставить такую») или 'upgrade' («улучшить слабейшую») */
 export type StrategyStep = string
