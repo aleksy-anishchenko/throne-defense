@@ -183,6 +183,13 @@ async function desktop(browser, url) {
       )),
   )
 
+  const versionText = await page.locator('.sheet .version').textContent()
+  check(
+    'в меню видна версия сборки',
+    /^Версия ([0-9a-f]{7,}|dev) · \d{2}\.\d{2}\.\d{4}$/.test(versionText),
+    versionText,
+  )
+
   await playButton.click()
   await waitForFrames(page)
   check('меню закрылось', (await page.locator('.overlay').count()) === 0)

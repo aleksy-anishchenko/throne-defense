@@ -6,6 +6,8 @@ import { formatNumber } from '@/utils/format'
 import { shareResult } from '@/utils/share'
 
 const store = useGameStore()
+/** Какая версия выложена: «хеш коммита · дата сборки» (видно в меню) */
+const appVersion = __APP_VERSION__
 const buttonsRow = useTemplateRef('buttonsRow')
 const sheet = useTemplateRef('sheet')
 /** Подсказка после «Поделиться» (заменяет обычную) */
@@ -124,6 +126,7 @@ watch(
           {{ button.label }}
         </button>
       </div>
+      <p v-if="store.screen === 'menu'" class="version">Версия {{ appVersion }}</p>
     </div>
   </div>
 </template>

@@ -379,6 +379,11 @@ button {
   color: var(--parch-dim);
   font-size: 1rem;
 }
+.sheet .version {
+  color: var(--parch-dim);
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
 .sheet .buttons {
   display: flex;
   flex-wrap: wrap;

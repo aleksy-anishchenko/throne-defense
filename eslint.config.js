@@ -17,7 +17,8 @@ export default defineConfig([
   },
   {
     files: ['apps/web/src/**/*.{ts,vue}'],
-    languageOptions: { globals: globals.browser },
+    // __APP_VERSION__ подставляет Vite при сборке (define в vite.config.ts)
+    languageOptions: { globals: { ...globals.browser, __APP_VERSION__: 'readonly' } },
   },
   {
     files: ['tools/**/*.ts', '**/*.config.{js,ts}'],
