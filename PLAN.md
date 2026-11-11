@@ -11,12 +11,12 @@
 - Всё слито в `main` и запушено на GitHub (перевод на Vite + TypeScript + Vue, чистка кода, этап 0, правки по ревью). Пушим по SSH (`git@github.com:…`): вход по паролю через HTTPS GitHub не принимает. Ветки `refactor`, `stage-0`, `review-fixes` больше не нужны.
 - Сделано: логика игры отдельно в `packages/game`, бот и замер башен для баланса в `tools/balance`, баланс v2. 73 теста, проверка в браузере `npm run e2e` (45 пунктов, в том числе «враг действительно нарисован на canvas»). `npm run check` и `npm run e2e` зелёные.
 - Код-ревью (см. [итоги](#итоги-код-ревью-12-ноября-2026)) отработано: всё, что можно было сделать без сервера и без выбора площадки, сделано. В этапах ниже остались только пункты, которым нужен сервер, площадка или новый контент.
-- Сервер не настроен: этап 1 не начат. Неизвестно, прописаны ли уже DNS-записи.
+- **Игра в интернете: https://throne-defense.ru** (этап 1 сделан 12 ноября). HTTPS от Let's Encrypt продлевается сам, `http://` и `www` перенаправляют на основной адрес. Выкладка пока вручную: `deploy/scripts/deploy-web.sh --apply`. Как устроен сервер — в [справочнике](#сервер).
+- GitHub Pages выключен (раньше показывал старую однофайловую игру с `main`): адрес у игры один.
 
 ### Ближайшие шаги
 
-- [ ] Ответить на открытые вопросы ниже (ОС на VPS, `www`) и проверить DNS
-- [ ] Этап 1
+- [ ] Этап 2: автодеплой
 
 ---
 
@@ -27,10 +27,10 @@
 | Фронтенд | Vite + TypeScript + Vue 3 (+ Pinia). Рисование — Canvas 2D, без игрового движка (Phaser/PixiJS не нужны) |
 | Логика игры | Чистый TypeScript, без Vue и DOM. Общая для фронта и будущего сервера |
 | Бэкенд | Node 24 + Fastify + SQLite, процессом управляет pm2 |
-| Хостинг | Свой VPS `77.91.113.61` (Ubuntu 24.04.5 LTS, «минимальная» сборка — части привычных программ может не быть, вход `root` по SSH-ключу), nginx + certbot (HTTPS от Let's Encrypt). Не GitHub Pages и не Caddy — так решил владелец проекта |
+| Хостинг | Свой VPS `77.91.113.61`, nginx + certbot (HTTPS от Let's Encrypt). Не GitHub Pages и не Caddy — так решил владелец проекта. Подробности — в [справочнике](#сервер) |
 | Домен | `throne-defense.ru` (куплен): игра на `/`, API на `/api` (один адрес, CORS не нужен) |
 | VPN на том же VPS | На сервере Amnezia VPN в Docker. AmneziaWG и WireGuard (UDP 36548 и 43365) должны работать всегда — их не трогаем. XRay занимал TCP 443 и, похоже, не использовался: его контейнер `amnezia-xray` остановлен (не удалён, `docker start amnezia-xray` вернёт), 443 отдан nginx. Понадобится XRay — ставить его за nginx (сортировка по SNI, `ssl_preread`), а не обратно на 443. ⚠️ Docker открывает порты контейнеров в обход `ufw` |
-| `www` | `www.throne-defense.ru` перенаправляет (301) на `throne-defense.ru`: рекорды в браузере хранятся отдельно для каждого адреса, поэтому адрес один. Как — в [Приложении C](#c-https-через-certbot) |
+| `www` | `www.throne-defense.ru` перенаправляет (301) на `throne-defense.ru`: рекорды в браузере хранятся отдельно для каждого адреса, поэтому адрес один |
 | Код | GitHub `aleksy-anishchenko/throne-defense`, автодеплой через GitHub Actions |
 | Качество | `npm run check` — оформление, линтер, типы, тесты и сборка разом |
 
@@ -47,7 +47,7 @@
 5. Баланс меняем только с проверкой: `npm run towers`, `npm run balance`, `npm test`. После любой правки чисел поднимаем `BALANCE_VERSION` и пишем в комментарии рядом, что поменяли.
 6. Не теряем то, что уже хорошо: фиксированный шаг симуляции, управление с клавиатуры, aria-атрибуты, `prefers-reduced-motion`. И не ломаем то, что перечислено в [«Подводных камнях»](#подводные-камни-не-ломать).
 7. **Переименования и перестановки кода не меняют поведение.** Логика детерминированная, поэтому проверка простая: вывод `npm run towers` до и после совпадает до символа, вывод `npm run balance` — тоже (кроме времени «за N мс»). Любое расхождение — нечаянно изменённая формула. ⚠️ Рисование так не проверить: после правок в `apps/web/src/render/` запусти игру и посмотри волну глазами (почему — см. [итоги ревью](#итоги-код-ревью-12-ноября-2026)).
-8. Если у владельца настроен вход на VPS по SSH-ключу, Claude может настроить сервер сам — нужно спросить логин и показывать каждую команду перед запуском.
+8. **Команды на сервере выполняет владелец сам** и присылает вывод. Claude по SSH на сервер не ходит: даёт команды небольшими порциями, объясняет каждую и что ожидается в ответе. Настройки сервера правим файлами в `deploy/` и копируем на сервер (`scp`), а не правим руками на сервере.
 
 ### Как называем вещи в коде
 
@@ -86,33 +86,11 @@
 | Производительность | Оптимизировать нечего. Шаг симуляции занимает около 0,06 мс при бюджете 5,5 мс, кадр — 1,4–1,8 мс (3,2 мс на медленном телефоне), память в бесконечном режиме не растёт |
 | Сборка | Быстрая и лёгкая (JS 116 КБ, около 45 КБ в сжатом виде). В папку `dist` попадают лишние шрифты |
 
-В инструкциях по серверу (приложения A–D) тоже нашлись ошибки — они исправлены прямо в приложениях.
-
 **Чистка кода.** Имена приведены к правилам из раздела выше, поведение не менялось. Проверено сравнением «старый код против нового»: 800 случайных партий (17,6 млн шагов симуляции) дали одинаковое состояние до последнего числа, а 82 кадра в Chrome совпали по пикселям, DOM и раскладке.
 
 Урок этой проверки: при переименовании одна строка в `renderer.ts` потеряла приведение к «да/нет», и обычные враги перестали рисоваться — на поле остался бы только босс. Ни 50 тестов, ни 32 проверки в браузере этого не заметили: они смотрят на состояние игры и на разметку, а не на картинку. Поймало только сравнение по пикселям; ошибка исправлена. Отсюда оговорка в правиле 7 и проверка «враг нарисован на поле» в `smoke.mjs` (на той самой ошибке она краснеет).
 
 Пункты ниже, пришедшие из ревью, помечены словом «ревью».
-
----
-
-## Этап 1. Сервер и домен: выложить игру
-
-Цель: игра открывается на `https://throne-defense.ru`.
-
-- [x] Купить домен `throne-defense.ru`
-- [ ] Проверить у регистратора, что данные администратора домена подтверждены (для `.ru` без этого домен могут не делегировать)
-- [ ] DNS у регистратора: `A @ → 77.91.113.61`, `A www → 77.91.113.61` (на 12 ноября не прописаны)
-- [x] Фаервол на VPS: открыть 22, 80, 443 (см. [Приложение A](#a-фаервол))
-- [x] Установить nginx и certbot (nginx 1.24.0, certbot 2.9.0, rsync)
-- [x] Положить конфиг сайта (см. [Приложение B](#b-конфиг-nginx)), проверить `nginx -t`, перезагрузить nginx
-- [x] Собрать игру и залить её на сервер вручную: `deploy/scripts/deploy-web.sh` (без флага — только показать, `--apply` — выложить). Игра открывается по http://77.91.113.61 (см. [Приложение D](#d-выложить-игру-вручную-до-этапа-2))
-- [ ] Получить сертификат: `certbot --nginx` (см. [Приложение C](#c-https-через-certbot))
-- [ ] Проверить автопродление: `certbot renew --dry-run`
-- [x] Перенести конфиг nginx и команды выкладки в папку `deploy/` (`deploy/nginx/`, `deploy/scripts/deploy-web.sh`). На сервер конфиги копируются `scp` с Mac
-- [ ] После certbot обновить `deploy/nginx/throne-defense.conf` по настоящему конфигу с сервера (certbot его дописывает)
-
-**Готово, когда:** `https://throne-defense.ru` открывает игру с замочком, а `http://` перекидывает на `https://`. Что делает `www` — по решению из открытых вопросов.
 
 ---
 
@@ -123,7 +101,9 @@
 - [ ] На VPS завести пользователя `deploy`, у которого есть доступ только к `/var/www/throne-defense`
 - [ ] Сгенерировать отдельный SSH-ключ для деплоя: публичную часть положить на VPS, приватную — в GitHub Secrets. В самом workflow ключ из секрета записывается в файл с правами `600`, а адрес сервера добавляется в `known_hosts` (`ssh-keyscan`) — без этого `rsync` по SSH не подключится
 - [ ] Workflow `.github/workflows/check.yml`: на каждый пуш и pull request — Node из `.nvmrc` → `npm ci` → `npm run check`
-- [ ] Workflow `.github/workflows/deploy.yml`: при пуше в `main` — то же самое, и если всё зелёное, `rsync` папки `apps/web/dist/` на VPS. Перед `rsync` — шаг `test -s apps/web/dist/index.html`: пустая сборка не должна стереть сайт
+- [ ] Workflow `.github/workflows/deploy.yml`: при пуше в `main` — то же самое, и если всё зелёное, `rsync` папки `apps/web/dist/` на VPS. Перед `rsync` — шаг `test -s apps/web/dist/index.html`: пустая сборка не должна стереть сайт. Опции `rsync` взять из `deploy/scripts/deploy-web.sh`
+- [ ] Сейчас файлы в `/var/www/throne-defense` принадлежат `root` (выкладывали под ним). Перед первым автодеплоем: `chown -R deploy:deploy /var/www/throne-defense`
+- [ ] `gh` (GitHub CLI) на Mac не установлен: секреты добавлять через сайт (Settings → Secrets and variables → Actions) или поставить `brew install gh`
 - [ ] Проверить: мелкая правка → пуш → изменение видно на сайте
 - [ ] Проверить: падающий тест → пуш → деплой не случился
 - [ ] Необязательно: `npm run e2e` в Actions. На раннере `ubuntu-latest` Google Chrome обычно уже есть, а `smoke.mjs` сначала ищет именно его. Если понадобится Chromium от Playwright — ставить той же версии, что `playwright-core` в проекте: `npx playwright-core install --with-deps chromium`
@@ -398,131 +378,21 @@ npm run format       # Prettier: оформить код (format:check — то�
 
 ---
 
-## Приложения
+## Сервер
 
-### A. Фаервол
+| Что | Где и как |
+|---|---|
+| Машина | VPS `77.91.113.61`, Ubuntu 24.04.5 LTS («минимальная» сборка: части привычных программ может не быть). Вход `ssh root@77.91.113.61`, только по ключу (пароль выключен в `/etc/ssh/sshd_config.d/00-hardening.conf`) |
+| Домен и DNS | reg.ru, DNS-серверы `ns1.reg.ru`/`ns2.reg.ru`, записи `A @` и `A www` → `77.91.113.61` |
+| Фаервол | `ufw`: открыты 22, 80, 443 (TCP). ⚠️ Порты Docker-контейнеров открыты в обход `ufw` |
+| nginx 1.24 | Конфиг сайта — `deploy/nginx/throne-defense.conf` → на сервере `/etc/nginx/sites-available/throne-defense` (+ ссылка в `sites-enabled`); заголовки — `deploy/nginx/throne-security.conf` → `/etc/nginx/snippets/`. Заглушка `default` отключена. HTTP/2 на этой версии — словом `http2` в `listen` |
+| Файлы игры | `/var/www/throne-defense` — только сборка, больше ничего: `rsync --delete` удаляет всё, чего нет в `dist` |
+| HTTPS | certbot 2.9, сертификат на оба адреса в `/etc/letsencrypt/live/throne-defense.ru/`, e-mail для писем об ошибках продления — владельца. Продлевает таймер `certbot.timer`; проверить: `certbot renew --dry-run` |
+| VPN | Amnezia в Docker: `amnezia-awg2` (UDP 36548) и `amnezia-wireguard` (UDP 43365) — не трогать. `amnezia-xray` остановлен (см. «Принятые решения»). Docker не перезапускать без нужды — оборвётся VPN |
+| Резервная копия | `/root/throne-defense.certbot.bak` — конфиг nginx в том виде, как его записал certbot (до перехода на версию из `deploy/`). Можно удалить |
 
-Порты открываем по номерам. Готовый набор правил `'Nginx Full'` появляется только после установки nginx: если вызвать его раньше, команда выдаст ошибку, а порты 80 и 443 останутся закрытыми.
+**Поменять конфиг nginx:** правим `deploy/nginx/…` → на Mac `scp deploy/nginx/throne-defense.conf root@77.91.113.61:/etc/nginx/sites-available/throne-defense` → на сервере `nginx -t && systemctl reload nginx`. Если `nginx -t` ругается, `reload` не выполнится и работающий сайт не пострадает.
 
-```bash
-sudo apt install ufw          # на Ubuntu уже есть, на Debian 12 нужно поставить
-sudo ufw allow OpenSSH        # СНАЧАЛА SSH, иначе потеряешь доступ. Если порт SSH не 22: sudo ufw allow <порт>/tcp
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw show added           # посмотреть правила ДО включения
-sudo ufw enable               # на вопрос про SSH-соединения ответить y
-sudo ufw status verbose       # должны быть 22, 80 и 443
-```
+**Выложить игру вручную** (до автодеплоя, из корня репозитория): `deploy/scripts/deploy-web.sh` — показать, что изменится; `deploy/scripts/deploy-web.sh --apply` — выложить. Скрипт сам собирает игру и не запускает `rsync`, если сборка пустая.
 
-После `ufw enable` не закрывай текущее окно с сервером, пока не убедишься, что во втором окне вход по SSH работает.
-
-### B. Конфиг nginx
-
-Актуальные файлы — в `deploy/nginx/` (там же блок «www → без www»). Ниже — пояснения к ним.
-
-Сначала файл с заголовками безопасности `/etc/nginx/snippets/throne-security.conf` (без него `nginx -t` выдаст ошибку):
-
-```nginx
-add_header X-Content-Type-Options "nosniff" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-add_header X-Frame-Options "SAMEORIGIN" always;
-```
-
-Потом сам сайт — файл `/etc/nginx/sites-available/throne-defense`:
-
-```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name throne-defense.ru www.throne-defense.ru;
-
-    root /var/www/throne-defense;
-    index index.html;
-    server_tokens off;
-
-    # Сжатие. По умолчанию nginx сжимает только HTML, а JS и CSS отдаёт как есть
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types text/css application/javascript text/javascript application/json image/svg+xml;
-
-    include snippets/throne-security.conf;
-
-    # Файлы сборки: в имени есть хеш, поэтому их можно хранить в браузере год
-    location /assets/ {
-        add_header Cache-Control "public, max-age=31536000, immutable" always;
-        include snippets/throne-security.conf;
-        try_files $uri =404;
-    }
-
-    # А саму страницу браузер каждый раз перепроверяет — иначе не увидит новую версию
-    location = /index.html {
-        add_header Cache-Control "no-cache" always;
-        include snippets/throne-security.conf;
-    }
-
-    # Игра одностраничная, роутера нет: чего нет на диске — того нет (404)
-    location / {
-        try_files $uri $uri/ =404;
-    }
-
-    # Запросы /api/... уходят в Node. Пока бэкенда нет, отвечают ошибкой 502 — это нормально
-    location /api/ {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-- Заголовки вынесены в отдельный файл не случайно: `add_header` внутри `location` **отменяет** все `add_header` уровнем выше. Поэтому там, где есть свой `add_header`, файл с заголовками подключается ещё раз.
-- `X-Frame-Options` запрещает открывать игру во фрейме на чужом сайте. Если площадкой станет VK или Telegram (этап 4), его придётся убрать или заменить.
-
-Включение:
-
-```bash
-sudo apt install nginx certbot python3-certbot-nginx
-sudo mkdir -p /var/www/throne-defense
-sudo ln -s /etc/nginx/sites-available/throne-defense /etc/nginx/sites-enabled/
-sudo rm /etc/nginx/sites-enabled/default   # необязательно: убрать заглушку «Welcome to nginx»
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-### C. HTTPS через certbot
-
-Certbot получает бесплатный сертификат Let's Encrypt, прописывает его в конфиг nginx и сам продлевает. Запускать **после** того, как DNS указывает на VPS: Let's Encrypt проверяет домен через порт 80.
-
-```bash
-sudo certbot --nginx --redirect -d throne-defense.ru -d www.throne-defense.ru
-sudo certbot renew --dry-run   # проверка автопродления
-```
-
-При первом запуске certbot спросит e-mail (на него придёт письмо, если автопродление сломается) и согласие с условиями. Флаг `--redirect` сразу включает перенаправление `http://` на `https://`.
-
-Необязательно:
-- **Один адрес вместо двух** (см. открытые вопросы). Сделать это **до** запуска certbot: в основном блоке оставить `server_name throne-defense.ru;`, а рядом добавить второй блок `server { listen 80; listen [::]:80; server_name www.throne-defense.ru; return 301 https://throne-defense.ru$request_uri; }`. Затем запустить certbot той же командой с обоими именами — он допишет HTTPS в оба блока. Проверка: `curl -I https://www.throne-defense.ru` должен ответить `301`.
-- **HTTP/2.** Certbot дописывает `listen 443 ssl;` без него. Как включить, зависит от версии (`nginx -v`). До 1.25.1 (Ubuntu 22.04 и 24.04, Debian 12) — дописать `http2` в обе строки: `listen 443 ssl http2;` и `listen [::]:443 ssl http2;`. С 1.25.1 — отдельная строка `http2 on;`. На старой версии `http2 on;` вызовет ошибку в `nginx -t`.
-
-### D. Выложить игру вручную (до этапа 2)
-
-На сервер едет не исходный код, а собранная игра — папка `apps/web/dist/`. Команды запускать из корня репозитория, заменив `ЛОГИН` на своё имя на сервере:
-
-```bash
-# 1. Собрать и посмотреть, что изменится на сервере (-n — ничего не трогать, только показать)
-npm run build && test -s apps/web/dist/index.html \
-  && rsync -avn --delete apps/web/dist/ ЛОГИН@77.91.113.61:/var/www/throne-defense/
-
-# 2. Если список выглядит разумно — то же самое по-настоящему
-npm run build && test -s apps/web/dist/index.html \
-  && rsync -av --delete --delay-updates --no-owner --no-group apps/web/dist/ ЛОГИН@77.91.113.61:/var/www/throne-defense/
-```
-
-- `/` в конце `dist/` означает «содержимое папки», а не саму папку.
-- `--delete` удаляет на сервере файлы, которых больше нет в сборке (старые `index-XXXX.js`). Поэтому в `/var/www/throne-defense` не должно лежать ничего, кроме сайта: базу и загрузки хранить в другом месте. Побочный эффект: у игрока с открытой вкладкой до обновления страницы может не подгрузиться шрифт — для нашего проекта это терпимо.
-- `&&` и `test -s …/index.html` — предохранитель: если сборка упала или получилась пустой, `rsync` не запустится и не сотрёт работающий сайт.
-- `--delay-updates` подменяет файлы разом в конце, а не по одному; `--no-owner --no-group` не переносит на сервер владельца файлов с твоего компьютера.
-
-Если не хватает прав, сначала на сервере: `sudo chown ЛОГИН /var/www/throne-defense`.
+**Если понадобится XRay:** не возвращать его на 443, а поставить за nginx — блок `stream` с `ssl_preread`: `throne-defense.ru` (и другие свои сайты) → nginx, всё остальное → XRay на внутреннем порту.
