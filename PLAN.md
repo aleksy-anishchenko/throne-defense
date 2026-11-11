@@ -11,7 +11,7 @@
 - Всё слито в `main` и запушено на GitHub (перевод на Vite + TypeScript + Vue, чистка кода, этап 0, правки по ревью). Пушим по SSH (`git@github.com:…`): вход по паролю через HTTPS GitHub не принимает. Ветки `refactor`, `stage-0`, `review-fixes` больше не нужны.
 - Сделано: логика игры отдельно в `packages/game`, бот и замер башен для баланса в `tools/balance`, баланс v2. 73 теста, проверка в браузере `npm run e2e` (45 пунктов, в том числе «враг действительно нарисован на canvas»). `npm run check` и `npm run e2e` зелёные.
 - Код-ревью (см. [итоги](#итоги-код-ревью-12-ноября-2026)) отработано: всё, что можно было сделать без сервера и без выбора площадки, сделано. В этапах ниже остались только пункты, которым нужен сервер, площадка или новый контент.
-- **Игра в интернете: https://throne-defense.ru** (этап 1 сделан 12 ноября). HTTPS от Let's Encrypt продлевается сам, `http://` и `www` перенаправляют на основной адрес. Выкладка пока вручную: `deploy/scripts/deploy-web.sh --apply`. Как устроен сервер — в [справочнике](#сервер).
+- **Игра в интернете: https://throne-defense.ru** (этап 1 сделан 12 ноября). HTTPS от Let's Encrypt продлевается сам, `http://` и `www` перенаправляют на основной адрес. Выкладка автоматическая: пуш в `main` → GitHub Actions проверяет и выкладывает (этап 2). Как устроен сервер — в [справочнике](#сервер).
 - GitHub Pages выключен (раньше показывал старую однофайловую игру с `main`): адрес у игры один.
 
 ### Ближайшие шаги
@@ -98,15 +98,12 @@
 
 Цель: пуш в `main` → через пару минут новая версия на `throne-defense.ru`. Сломанный код на сервер не попадает.
 
-- [ ] На VPS завести пользователя `deploy`, у которого есть доступ только к `/var/www/throne-defense`
-- [ ] Сгенерировать отдельный SSH-ключ для деплоя: публичную часть положить на VPS, приватную — в GitHub Secrets. В самом workflow ключ из секрета записывается в файл с правами `600`, а адрес сервера добавляется в `known_hosts` (`ssh-keyscan`) — без этого `rsync` по SSH не подключится
-- [ ] Workflow `.github/workflows/check.yml`: на каждый пуш и pull request — Node из `.nvmrc` → `npm ci` → `npm run check`
-- [ ] Workflow `.github/workflows/deploy.yml`: при пуше в `main` — то же самое, и если всё зелёное, `rsync` папки `apps/web/dist/` на VPS. Перед `rsync` — шаг `test -s apps/web/dist/index.html`: пустая сборка не должна стереть сайт. Опции `rsync` взять из `deploy/scripts/deploy-web.sh`
-- [ ] Сейчас файлы в `/var/www/throne-defense` принадлежат `root` (выкладывали под ним). Перед первым автодеплоем: `chown -R deploy:deploy /var/www/throne-defense`
-- [ ] `gh` (GitHub CLI) на Mac не установлен: секреты добавлять через сайт (Settings → Secrets and variables → Actions) или поставить `brew install gh`
-- [ ] Проверить: мелкая правка → пуш → изменение видно на сайте
-- [ ] Проверить: падающий тест → пуш → деплой не случился
-- [ ] Необязательно: `npm run e2e` в Actions. На раннере `ubuntu-latest` Google Chrome обычно уже есть, а `smoke.mjs` сначала ищет именно его. Если понадобится Chromium от Playwright — ставить той же версии, что `playwright-core` в проекте: `npx playwright-core install --with-deps chromium`
+- [x] Пользователь `deploy` на VPS: вход только по ключу, и ключ разрешает только `rsync` в `/var/www/throne-defense` (`rrsync` в `authorized_keys`), терминала нет
+- [x] Отдельный SSH-ключ для деплоя: публичная часть на сервере, приватная — в секрете `DEPLOY_SSH_KEY`. Публичный ключ самого сервера — в `deploy/known_hosts` (не секрет)
+- [x] `.github/workflows/check.yml`: пуш в любую ветку, кроме `main`, и pull request — `npm ci` → `npm run check` → `npm run e2e`
+- [x] `.github/workflows/deploy.yml`: пуш в `main` — те же проверки, затем `rsync` сборки и проверка, что сайт отвечает. Первый автодеплой прошёл 12 ноября
+- [ ] Проверить: мелкая видимая правка → пуш → изменение видно на сайте
+- [ ] Проверить: падающий тест в ветке → `check.yml` красный (`deploy.yml` выполняет те же шаги, поэтому с красными проверками до `rsync` не дойдёт)
 
 **Готово, когда:** выкладка не требует ручных действий, а с красными тестами ничего не выкладывается.
 
@@ -386,10 +383,11 @@ npm run format       # Prettier: оформить код (format:check — то�
 | Домен и DNS | reg.ru, DNS-серверы `ns1.reg.ru`/`ns2.reg.ru`, записи `A @` и `A www` → `77.91.113.61` |
 | Фаервол | `ufw`: открыты 22, 80, 443 (TCP). ⚠️ Порты Docker-контейнеров открыты в обход `ufw` |
 | nginx 1.24 | Конфиг сайта — `deploy/nginx/throne-defense.conf` → на сервере `/etc/nginx/sites-available/throne-defense` (+ ссылка в `sites-enabled`); заголовки — `deploy/nginx/throne-security.conf` → `/etc/nginx/snippets/`. Заглушка `default` отключена. HTTP/2 на этой версии — словом `http2` в `listen` |
-| Файлы игры | `/var/www/throne-defense` — только сборка, больше ничего: `rsync --delete` удаляет всё, чего нет в `dist` |
+| Файлы игры | `/var/www/throne-defense`, владелец `deploy` — только сборка, больше ничего: `rsync --delete` удаляет всё, чего нет в `dist` |
+| Деплой | Пользователь `deploy`: ключи в `/home/deploy/.ssh/authorized_keys` (ключ GitHub Actions и личный ключ с Mac), оба ограничены `rrsync /var/www/throne-defense`. Путь назначения в `rsync` — `deploy@77.91.113.61:/` (для `rrsync` это корень папки игры). На Mac нужен настоящий rsync (`brew install rsync`): системный openrsync `rrsync` не понимает |
 | HTTPS | certbot 2.9, сертификат на оба адреса в `/etc/letsencrypt/live/throne-defense.ru/`, e-mail для писем об ошибках продления — владельца. Продлевает таймер `certbot.timer`; проверить: `certbot renew --dry-run` |
 | VPN | Amnezia в Docker: `amnezia-awg2` (UDP 36548) и `amnezia-wireguard` (UDP 43365) — не трогать. Docker не перезапускать без нужды — оборвётся VPN |
 
 **Поменять конфиг nginx:** правим `deploy/nginx/…` → на Mac `scp deploy/nginx/throne-defense.conf root@77.91.113.61:/etc/nginx/sites-available/throne-defense` → на сервере `nginx -t && systemctl reload nginx`. Если `nginx -t` ругается, `reload` не выполнится и работающий сайт не пострадает.
 
-**Выложить игру вручную** (до автодеплоя, из корня репозитория): `deploy/scripts/deploy-web.sh` — показать, что изменится; `deploy/scripts/deploy-web.sh --apply` — выложить. Скрипт сам собирает игру и не запускает `rsync`, если сборка пустая.
+**Выложить игру вручную** (обычно не нужно — это делает автодеплой; из корня репозитория): `deploy/scripts/deploy-web.sh` — показать, что изменится; `deploy/scripts/deploy-web.sh --apply` — выложить. Скрипт сам собирает игру и не запускает `rsync`, если сборка пустая.
