@@ -43,7 +43,7 @@ button {
   outline: 3px solid var(--gold);
   outline-offset: 2px;
 }
-.vh {
+.visually-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -144,7 +144,7 @@ button {
   pointer-events: none;
   text-align: center;
 }
-.toast.on {
+.toast.visible {
   opacity: 1;
 }
 
@@ -167,34 +167,34 @@ button {
   text-overflow: ellipsis;
 }
 .shop,
-.towerbox {
+.tower-info {
   grid-row: 2;
   height: 84px;
 }
 .controls {
   grid-row: 3;
 }
-.panel.tw .shop {
+.panel.has-selected-tower .shop {
   display: none;
 }
 
-.towerbox {
+.tower-info {
   display: flex;
   align-items: stretch;
   gap: 6px;
 }
-.towerbox .who {
+.tower-info .tower-stats {
   flex: 1 1 auto;
   min-width: 0;
   align-self: center;
   line-height: 1.25;
 }
-.towerbox .who b {
+.tower-info .tower-stats b {
   display: block;
   font-weight: 800;
   font-size: 1.12rem;
 }
-.towerbox .who span {
+.tower-info .tower-stats span {
   display: block;
   font-size: 0.9rem;
   color: var(--parch-dim);
@@ -227,7 +227,7 @@ button {
   height: 36px;
   display: block;
 }
-.card .nm {
+.card .card-name {
   font-weight: 800;
   font-size: 0.92rem;
   line-height: 1.1;
@@ -245,10 +245,10 @@ button {
   width: 13px;
   height: 13px;
 }
-.card .ds {
+.card .card-description {
   display: none;
 }
-.card .ds::first-letter {
+.card .card-description::first-letter {
   text-transform: uppercase;
 }
 .card[aria-pressed='true'] {
@@ -299,7 +299,7 @@ button {
   width: 22px;
   height: 22px;
 }
-.btn.act {
+.btn.action {
   flex: none;
   min-width: 98px;
   display: flex;
@@ -310,13 +310,13 @@ button {
   padding: 0 10px;
   line-height: 1.1;
 }
-.btn.act .pr {
+.btn.action .price {
   font-weight: 700;
   font-size: 0.92rem;
   color: var(--gold);
   font-variant-numeric: tabular-nums;
 }
-.btn.act.primary .pr {
+.btn.action.primary .price {
   color: #ffe7a8;
 }
 .keys {
@@ -362,11 +362,11 @@ button {
   line-height: 1.4;
   max-width: 34ch;
 }
-.sheet .dim {
+.sheet .note {
   color: var(--parch-dim);
   font-size: 1rem;
 }
-.sheet .row {
+.sheet .buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -413,23 +413,23 @@ button {
     font-size: 1rem;
     align-self: start;
   }
-  .panel.tw #hint {
+  .panel.has-selected-tower #hint {
     display: none;
   }
-  .panel.tw .shop {
+  .panel.has-selected-tower .shop {
     display: grid;
   }
-  .towerbox {
+  .tower-info {
     grid-row: 1;
     height: auto;
     flex-wrap: wrap;
     align-content: start;
     gap: 8px;
   }
-  .towerbox .who {
+  .tower-info .tower-stats {
     flex-basis: 100%;
   }
-  .btn.act {
+  .btn.action {
     flex: 1 1 0;
     min-height: 44px;
     flex-direction: row;
@@ -456,7 +456,7 @@ button {
     width: 48px;
     height: 48px;
   }
-  .card .nm {
+  .card .card-name {
     grid-area: nm;
     font-size: 1.08rem;
   }
@@ -464,7 +464,7 @@ button {
     grid-area: cost;
     font-size: 1rem;
   }
-  .card .ds {
+  .card .card-description {
     grid-area: ds;
     display: block;
     font-size: 0.9rem;
@@ -486,7 +486,7 @@ button {
 }
 @media (max-height: 640px) and (max-width: 859px) {
   .shop,
-  .towerbox {
+  .tower-info {
     height: 70px;
   }
   .card canvas {

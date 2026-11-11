@@ -6,32 +6,32 @@ import { drawTowerIcon } from '@/render/towers'
 const props = defineProps<{
   def: TowerDef
   /** Выбран в магазине */
-  pressed: boolean
+  isArmed: boolean
   /** Не хватает золота */
-  poor: boolean
+  isUnaffordable: boolean
 }>()
 const emit = defineEmits<{ pick: [] }>()
 
-const icon = useTemplateRef('icon')
-onMounted(() => drawTowerIcon(icon.value!, props.def.id))
+const iconCanvas = useTemplateRef('iconCanvas')
+onMounted(() => drawTowerIcon(iconCanvas.value!, props.def.id))
 </script>
 
 <template>
   <button
     type="button"
     class="card"
-    :class="{ poor }"
-    :aria-pressed="pressed"
+    :class="{ poor: isUnaffordable }"
+    :aria-pressed="isArmed"
     @click="emit('pick')"
   >
-    <canvas ref="icon" width="96" height="96" aria-hidden="true"></canvas>
-    <span class="nm">{{ def.name }}</span>
+    <canvas ref="iconCanvas" width="96" height="96" aria-hidden="true"></canvas>
+    <span class="card-name">{{ def.name }}</span>
     <span class="cost">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="10" fill="currentColor" />
       </svg>
-      <span class="vh">цена</span>{{ def.cost }}
+      <span class="visually-hidden">цена</span>{{ def.cost }}
     </span>
-    <span class="ds">{{ def.desc }}</span>
+    <span class="card-description">{{ def.description }}</span>
   </button>
 </template>

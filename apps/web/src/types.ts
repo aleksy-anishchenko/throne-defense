@@ -1,19 +1,22 @@
 /** Клетка поля: столбец и строка */
 export interface Cell {
-  c: number
-  r: number
+  col: number
+  row: number
 }
 
 /** Что сейчас выбрал игрок — нужно и интерфейсу, и рисованию поля */
 export interface BoardView {
-  /** Башня, выбранная в магазине («ставлю такую») */
-  armed: string | null
+  /** Башня, выбранная в магазине («ставлю такую»): её id */
+  armedTowerId: string | null
   /** Клетка выбранной поставленной башни */
-  selected: Cell | null
+  selectedTowerCell: Cell | null
   /** Выбранная пустая плита («что сюда поставить?») */
-  tile: Cell | null
+  selectedEmptyCell: Cell | null
   /** Клетка под мышью */
-  hover: Cell | null
+  hoverCell: Cell | null
   /** Клавиатурный курсор (стрелки) */
-  cursor: Cell | null
+  cursorCell: Cell | null
 }
+
+/** Какой экран поверх поля: меню, поражение, победа или никакого */
+export type OverlayScreen = 'menu' | 'defeat' | 'victory' | null

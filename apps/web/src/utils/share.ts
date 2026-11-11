@@ -1,4 +1,4 @@
-import { fmt, plural } from './format'
+import { formatNumber, plural } from './format'
 
 /**
  * Поделиться результатом: системное меню «Поделиться» (телефоны),
@@ -6,21 +6,24 @@ import { fmt, plural } from './format'
  * Возвращает 'copied', если текст скопирован (чтобы показать подсказку).
  */
 export async function shareResult(
-  cleared: number,
+  wavesCleared: number,
   score: number,
 ): Promise<'shared' | 'copied' | 'shown'> {
-  const url =
+  // Если игру открыли как файл (file://), origin равен строке 'null': ссылку в текст тогда не вставляем
+  const pageUrl =
     location.origin && location.origin !== 'null' ? location.origin + location.pathname : ''
-  const waves = plural(cleared, ['волну', 'волны', 'волн'])
+  const wavesWord = plural(wavesCleared, ['волну', 'волны', 'волн'])
   const text =
-    `Мой трон выдержал ${cleared} ${waves} в «Защите трона», счёт ${fmt(score)}. Побьёшь? ${url}`.trim()
+    `Мой трон выдержал ${wavesCleared} ${wavesWord} в «Защите трона», счёт ${formatNumber(score)}. Побьёшь? ${pageUrl}`.trim()
 
   if (navigator.share) {
     try {
       await navigator.share({ text })
       return 'shared'
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') return 'shared'
+    } catch (error) {
+      // Игрок сам закрыл окно «Поделиться»: это не ошибка, запасной вариант (буфер обмена) не нужен,
+      // поэтому тоже возвращаем 'shared'
+      if (error instanceof DOMException && error.name === 'AbortError') return 'shared'
     }
   }
   try {

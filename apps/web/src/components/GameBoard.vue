@@ -6,76 +6,82 @@ import { createRenderer, type Renderer } from '@/render/renderer'
 import { useGameStore } from '@/stores/game'
 import type { Cell } from '@/types'
 
+/** Самый длинный кадр для симуляции, в секундах */
+const MAX_FRAME_DT = 0.1
+/** Миллисекунд в секунде (браузер даёт время кадра в мс) */
+const MS_PER_SECOND = 1000
+
 const store = useGameStore()
-const stage = useTemplateRef('stage')
-const board = useTemplateRef('board')
+const stageElement = useTemplateRef('stageElement')
+const boardCanvas = useTemplateRef('boardCanvas')
 
 let renderer: Renderer | null = null
-let observer: ResizeObserver | null = null
-let raf = 0
-let lastTs = 0
+let resizeObserver: ResizeObserver | null = null
+let animationFrameId = 0
+let lastTimestamp = 0
 
-function frame(ts: number) {
-  // Если вкладка была скрыта, не пытаемся «догнать» минуты — максимум 0,1 с за кадр
-  const realDt = Math.min(0.1, (ts - lastTs) / 1000 || 0)
-  lastTs = ts
+function runFrame(timestamp: number) {
+  // Если вкладка была скрыта, не пытаемся «догнать» минуты — максимум MAX_FRAME_DT (0,1 с) за кадр
+  // `|| 0` — страховка: если получилось «не число» (NaN), считаем, что времени не прошло
+  const realDt = Math.min(MAX_FRAME_DT, (timestamp - lastTimestamp) / MS_PER_SECOND || 0)
+  lastTimestamp = timestamp
   store.game.advance(realDt)
-  renderer?.draw(realDt, store.view())
-  store.sync()
-  raf = requestAnimationFrame(frame)
+  renderer?.draw(realDt, store.boardView())
+  store.syncHud()
+  animationFrameId = requestAnimationFrame(runFrame)
 }
 
-function cellAt(ev: PointerEvent): Cell {
-  const box = board.value!.getBoundingClientRect()
+function cellFromPointer(event: PointerEvent): Cell {
+  const bounds = boardCanvas.value!.getBoundingClientRect()
   const { cols, rows } = store.game.level.def
   return {
-    c: Math.floor(((ev.clientX - box.left) / box.width) * cols),
-    r: Math.floor(((ev.clientY - box.top) / box.height) * rows),
+    col: Math.floor(((event.clientX - bounds.left) / bounds.width) * cols),
+    row: Math.floor(((event.clientY - bounds.top) / bounds.height) * rows),
   }
 }
 
-function onPointerDown(ev: PointerEvent) {
-  ev.preventDefault()
-  store.cursor = null
-  const { c, r } = cellAt(ev)
-  store.tapTile(c, r)
+function onPointerDown(event: PointerEvent) {
+  event.preventDefault()
+  store.cursorCell = null
+  const { col, row } = cellFromPointer(event)
+  store.tapCell(col, row)
 }
 
-function onPointerMove(ev: PointerEvent) {
-  if (ev.pointerType !== 'mouse') return
-  const p = cellAt(ev)
-  store.hover = store.inGrid(p.c, p.r) ? p : null
+function onPointerMove(event: PointerEvent) {
+  if (event.pointerType !== 'mouse') return
+  const cell = cellFromPointer(event)
+  store.hoverCell = store.game.isInsideField(cell.col, cell.row) ? cell : null
 }
 
 onMounted(() => {
-  renderer = createRenderer(board.value!, store.game)
-  observer = new ResizeObserver(() => {
-    const box = stage.value!.getBoundingClientRect()
-    renderer?.resize(box.width, box.height)
+  renderer = createRenderer(boardCanvas.value!, store.game)
+  resizeObserver = new ResizeObserver(() => {
+    const bounds = stageElement.value!.getBoundingClientRect()
+    renderer?.resize(bounds.width, bounds.height)
   })
-  observer.observe(stage.value!)
-  raf = requestAnimationFrame(frame)
+  resizeObserver.observe(stageElement.value!)
+  animationFrameId = requestAnimationFrame(runFrame)
 })
 
 onUnmounted(() => {
-  cancelAnimationFrame(raf)
-  observer?.disconnect()
+  cancelAnimationFrame(animationFrameId)
+  resizeObserver?.disconnect()
   renderer?.dispose()
 })
 </script>
 
 <template>
-  <main ref="stage" class="stage">
+  <main ref="stageElement" class="stage">
     <canvas
       id="board"
-      ref="board"
+      ref="boardCanvas"
       tabindex="0"
       aria-label="Тронный зал: игровое поле"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
-      @pointerleave="store.hover = null"
+      @pointerleave="store.hoverCell = null"
     ></canvas>
-    <div class="toast" :class="{ on: store.toast.on }" role="status" aria-live="polite">
+    <div class="toast" :class="{ visible: store.toast.isVisible }" role="status" aria-live="polite">
       {{ store.toast.text }}
     </div>
   </main>

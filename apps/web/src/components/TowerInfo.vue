@@ -3,63 +3,71 @@
 import { TOWERS, refundFor, type StatKey, type TowerStats } from '@throne/game'
 import { computed } from 'vue'
 import { useGameStore } from '@/stores/game'
-import { num, pct, roman } from '@/utils/format'
+import { formatDecimal, formatPercent, toRoman } from '@/utils/format'
 
 const store = useGameStore()
 
 /** Как подписывать и показывать каждую характеристику */
-const STAT: Record<StatKey, { label: string; format: (v: number) => string }> = {
-  dmg: { label: 'урон', format: String },
-  range: { label: 'дальность', format: num },
-  rate: { label: 'перезарядка', format: (v) => `${num(v)} с` },
-  slow: { label: 'замедление', format: pct },
-  splash: { label: 'взрыв', format: num },
-  pierce: { label: 'пронзает', format: String },
+const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: number) => string }> = {
+  damage: { label: 'урон', format: String },
+  range: { label: 'дальность', format: formatDecimal },
+  cooldown: { label: 'перезарядка', format: (value) => `${formatDecimal(value)} с` },
+  slowAmount: { label: 'замедление', format: formatPercent },
+  splashRadius: { label: 'взрыв', format: formatDecimal },
+  pierceCount: { label: 'пронзает', format: String },
 }
 
 /** «урон 9 → 15»: текущее значение и (если есть) значение после улучшения */
-function statLine(key: StatKey, cur: TowerStats, next: TowerStats | undefined): string {
-  const { label, format } = STAT[key]
-  const now = format(cur[key] ?? 0)
-  const after = next ? format(next[key] ?? 0) : null
-  return after === null || after === now ? `${label} ${now}` : `${label} ${now} → ${after}`
+function formatStatLine(
+  statKey: StatKey,
+  currentStats: TowerStats,
+  nextStats: TowerStats | undefined,
+): string {
+  const { label, format } = STAT_DISPLAY[statKey]
+  const currentText = format(currentStats[statKey] ?? 0)
+  const nextText = nextStats ? format(nextStats[statKey] ?? 0) : null
+  return nextText === null || nextText === currentText
+    ? `${label} ${currentText}`
+    : `${label} ${currentText} → ${nextText}`
 }
 
-const info = computed(() => {
-  const id = store.hud.selType
-  if (!id) return null
-  const def = TOWERS[id]
-  const lv = store.hud.selLv
-  const next = def.levels[lv + 1]
-  const upPrice = next ? def.upgrades[lv] : null
+const selectedTowerInfo = computed(() => {
+  const towerId = store.hud.selectedTowerId
+  if (!towerId) return null
+  const def = TOWERS[towerId]
+  const tier = store.hud.selectedTowerTier
+  const nextStats = def.tiers[tier + 1]
+  const upgradeCost = nextStats ? def.upgradeCosts[tier] : null
   return {
-    title: `${def.name} ${roman(lv)}`,
-    lines: def.display.map((key) => statLine(key, def.levels[lv], next)),
-    upPrice,
-    canAfford: upPrice !== null && store.hud.gold >= upPrice,
-    refund: refundFor(def, lv),
+    title: `${def.name} ${toRoman(tier)}`,
+    lines: def.displayStats.map((statKey) => formatStatLine(statKey, def.tiers[tier], nextStats)),
+    upgradeCost,
+    canAfford: upgradeCost !== null && store.hud.gold >= upgradeCost,
+    refund: refundFor(def, tier),
   }
 })
 </script>
 
 <template>
-  <div v-if="info" class="towerbox">
-    <div class="who">
-      <b>{{ info.title }}</b>
-      <span v-for="line in info.lines" :key="line">{{ line }}</span>
+  <div v-if="selectedTowerInfo" class="tower-info">
+    <div class="tower-stats">
+      <b>{{ selectedTowerInfo.title }}</b>
+      <span v-for="line in selectedTowerInfo.lines" :key="line">{{ line }}</span>
     </div>
     <button
-      class="btn act"
-      :class="{ primary: info.canAfford }"
+      class="btn action"
+      :class="{ primary: selectedTowerInfo.canAfford }"
       type="button"
-      :disabled="info.upPrice === null"
+      :disabled="selectedTowerInfo.upgradeCost === null"
       @click="store.upgradeSelected"
     >
-      <span>{{ info.upPrice === null ? 'Высший' : 'Улучшить' }}</span>
-      <span class="pr">{{ info.upPrice === null ? 'уровень' : `за ${info.upPrice}` }}</span>
+      <span>{{ selectedTowerInfo.upgradeCost === null ? 'Высший' : 'Улучшить' }}</span>
+      <span class="price">{{
+        selectedTowerInfo.upgradeCost === null ? 'уровень' : `за ${selectedTowerInfo.upgradeCost}`
+      }}</span>
     </button>
-    <button class="btn act" type="button" @click="store.sellSelected">
-      <span>Продать</span><span class="pr">за {{ info.refund }}</span>
+    <button class="btn action" type="button" @click="store.sellSelected">
+      <span>Продать</span><span class="price">за {{ selectedTowerInfo.refund }}</span>
     </button>
   </div>
 </template>

@@ -5,53 +5,58 @@ import { TOWER_LIST } from '@throne/game'
 import { onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '@/stores/game'
 
-const ARROWS: Record<string, [number, number]> = {
-  ArrowLeft: [-1, 0],
-  ArrowRight: [1, 0],
-  ArrowUp: [0, -1],
-  ArrowDown: [0, 1],
+/** Самая большая цифра-горячая клавиша: клавиши 1–9 выбирают стража */
+export const MAX_HOTKEY_DIGIT = 9
+
+/** Куда сдвигается курсор от каждой стрелки: на сколько столбцов и строк */
+const ARROW_DIRECTIONS: Record<string, { deltaCol: number; deltaRow: number }> = {
+  ArrowLeft: { deltaCol: -1, deltaRow: 0 },
+  ArrowRight: { deltaCol: 1, deltaRow: 0 },
+  ArrowUp: { deltaCol: 0, deltaRow: -1 },
+  ArrowDown: { deltaCol: 0, deltaRow: 1 },
 }
 
 export function useKeyboard(): void {
   const store = useGameStore()
 
-  function onKey(ev: KeyboardEvent) {
-    if (ev.ctrlKey || ev.metaKey || ev.altKey) return
+  function onKeyDown(event: KeyboardEvent) {
+    if (event.ctrlKey || event.metaKey || event.altKey) return
     // Зажатая клавиша шлёт повторы. Курсор стрелками удобно водить с удержанием,
     // а остальное — нет: зажатый пробел сначала начал бы волну, потом дёргал паузу
-    if (ev.repeat && !ARROWS[ev.key]) return
+    if (event.repeat && !ARROW_DIRECTIONS[event.key]) return
     // На кнопке пробел и Enter должны нажимать саму кнопку
-    const onButton = ev.target instanceof HTMLButtonElement
+    const isButtonFocused = event.target instanceof HTMLButtonElement
 
-    if (/^[1-9]$/.test(ev.key)) {
-      const def = TOWER_LIST[Number(ev.key) - 1]
-      if (def) store.pickCard(def.id)
+    // Цифры 1–9, см. MAX_HOTKEY_DIGIT
+    if (/^[1-9]$/.test(event.key)) {
+      const towerDef = TOWER_LIST[Number(event.key) - 1]
+      if (towerDef) store.chooseShopTower(towerDef.id)
       return
     }
-    if (ev.key === 'Escape') {
-      store.escape()
+    if (event.key === 'Escape') {
+      store.clearSelection()
       return
     }
     if (!store.isPlaying()) return
 
-    if ((ev.key === ' ' || ev.code === 'Space') && !onButton) {
-      ev.preventDefault()
+    if ((event.key === ' ' || event.code === 'Space') && !isButtonFocused) {
+      event.preventDefault()
       if (store.game.state.phase === 'build') store.startWave()
       else store.togglePause()
       return
     }
-    const move = ARROWS[ev.key]
-    if (move) {
-      ev.preventDefault()
-      store.moveCursor(move[0], move[1])
+    const direction = ARROW_DIRECTIONS[event.key]
+    if (direction) {
+      event.preventDefault()
+      store.moveCursor(direction.deltaCol, direction.deltaRow)
       return
     }
-    if (ev.key === 'Enter' && store.cursor && !onButton) {
-      ev.preventDefault()
+    if (event.key === 'Enter' && store.cursorCell && !isButtonFocused) {
+      event.preventDefault()
       store.confirmCursor()
     }
   }
 
-  onMounted(() => document.addEventListener('keydown', onKey))
-  onUnmounted(() => document.removeEventListener('keydown', onKey))
+  onMounted(() => document.addEventListener('keydown', onKeyDown))
+  onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
 }

@@ -1,48 +1,53 @@
 // Волны: кто и когда выходит, что дают за отбитую волну.
 
 import { SCORE, waveBonus } from '../data/balance.ts'
-import type { Level, World, WaveGroup } from '../types.ts'
-import { spawn } from './enemies.ts'
+import type { Level, SpawnEntry, WaveGroup, World } from '../types.ts'
+import { spawnEnemy } from './enemies.ts'
 
-/** Состав волны n (после последней — бесконечный режим) */
-export function waveGroups(level: Level, n: number): readonly WaveGroup[] {
-  return n <= level.maxWave ? level.def.waves[n - 1] : level.def.endless(n)
+/** Состав волны waveNumber (после последней — бесконечный режим) */
+export function getWaveGroups(level: Level, waveNumber: number): readonly WaveGroup[] {
+  return waveNumber <= level.waveCount
+    ? level.def.waves[waveNumber - 1]
+    : level.def.endlessWaveGroups(waveNumber)
 }
 
 /** Расписание волны: кто в какую секунду выходит. Ближайший — в конце массива */
-export function buildQueue(level: Level, n: number): { t: number; enemy: string }[] {
-  const q: { t: number; enemy: string }[] = []
-  for (const [enemy, count, gap, delay] of waveGroups(level, n)) {
-    for (let i = 0; i < count; i++) q.push({ t: delay + i * gap, enemy })
+export function buildSpawnQueue(level: Level, waveNumber: number): SpawnEntry[] {
+  const queue: SpawnEntry[] = []
+  for (const [enemyId, count, gap, delay] of getWaveGroups(level, waveNumber)) {
+    for (let i = 0; i < count; i++) queue.push({ spawnTime: delay + i * gap, enemyId })
   }
-  q.sort((a, b) => b.t - a.t)
-  return q
+  queue.sort((a, b) => b.spawnTime - a.spawnTime)
+  return queue
 }
 
 /** Выпустить тех, чьё время пришло */
-export function spawnDue(w: World, dt: number): void {
-  const s = w.state
-  s.waveT += dt
-  while (s.queue.length && s.queue[s.queue.length - 1].t <= s.waveT) {
-    spawn(w, s.queue.pop()!.enemy)
+export function spawnDueEnemies(world: World, dt: number): void {
+  const state = world.state
+  state.waveTime += dt
+  while (
+    state.spawnQueue.length &&
+    state.spawnQueue[state.spawnQueue.length - 1].spawnTime <= state.waveTime
+  ) {
+    spawnEnemy(world, state.spawnQueue.pop()!.enemyId)
   }
 }
 
 /** Волна отбита: бонус, очки и либо следующая волна, либо победа */
-export function waveCleared(w: World): void {
-  const s = w.state
-  const bonus = waveBonus(s.wave)
-  s.gold += bonus
-  s.score += SCORE.perWave * s.wave
-  s.cleared = s.wave
-  w.emit('waveCleared', { wave: s.wave, bonus })
+export function finishWave(world: World): void {
+  const state = world.state
+  const bonus = waveBonus(state.wave)
+  state.gold += bonus
+  state.score += SCORE.perWave * state.wave
+  state.wavesCleared = state.wave
+  world.emit('waveCleared', { wave: state.wave, bonus })
 
-  if (s.wave === w.level.maxWave && !s.endless) {
-    s.score += s.lives * SCORE.perLife
-    s.phase = 'won'
-    w.emit('victory', undefined)
+  if (state.wave === world.level.waveCount && !state.isEndless) {
+    state.score += state.lives * SCORE.perLife
+    state.phase = 'won'
+    world.emit('victory', undefined)
   } else {
-    s.phase = 'build'
-    s.wave++
+    state.phase = 'build'
+    state.wave++
   }
 }

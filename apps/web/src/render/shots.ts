@@ -1,33 +1,34 @@
 // Как выглядят снаряды. Ключ — поле `look`, которое задаёт башня при выстреле.
 
 import type { Shot } from '@throne/game'
-import { PARCH, circle } from './shapes'
+import { PARCHMENT, circle, type Canvas2D } from './shapes'
 
-type Ctx = CanvasRenderingContext2D
-
-function streak(c: Ctx, s: Shot, len: number, color: string, width: number) {
-  c.strokeStyle = color
-  c.lineWidth = width
-  c.lineCap = 'round'
-  c.beginPath()
-  c.moveTo(s.x - Math.cos(s.aim) * len, s.y - Math.sin(s.aim) * len)
-  c.lineTo(s.x, s.y)
-  c.stroke()
+/** Штрих-«хвост» за снарядом: от точки позади до самого снаряда (длина и толщина — в клетках) */
+function drawStreak(ctx: Canvas2D, shot: Shot, length: number, color: string, lineWidth: number) {
+  ctx.strokeStyle = color
+  ctx.lineWidth = lineWidth
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(shot.x - Math.cos(shot.angle) * length, shot.y - Math.sin(shot.angle) * length)
+  ctx.lineTo(shot.x, shot.y)
+  ctx.stroke()
 }
 
-const SHOT_ART: Record<string, (c: Ctx, s: Shot) => void> = {
-  arrow: (c, s) => streak(c, s, 0.24, PARCH, 0.035),
-  bolt: (c, s) => streak(c, s, 0.5, '#dfe5f2', 0.055),
-  orb(c, s) {
-    c.fillStyle = 'rgba(255,140,40,.35)'
-    circle(c, s.x, s.y, 0.17)
-    c.fill()
-    c.fillStyle = '#ffc266'
-    circle(c, s.x, s.y, 0.09)
-    c.fill()
+const SHOT_ART: Record<string, (ctx: Canvas2D, shot: Shot) => void> = {
+  arrow: (ctx, shot) => drawStreak(ctx, shot, 0.24, PARCHMENT, 0.035),
+  bolt: (ctx, shot) => drawStreak(ctx, shot, 0.5, '#dfe5f2', 0.055),
+  orb(ctx, shot) {
+    ctx.fillStyle = 'rgba(255,140,40,.35)'
+    circle(ctx, shot.x, shot.y, 0.17)
+    ctx.fill()
+    ctx.fillStyle = '#ffc266'
+    circle(ctx, shot.x, shot.y, 0.09)
+    ctx.fill()
   },
 }
 
-export function drawShot(c: Ctx, s: Shot): void {
-  ;(SHOT_ART[s.look] ?? SHOT_ART.arrow)(c, s)
+export function drawShot(ctx: Canvas2D, shot: Shot): void {
+  // Неизвестный вид снаряда рисуем как стрелу
+  const drawLook = SHOT_ART[shot.look] ?? SHOT_ART.arrow
+  drawLook(ctx, shot)
 }

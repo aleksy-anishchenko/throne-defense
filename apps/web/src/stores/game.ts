@@ -5,11 +5,12 @@
 // каждое изменение x/y 60 раз в секунду — игра начнёт тормозить.
 //
 // Интерфейсу нужно немного: золото, жизни, номер волны… Эти числа каждый кадр копируются
-// в реактивный объект hud (функция sync). Vue перерисует только то, что реально поменялось.
+// в реактивный объект hud (функция syncHud). Vue перерисует только то, что реально поменялось.
 
 import {
   ENEMIES,
   LEVELS,
+  MAX_SPEED,
   TOWERS,
   createGame,
   upgradeCost,
@@ -19,14 +20,15 @@ import {
 import { defineStore } from 'pinia'
 import { computed, markRaw, reactive, ref } from 'vue'
 import { sfx } from '@/audio/sfx'
-import type { BoardView, Cell } from '@/types'
+import type { BoardView, Cell, OverlayScreen } from '@/types'
 import { plural } from '@/utils/format'
-import { loadBest, saveBest, type Best } from '@/utils/storage'
+import { loadBest, saveBest, type BestResult } from '@/utils/storage'
 
-/** Какой экран поверх поля: меню, поражение, победа или никакого */
-export type Screen = 'menu' | 'defeat' | 'victory' | null
+/** Сколько миллисекунд висит всплывающее сообщение (тост) */
+const TOAST_DURATION_MS = 1700
 
-const sameCell = (a: Cell | null, c: number, r: number) => !!a && a.c === c && a.r === r
+const isSameCell = (cell: Cell | null, col: number, row: number) =>
+  cell !== null && cell.col === col && cell.row === row
 
 export const useGameStore = defineStore('game', () => {
   // markRaw — «Vue, не трогай этот объект»
@@ -39,89 +41,96 @@ export const useGameStore = defineStore('game', () => {
   const hud = reactive({
     phase: state.phase as Phase,
     wave: state.wave,
-    maxWave: game.level.maxWave,
+    waveCount: game.level.waveCount,
     gold: state.gold,
     lives: state.lives,
     score: state.score,
-    cleared: state.cleared,
-    paused: state.paused,
+    wavesCleared: state.wavesCleared,
+    isPaused: state.isPaused,
     speed: state.speed,
     /** Врагов осталось в волне */
-    left: 0,
-    towers: 0,
-    /** Тип и уровень выбранной башни (null — ничего не выбрано) */
-    selType: null as string | null,
-    selLv: 0,
+    enemiesLeft: 0,
+    towerCount: 0,
+    /** Тип и ступень улучшения выбранной башни (null — ничего не выбрано) */
+    selectedTowerId: null as string | null,
+    selectedTowerTier: 0,
   })
 
   /** Вызывается каждый кадр. Присваивание того же значения Vue не замечает — это дёшево */
-  function sync() {
+  function syncHud() {
     hud.phase = state.phase
     hud.wave = state.wave
     hud.gold = state.gold
     hud.lives = state.lives
     hud.score = state.score
-    hud.cleared = state.cleared
-    hud.paused = state.paused
+    hud.wavesCleared = state.wavesCleared
+    hud.isPaused = state.isPaused
     hud.speed = state.speed
-    hud.left = game.enemiesLeft()
-    hud.towers = state.towers.length
+    hud.enemiesLeft = game.enemiesLeft()
+    hud.towerCount = state.towers.length
 
-    const t = selectedTower()
-    if (selected.value && !t) selected.value = null
-    hud.selType = t ? t.def.id : null
-    hud.selLv = t ? t.lv : 0
+    const tower = selectedTower()
+    // Так задумано: если выбранной башни уже нет (её продали), выбор снимается сам
+    if (selectedTowerCell.value && !tower) selectedTowerCell.value = null
+    hud.selectedTowerId = tower ? tower.def.id : null
+    hud.selectedTowerTier = tower ? tower.tier : 0
   }
 
   // ---------------------------------------------------------------- Выбор игрока
 
-  const screen = ref<Screen>('menu')
-  const armed = ref<string | null>(null)
-  const selected = ref<Cell | null>(null)
-  const tile = ref<Cell | null>(null)
-  const cursor = ref<Cell | null>(null)
-  const hover = ref<Cell | null>(null)
+  // Какой экран показан поверх поля (меню, поражение, победа) или null
+  const screen = ref<OverlayScreen>('menu')
+  const armedTowerId = ref<string | null>(null)
+  const selectedTowerCell = ref<Cell | null>(null)
+  const selectedEmptyCell = ref<Cell | null>(null)
+  const cursorCell = ref<Cell | null>(null)
+  const hoverCell = ref<Cell | null>(null)
 
   const selectedTower = (): Tower | undefined =>
-    selected.value ? game.towerAt(selected.value.c, selected.value.r) : undefined
+    selectedTowerCell.value
+      ? game.towerAt(selectedTowerCell.value.col, selectedTowerCell.value.row)
+      : undefined
 
   /** Для рисования поля */
-  const view = (): BoardView => ({
-    armed: armed.value,
-    selected: selected.value,
-    tile: tile.value,
-    hover: hover.value,
-    cursor: cursor.value,
+  const boardView = (): BoardView => ({
+    armedTowerId: armedTowerId.value,
+    selectedTowerCell: selectedTowerCell.value,
+    selectedEmptyCell: selectedEmptyCell.value,
+    hoverCell: hoverCell.value,
+    cursorCell: cursorCell.value,
   })
 
   // ---------------------------------------------------------------- Звук, тосты, рекорд
 
-  const muted = ref(sfx.muted)
-  const toast = reactive({ text: '', on: false })
+  const isMuted = ref(sfx.isMuted)
+  const toast = reactive({ text: '', isVisible: false })
   /** Счётчики «подпрыгиваний» жизней и золота в шапке */
-  const bumps = reactive({ lives: 0, gold: 0 })
-  const best = ref<Best | null>(loadBest())
-  const newBest = ref(false)
+  const bumpCounters = reactive({ lives: 0, gold: 0 })
+  const bestResult = ref<BestResult | null>(loadBest())
+  const isNewBest = ref(false)
 
-  let toastTimer = 0
+  let toastTimeoutId = 0
   function showToast(text: string) {
     toast.text = text
-    toast.on = true
-    clearTimeout(toastTimer)
-    toastTimer = window.setTimeout(() => (toast.on = false), 1700)
+    toast.isVisible = true
+    clearTimeout(toastTimeoutId)
+    toastTimeoutId = window.setTimeout(() => {
+      toast.isVisible = false
+    }, TOAST_DURATION_MS)
   }
 
-  function deny(text: string) {
+  /** Отказ в действии: сообщение, «подпрыгивание» золота и звук */
+  function rejectAction(text: string) {
     showToast(text)
-    bumps.gold++
+    bumpCounters.gold++
     sfx.deny()
   }
 
-  function recordResult() {
-    newBest.value = !best.value || state.score > best.value.score
-    if (newBest.value) {
-      best.value = { score: state.score, wave: state.cleared }
-      saveBest(best.value)
+  function saveResultIfBest() {
+    isNewBest.value = !bestResult.value || state.score > bestResult.value.score
+    if (isNewBest.value) {
+      bestResult.value = { score: state.score, wave: state.wavesCleared }
+      saveBest(bestResult.value)
     }
   }
 
@@ -130,175 +139,202 @@ export const useGameStore = defineStore('game', () => {
   game.on('build', () => sfx.build())
   game.on('upgrade', () => sfx.upgrade())
   game.on('sell', () => sfx.sell())
-  game.on('waveStart', () => sfx.wave())
+  game.on('waveStart', () => sfx.waveStart())
   game.on('kill', () => sfx.kill())
   game.on('leak', () => {
     sfx.leak()
-    bumps.lives++
+    bumpCounters.lives++
   })
-  game.on('waveCleared', () => bumps.gold++)
+  game.on('waveCleared', () => {
+    bumpCounters.gold++
+  })
   game.on('victory', () => {
-    recordResult()
-    sfx.win()
+    saveResultIfBest()
+    sfx.victory()
     screen.value = 'victory'
   })
   game.on('defeat', () => {
-    recordResult()
-    sfx.lose()
+    saveResultIfBest()
+    sfx.defeat()
     screen.value = 'defeat'
   })
 
   // ---------------------------------------------------------------- Действия
 
-  const isPlaying = () => state.phase === 'build' || state.phase === 'wave'
-  const inGrid = (c: number, r: number) => c >= 0 && c < cols && r >= 0 && r < rows
+  const isPlaying = () => game.isPlaying()
 
   function clearSelection() {
-    armed.value = null
-    selected.value = null
-    tile.value = null
+    armedTowerId.value = null
+    selectedTowerCell.value = null
+    selectedEmptyCell.value = null
   }
 
   function newGame() {
     game.reset()
     clearSelection()
-    newBest.value = false
+    isNewBest.value = false
     screen.value = null
-    sync()
+    syncHud()
   }
 
-  function tryBuild(id: string, c: number, r: number): boolean {
-    const def = TOWERS[id]
-    if (state.gold < def.cost) {
-      deny(`Не хватает золота: ${def.name} стоит ${def.cost}`)
+  function tryBuild(towerId: string, col: number, row: number): boolean {
+    const towerDef = TOWERS[towerId]
+    if (state.gold < towerDef.cost) {
+      rejectAction(`Не хватает золота: ${towerDef.name} стоит ${towerDef.cost}`)
       return false
     }
-    return game.build(id, c, r) !== null
+    return game.build(towerId, col, row) !== null
   }
 
   /** Нажали на карточку стража в магазине */
-  function pickCard(id: string) {
+  function chooseShopTower(towerId: string) {
     if (!isPlaying()) return
-    const t = tile.value
-    if (t && game.isFree(t.c, t.r)) {
-      if (tryBuild(id, t.c, t.r)) tile.value = null
+    const emptyCell = selectedEmptyCell.value
+    if (emptyCell && game.isCellFree(emptyCell.col, emptyCell.row)) {
+      if (tryBuild(towerId, emptyCell.col, emptyCell.row)) selectedEmptyCell.value = null
       return
     }
-    armed.value = armed.value === id ? null : id
-    selected.value = null
+    armedTowerId.value = armedTowerId.value === towerId ? null : towerId
+    selectedTowerCell.value = null
   }
 
   /** Нажали на клетку поля */
-  function tapTile(c: number, r: number) {
-    if (!isPlaying() || !inGrid(c, r)) return
-    if (game.towerAt(c, r)) {
-      selected.value = sameCell(selected.value, c, r) ? null : { c, r }
-      armed.value = null
-      tile.value = null
+  function tapCell(col: number, row: number) {
+    if (!isPlaying() || !game.isInsideField(col, row)) return
+    if (game.towerAt(col, row)) {
+      selectedTowerCell.value = isSameCell(selectedTowerCell.value, col, row) ? null : { col, row }
+      armedTowerId.value = null
+      selectedEmptyCell.value = null
       return
     }
-    selected.value = null
-    if (!game.isFree(c, r)) {
-      tile.value = null
+    selectedTowerCell.value = null
+    if (!game.isCellFree(col, row)) {
+      selectedEmptyCell.value = null
       return
     }
-    if (armed.value) {
-      tryBuild(armed.value, c, r)
+    if (armedTowerId.value) {
+      tryBuild(armedTowerId.value, col, row)
       return
     }
-    tile.value = sameCell(tile.value, c, r) ? null : { c, r }
+    selectedEmptyCell.value = isSameCell(selectedEmptyCell.value, col, row) ? null : { col, row }
   }
 
   function upgradeSelected() {
-    const t = selectedTower()
-    if (!t) return
-    if (!game.upgrade(t.c, t.r) && upgradeCost(t) !== null) deny('Не хватает золота на улучшение')
+    const tower = selectedTower()
+    if (!tower) return
+    if (!game.upgrade(tower.col, tower.row) && upgradeCost(tower) !== null) {
+      rejectAction('Не хватает золота на улучшение')
+    }
   }
 
   function sellSelected() {
-    const t = selectedTower()
-    if (!t) return
-    game.sell(t.c, t.r)
-    selected.value = null
+    const tower = selectedTower()
+    if (!tower) return
+    game.sell(tower.col, tower.row)
+    selectedTowerCell.value = null
   }
 
-  function moveCursor(dc: number, dr: number) {
-    const k = cursor.value ?? { c: Math.floor(cols / 2), r: Math.floor(rows / 2) }
-    cursor.value = {
-      c: Math.max(0, Math.min(cols - 1, k.c + dc)),
-      r: Math.max(0, Math.min(rows - 1, k.r + dr)),
+  function moveCursor(deltaCol: number, deltaRow: number) {
+    const current = cursorCell.value ?? { col: Math.floor(cols / 2), row: Math.floor(rows / 2) }
+    cursorCell.value = {
+      col: Math.max(0, Math.min(cols - 1, current.col + deltaCol)),
+      row: Math.max(0, Math.min(rows - 1, current.row + deltaRow)),
     }
   }
 
   function confirmCursor() {
-    if (cursor.value) tapTile(cursor.value.c, cursor.value.r)
+    if (cursorCell.value) tapCell(cursorCell.value.col, cursorCell.value.row)
+  }
+
+  function startWave() {
+    game.startWave()
+  }
+
+  function cycleSpeed() {
+    // Скорость по кругу: 1 → 2 → 3 → 1
+    game.setSpeed((state.speed % MAX_SPEED) + 1)
+  }
+
+  function togglePause() {
+    game.setPaused(!state.isPaused)
+  }
+
+  function pauseIfFighting() {
+    if (state.phase === 'wave') game.setPaused(true)
+  }
+
+  function toggleMute() {
+    sfx.toggleMute()
+    isMuted.value = sfx.isMuted
+  }
+
+  function continueEndless() {
+    game.continueEndless()
+    screen.value = null
   }
 
   // ---------------------------------------------------------------- Подсказка над магазином
 
-  const describe = (id: string) => `${TOWERS[id].name}: ${TOWERS[id].desc}`
+  const describeTower = (towerId: string) =>
+    `${TOWERS[towerId].name}: ${TOWERS[towerId].description}`
 
-  function previewText(n: number): string {
+  /** Какие враги придут в волне waveNumber: «5 бунтовщиков, 2 разведчика» */
+  function describeWave(waveNumber: number): string {
     const counts = new Map<string, number>()
-    for (const [enemy, count] of game.waveGroups(n)) {
-      counts.set(enemy, (counts.get(enemy) ?? 0) + count)
+    for (const [enemyId, count] of game.waveGroups(waveNumber)) {
+      counts.set(enemyId, (counts.get(enemyId) ?? 0) + count)
     }
     return [...counts]
-      .map(([enemy, count]) => `${count} ${plural(count, ENEMIES[enemy].name)}`)
+      .map(([enemyId, count]) => `${count} ${plural(count, ENEMIES[enemyId].nameForms)}`)
       .join(', ')
   }
 
+  // Порядок проверок — это приоритет подсказок: выбранная башня важнее паузы,
+  // пауза важнее выбора в магазине и так далее
   const hint = computed(() => {
-    if (hud.selType) return describe(hud.selType)
-    if (hud.paused) return 'Пауза. Стражу можно ставить и улучшать'
-    if (armed.value) return describe(armed.value)
-    if (tile.value) return 'Выберите стража для этой плиты'
-    if (hud.phase === 'wave') return `Врагов осталось: ${hud.left}`
-    if (hud.phase === 'over' || hud.phase === 'won') return ''
-    if (hud.phase === 'build' && hud.wave === 1 && hud.towers === 0) {
+    if (hud.selectedTowerId) return describeTower(hud.selectedTowerId)
+    if (hud.isPaused) return 'Пауза. Стражу можно ставить и улучшать'
+    if (armedTowerId.value) return describeTower(armedTowerId.value)
+    if (selectedEmptyCell.value) return 'Выберите стража для этой плиты'
+    if (hud.phase === 'wave') return `Врагов осталось: ${hud.enemiesLeft}`
+    if (hud.phase === 'lost' || hud.phase === 'won') return ''
+    if (hud.phase === 'build' && hud.wave === 1 && hud.towerCount === 0) {
       return 'Выберите стража и нажмите на плиту у ковра'
     }
-    return `Дальше: ${previewText(hud.wave)}`
+    return `Дальше: ${describeWave(hud.wave)}`
   })
 
   return {
     game,
     hud,
     screen,
-    armed,
-    selected,
-    tile,
-    cursor,
-    hover,
-    muted,
+    armedTowerId,
+    selectedTowerCell,
+    selectedEmptyCell,
+    cursorCell,
+    hoverCell,
+    isMuted,
     toast,
-    bumps,
-    best,
-    newBest,
+    bumpCounters,
+    bestResult,
+    isNewBest,
     hint,
-    sync,
-    view,
+    syncHud,
+    boardView,
     isPlaying,
-    inGrid,
     newGame,
-    pickCard,
-    tapTile,
+    chooseShopTower,
+    tapCell,
     upgradeSelected,
     sellSelected,
     moveCursor,
     confirmCursor,
-    startWave: () => game.startWave(),
-    cycleSpeed: () => game.setSpeed((state.speed % 3) + 1),
-    togglePause: () => game.setPaused(!state.paused),
-    pauseIfFighting: () => state.phase === 'wave' && game.setPaused(true),
-    toggleSound() {
-      sfx.toggle()
-      muted.value = sfx.muted
-    },
-    continueEndless() {
-      game.continueEndless()
-      screen.value = null
-    },
-    escape: clearSelection,
+    startWave,
+    cycleSpeed,
+    togglePause,
+    pauseIfFighting,
+    toggleMute,
+    continueEndless,
+    clearSelection,
   }
 })

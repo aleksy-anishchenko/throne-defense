@@ -8,60 +8,77 @@
 // но нет башни, которая выгоднее всех против всего. И улучшение не должно становиться
 // всё выгоднее и выгоднее — иначе выгодно строить только её.
 
-import { BALANCE_VERSION, LEVELS, STEP, TOWER_LIST, createGame, invested } from '../src/index.ts'
+import {
+  BALANCE_VERSION,
+  LEVELS,
+  SIMULATION_STEP,
+  TOWER_LIST,
+  createGame,
+  investedGold,
+} from '../src/index.ts'
 import type { LevelDef, TowerDef } from '../src/index.ts'
-import { spawn } from '../src/systems/enemies.ts'
-import { bestCell, coverage } from './bot.ts'
+import { spawnEnemy } from '../src/systems/enemies.ts'
+import { MAX_WAVE_STEPS, findBestCell, pathCoverage } from './bot.ts'
 
-interface StreamTest {
+interface EnemyStream {
   name: string
-  enemy: string
+  enemyId: string
   count: number
   /** Пауза между врагами, с */
   gap: number
 }
 
-export const STREAMS: StreamTest[] = [
-  { name: 'бунтовщики', enemy: 'rebel', count: 30, gap: 0.7 },
-  { name: 'лазутчики', enemy: 'scout', count: 30, gap: 0.3 },
-  { name: 'латники', enemy: 'armor', count: 20, gap: 1 },
-  { name: 'огры', enemy: 'ogre', count: 8, gap: 2.5 },
+export const STREAMS: EnemyStream[] = [
+  { name: 'бунтовщики', enemyId: 'rebel', count: 30, gap: 0.7 },
+  { name: 'лазутчики', enemyId: 'scout', count: 30, gap: 0.3 },
+  { name: 'латники', enemyId: 'armor', count: 20, gap: 1 },
+  { name: 'огры', enemyId: 'ogre', count: 8, gap: 2.5 },
 ]
 
-const IMMORTAL = 1e9
+/** «Бесконечное» число: столько золота, жизней и здоровья ставим, чтобы ничто не кончилось */
+const UNLIMITED = 1e9
 
-/** Урон на одну вложенную монету: башня def уровня lv против потока врагов */
-export function damagePerGold(level: LevelDef, def: TowerDef, lv: number, t: StreamTest): number {
+/** Урон на одну вложенную монету: башня def ступени tier против потока врагов stream */
+export function damagePerGold(
+  level: LevelDef,
+  def: TowerDef,
+  tier: number,
+  stream: EnemyStream,
+): number {
   const game = createGame(level)
   game.reset()
-  game.state.gold = IMMORTAL
-  game.state.lives = IMMORTAL // трон не падает, сколько бы врагов ни дошло
-  const cell = bestCell(game, def.levels[0].range)
+  game.state.gold = UNLIMITED
+  game.state.lives = UNLIMITED // трон не падает, сколько бы врагов ни дошло
+  const cell = findBestCell(game, def.tiers[0].range)
   if (!cell) return 0
-  game.build(def.id, cell.c, cell.r)
-  for (let i = 0; i < lv; i++) game.upgrade(cell.c, cell.r)
+  game.build(def.id, cell.col, cell.row)
+  for (let i = 0; i < tier; i++) game.upgrade(cell.col, cell.row)
 
   let dealt = 0
-  game.on('leak', (e) => (dealt += e.maxHp - e.hp))
+  game.on('leak', (enemy) => {
+    dealt += enemy.maxHp - enemy.hp
+  })
 
   // Выпускаем врагов сами (а не волной), чтобы сразу сделать их бессмертными
   const world = { state: game.state, level: game.level, emit: () => {} }
   let spawned = 0
-  for (let i = 0; i < 36_000; i++) {
-    while (spawned < t.count && spawned * t.gap <= game.state.time) {
-      spawn(world, t.enemy)
-      const e = game.state.enemies[game.state.enemies.length - 1]
-      e.hp = e.maxHp = IMMORTAL
+  for (let i = 0; i < MAX_WAVE_STEPS; i++) {
+    while (spawned < stream.count && spawned * stream.gap <= game.state.time) {
+      spawnEnemy(world, stream.enemyId)
+      const enemy = game.state.enemies[game.state.enemies.length - 1]
+      enemy.maxHp = UNLIMITED
+      enemy.hp = UNLIMITED
       spawned++
     }
-    if (spawned === t.count && !game.state.enemies.length) break
-    game.step(STEP)
+    if (spawned === stream.count && !game.state.enemies.length) break
+    game.step(SIMULATION_STEP)
   }
-  return dealt / invested(def, lv)
+  return dealt / investedGold(def, tier)
 }
 
+// Свой список римских цифр, а не toRoman из apps/web — пакет game не зависит от интерфейса
 const ROMAN = ['I', 'II', 'III', 'IV', 'V']
-const cell = (v: string | number, w: number) => String(v).padStart(w)
+const padCell = (value: string | number, width: number) => String(value).padStart(width)
 
 if (import.meta.main) {
   console.log(
@@ -70,23 +87,30 @@ if (import.meta.main) {
 
   for (const level of LEVELS) {
     console.log(`=== Уровень «${level.name}»\n`)
-    const head = ['башня'.padEnd(10), cell('ур', 4), cell('вложено', 9), cell('ковра в зоне', 14)]
-    console.log([...head, ...STREAMS.map((s) => cell(s.name, 12))].join(''))
+    const headerCells = [
+      'башня'.padEnd(10),
+      padCell('ур', 4),
+      padCell('вложено', 9),
+      padCell('ковра в зоне', 14),
+    ]
+    console.log([...headerCells, ...STREAMS.map((stream) => padCell(stream.name, 12))].join(''))
 
     for (const def of TOWER_LIST) {
-      for (let lv = 0; lv < def.levels.length; lv++) {
+      for (let tier = 0; tier < def.tiers.length; tier++) {
         const game = createGame(level)
         game.reset()
-        const best = bestCell(game, def.levels[lv].range)
-        const cov = best ? coverage(game, best.c, best.r, def.levels[lv].range) : 0
-        const row = [
-          (lv === 0 ? def.name : '').padEnd(10),
-          cell(ROMAN[lv] ?? lv + 1, 4),
-          cell(invested(def, lv), 9),
-          cell(cov.toFixed(1), 14),
-          ...STREAMS.map((s) => cell(damagePerGold(level, def, lv, s).toFixed(1), 12)),
+        const best = findBestCell(game, def.tiers[tier].range)
+        const coverage = best ? pathCoverage(game, best.col, best.row, def.tiers[tier].range) : 0
+        const tableRow = [
+          (tier === 0 ? def.name : '').padEnd(10),
+          padCell(ROMAN[tier] ?? tier + 1, 4),
+          padCell(investedGold(def, tier), 9),
+          padCell(coverage.toFixed(1), 14),
+          ...STREAMS.map((stream) =>
+            padCell(damagePerGold(level, def, tier, stream).toFixed(1), 12),
+          ),
         ]
-        console.log(row.join(''))
+        console.log(tableRow.join(''))
       }
     }
     console.log()

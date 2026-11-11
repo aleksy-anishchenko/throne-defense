@@ -2,193 +2,207 @@
 // Без рисунка башня тоже будет работать — нарисуется простым кружком.
 
 import type { Tower, TowerStats } from '@throne/game'
-import type { FxApi } from './effects'
-import { GOLD, PARCH, circle, rr } from './shapes'
-
-type Ctx = CanvasRenderingContext2D
+import type { EffectSink } from './effects'
+import { GOLD, PARCHMENT, TOWER_IDLE_AIM_ANGLE, circle, roundedRect } from './shapes'
+import type { Canvas2D } from './shapes'
 
 export interface TowerArt {
   /** Нарисовать башню поверх общего постамента. (0, 0) — центр клетки, 1 — размер клетки */
-  body(c: Ctx, aim: number, time: number, ready: boolean): void
+  body(ctx: Canvas2D, aimAngle: number, time: number, isReady: boolean): void
   /** Эффект при выстреле */
-  onFire?(fx: FxApi, tower: Tower, stats: TowerStats): void
+  onFire?(effects: EffectSink, tower: Tower, stats: TowerStats): void
 }
 
 export const TOWER_ART: Record<string, TowerArt> = {
   archer: {
-    body(c, aim, _time, ready) {
-      c.rotate(aim)
-      c.fillStyle = '#3f8750'
-      circle(c, -0.03, 0, 0.18)
-      c.fill()
-      c.fillStyle = '#5fae6b'
-      circle(c, -0.05, 0, 0.12)
-      c.fill()
+    body(ctx, aimAngle, _time, isReady) {
+      ctx.rotate(aimAngle)
+      ctx.fillStyle = '#3f8750'
+      circle(ctx, -0.03, 0, 0.18)
+      ctx.fill()
+      ctx.fillStyle = '#5fae6b'
+      circle(ctx, -0.05, 0, 0.12)
+      ctx.fill()
       // лук
-      c.strokeStyle = '#d6ab6c'
-      c.lineWidth = 0.05
-      c.lineCap = 'round'
-      c.beginPath()
-      c.arc(0.02, 0, 0.25, -1.15, 1.15)
-      c.stroke()
+      ctx.strokeStyle = '#d6ab6c'
+      ctx.lineWidth = 0.05
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.arc(0.02, 0, 0.25, -1.15, 1.15)
+      ctx.stroke()
       // тетива и стрела
-      c.strokeStyle = PARCH
-      c.lineWidth = 0.02
-      const bx = 0.02 + Math.cos(1.15) * 0.25
-      const by = Math.sin(1.15) * 0.25
-      c.beginPath()
-      c.moveTo(bx, -by)
-      c.lineTo(ready ? -0.02 : bx, 0)
-      c.lineTo(bx, by)
-      c.stroke()
-      if (ready) {
-        c.lineWidth = 0.03
-        c.beginPath()
-        c.moveTo(-0.02, 0)
-        c.lineTo(0.3, 0)
-        c.stroke()
+      ctx.strokeStyle = PARCHMENT
+      ctx.lineWidth = 0.02
+      const bowTipX = 0.02 + Math.cos(1.15) * 0.25
+      const bowTipY = Math.sin(1.15) * 0.25
+      ctx.beginPath()
+      ctx.moveTo(bowTipX, -bowTipY)
+      ctx.lineTo(isReady ? -0.02 : bowTipX, 0)
+      ctx.lineTo(bowTipX, bowTipY)
+      ctx.stroke()
+      if (isReady) {
+        ctx.lineWidth = 0.03
+        ctx.beginPath()
+        ctx.moveTo(-0.02, 0)
+        ctx.lineTo(0.3, 0)
+        ctx.stroke()
       }
     },
   },
 
   mage: {
-    body(c, _aim, time) {
-      c.fillStyle = '#a34a1e'
-      c.beginPath()
+    body(ctx, _aimAngle, time) {
+      ctx.fillStyle = '#a34a1e'
+      ctx.beginPath()
       for (let i = 0; i < 10; i++) {
-        const a = (i * Math.PI) / 5 - Math.PI / 2
-        const r = i % 2 ? 0.12 : 0.25
-        c.lineTo(Math.cos(a) * r, Math.sin(a) * r)
+        const angle = (i * Math.PI) / 5 - Math.PI / 2
+        const radius = i % 2 ? 0.12 : 0.25
+        ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius)
       }
-      c.closePath()
-      c.fill()
-      c.fillStyle = '#d9702e'
-      circle(c, 0, 0, 0.14)
-      c.fill()
-      const p = 0.5 + 0.5 * Math.sin(time * 5)
-      c.fillStyle = `rgba(255,190,90,${0.25 + p * 0.25})`
-      circle(c, 0, 0, 0.12 + p * 0.03)
-      c.fill()
-      c.fillStyle = '#ffd98a'
-      circle(c, 0, 0, 0.07)
-      c.fill()
+      ctx.closePath()
+      ctx.fill()
+      ctx.fillStyle = '#d9702e'
+      circle(ctx, 0, 0, 0.14)
+      ctx.fill()
+      const pulse = 0.5 + 0.5 * Math.sin(time * 5)
+      ctx.fillStyle = `rgba(255,190,90,${0.25 + pulse * 0.25})`
+      circle(ctx, 0, 0, 0.12 + pulse * 0.03)
+      ctx.fill()
+      ctx.fillStyle = '#ffd98a'
+      circle(ctx, 0, 0, 0.07)
+      ctx.fill()
     },
   },
 
   frost: {
-    body(c, _aim, time) {
-      c.rotate(time * 0.5)
-      c.strokeStyle = '#cdeffc'
-      c.lineWidth = 0.05
-      c.lineCap = 'round'
+    body(ctx, _aimAngle, time) {
+      ctx.rotate(time * 0.5)
+      ctx.strokeStyle = '#cdeffc'
+      ctx.lineWidth = 0.05
+      ctx.lineCap = 'round'
       for (let i = 0; i < 6; i++) {
-        c.rotate(Math.PI / 3)
-        c.beginPath()
-        c.moveTo(0, 0)
-        c.lineTo(0.25, 0)
-        c.moveTo(0.16, 0)
-        c.lineTo(0.22, 0.06)
-        c.moveTo(0.16, 0)
-        c.lineTo(0.22, -0.06)
-        c.stroke()
+        ctx.rotate(Math.PI / 3)
+        ctx.beginPath()
+        ctx.moveTo(0, 0)
+        ctx.lineTo(0.25, 0)
+        ctx.moveTo(0.16, 0)
+        ctx.lineTo(0.22, 0.06)
+        ctx.moveTo(0.16, 0)
+        ctx.lineTo(0.22, -0.06)
+        ctx.stroke()
       }
-      c.fillStyle = '#8fd8ee'
-      c.beginPath()
+      ctx.fillStyle = '#8fd8ee'
+      ctx.beginPath()
       for (let i = 0; i < 6; i++) {
-        const a = (i * Math.PI) / 3
-        c.lineTo(Math.cos(a) * 0.1, Math.sin(a) * 0.1)
+        const angle = (i * Math.PI) / 3
+        ctx.lineTo(Math.cos(angle) * 0.1, Math.sin(angle) * 0.1)
       }
-      c.closePath()
-      c.fill()
+      ctx.closePath()
+      ctx.fill()
     },
-    onFire(fx, t, s) {
-      fx.add({ k: 'ring', x: t.x, y: t.y, r0: 0.25, r1: s.range, life: 0.45, max: 0.45 })
+    onFire(effects, tower, stats) {
+      effects.add({
+        kind: 'ring',
+        x: tower.x,
+        y: tower.y,
+        startRadius: 0.25,
+        endRadius: stats.range,
+        timeLeft: 0.45,
+        duration: 0.45,
+      })
     },
   },
 
   ballista: {
-    body(c, aim, _time, ready) {
-      c.rotate(aim)
-      c.fillStyle = '#8a5d30'
-      rr(c, -0.24, -0.06, 0.5, 0.12, 0.03)
-      c.fill()
-      c.strokeStyle = '#c08a4c'
-      c.lineWidth = 0.065
-      c.lineCap = 'round'
-      c.beginPath()
-      c.moveTo(0.08, -0.3)
-      c.quadraticCurveTo(0.3, 0, 0.08, 0.3)
-      c.stroke()
-      c.strokeStyle = PARCH
-      c.lineWidth = 0.02
-      c.beginPath()
-      c.moveTo(0.08, -0.3)
-      c.lineTo(ready ? -0.16 : 0.1, 0)
-      c.lineTo(0.08, 0.3)
-      c.stroke()
-      if (ready) {
-        c.strokeStyle = '#dfe5f2'
-        c.lineWidth = 0.045
-        c.beginPath()
-        c.moveTo(-0.16, 0)
-        c.lineTo(0.32, 0)
-        c.stroke()
-        c.fillStyle = '#dfe5f2'
-        c.beginPath()
-        c.moveTo(0.4, 0)
-        c.lineTo(0.3, -0.055)
-        c.lineTo(0.3, 0.055)
-        c.closePath()
-        c.fill()
+    body(ctx, aimAngle, _time, isReady) {
+      ctx.rotate(aimAngle)
+      ctx.fillStyle = '#8a5d30'
+      roundedRect(ctx, -0.24, -0.06, 0.5, 0.12, 0.03)
+      ctx.fill()
+      ctx.strokeStyle = '#c08a4c'
+      ctx.lineWidth = 0.065
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(0.08, -0.3)
+      ctx.quadraticCurveTo(0.3, 0, 0.08, 0.3)
+      ctx.stroke()
+      ctx.strokeStyle = PARCHMENT
+      ctx.lineWidth = 0.02
+      ctx.beginPath()
+      ctx.moveTo(0.08, -0.3)
+      ctx.lineTo(isReady ? -0.16 : 0.1, 0)
+      ctx.lineTo(0.08, 0.3)
+      ctx.stroke()
+      if (isReady) {
+        ctx.strokeStyle = '#dfe5f2'
+        ctx.lineWidth = 0.045
+        ctx.beginPath()
+        ctx.moveTo(-0.16, 0)
+        ctx.lineTo(0.32, 0)
+        ctx.stroke()
+        ctx.fillStyle = '#dfe5f2'
+        ctx.beginPath()
+        ctx.moveTo(0.4, 0)
+        ctx.lineTo(0.3, -0.055)
+        ctx.lineTo(0.3, 0.055)
+        ctx.closePath()
+        ctx.fill()
       }
     },
   },
 }
 
-const FALLBACK: TowerArt = {
-  body(c) {
-    c.fillStyle = '#c9c2ae'
-    circle(c, 0, 0, 0.18)
-    c.fill()
+const FALLBACK_TOWER_ART: TowerArt = {
+  body(ctx) {
+    ctx.fillStyle = '#c9c2ae'
+    circle(ctx, 0, 0, 0.18)
+    ctx.fill()
   },
 }
 
-/** Башня целиком: тень, постамент, сама башня, золотые точки уровня */
+/** Башня целиком: тень, постамент, сама башня, золотые точки ступени */
 export function drawTower(
-  c: Ctx,
-  id: string,
-  lv: number,
-  aim: number,
+  ctx: Canvas2D,
+  towerId: string,
+  tier: number,
+  aimAngle: number,
   time: number,
-  ready: boolean,
+  isReady: boolean,
 ) {
-  c.fillStyle = 'rgba(8,9,18,.45)'
-  circle(c, 0, 0.05, 0.39)
-  c.fill()
-  c.fillStyle = '#5a6186'
-  circle(c, 0, 0, 0.37)
-  c.fill()
-  c.fillStyle = '#3b4162'
-  circle(c, 0, 0, 0.3)
-  c.fill()
+  ctx.fillStyle = 'rgba(8,9,18,.45)'
+  circle(ctx, 0, 0.05, 0.39)
+  ctx.fill()
+  ctx.fillStyle = '#5a6186'
+  circle(ctx, 0, 0, 0.37)
+  ctx.fill()
+  ctx.fillStyle = '#3b4162'
+  circle(ctx, 0, 0, 0.3)
+  ctx.fill()
 
-  c.save()
-  ;(TOWER_ART[id] ?? FALLBACK).body(c, aim, time, ready)
-  c.restore()
+  const art = TOWER_ART[towerId] ?? FALLBACK_TOWER_ART
+  ctx.save()
+  art.body(ctx, aimAngle, time, isReady)
+  ctx.restore()
 
-  c.fillStyle = GOLD
-  for (let i = 0; i <= lv; i++) {
-    circle(c, (i - lv / 2) * 0.13, 0.32, 0.042)
-    c.fill()
+  ctx.fillStyle = GOLD
+  for (let i = 0; i <= tier; i++) {
+    circle(ctx, (i - tier / 2) * 0.13, 0.32, 0.042)
+    ctx.fill()
   }
 }
 
+// Масштаб и центр рисунка на холсте 96×96: башня размером в 1 клетку занимает 104 px,
+// её центр стоит в точке (48, 46) px
+const ICON_SCALE = 104
+const ICON_CENTER_X = 48
+const ICON_CENTER_Y = 46
+
 /** Иконка башни для карточки магазина (canvas 96×96) */
-export function drawTowerIcon(canvas: HTMLCanvasElement, id: string): void {
-  const c = canvas.getContext('2d')
-  if (!c) return
-  c.setTransform(1, 0, 0, 1, 0, 0)
-  c.clearRect(0, 0, canvas.width, canvas.height)
-  c.setTransform(104, 0, 0, 104, 48, 46)
-  drawTower(c, id, 0, -Math.PI / 2, 0, true)
+export function drawTowerIcon(canvas: HTMLCanvasElement, towerId: string): void {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.setTransform(ICON_SCALE, 0, 0, ICON_SCALE, ICON_CENTER_X, ICON_CENTER_Y)
+  drawTower(ctx, towerId, 0, TOWER_IDLE_AIM_ANGLE, 0, true)
 }

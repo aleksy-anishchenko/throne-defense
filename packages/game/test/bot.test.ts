@@ -7,7 +7,7 @@ import { STREAMS, damagePerGold } from '../tools/towers.ts'
 // «Сторожа баланса»: если после правки чисел что-то сильно уехало — эти тесты упадут.
 // Упал тест — это не обязательно ошибка. Возможно, ты так и задумал; тогда поправь порог.
 
-const strategy = (name: string) => STRATEGIES.find((s) => s.name === name)!
+const strategy = (name: string) => STRATEGIES.find((candidate) => candidate.name === name)!
 const wavesReached = (name: string) => playBot(throneHall, strategy(name)).waves.length
 
 describe('бот', () => {
@@ -16,7 +16,7 @@ describe('бот', () => {
   })
 
   it('только лучниками все 20 волн не пройти', () => {
-    expect(playBot(throneHall, strategy('Только лучники')).result).not.toBe('won')
+    expect(playBot(throneHall, strategy('Только лучники')).outcome).not.toBe('won')
   })
 
   it('одни баллисты слабее, чем смешанная стратегия вообще без баллист', () => {
@@ -26,7 +26,7 @@ describe('бот', () => {
 })
 
 describe('выгодность башен', () => {
-  const rebels = STREAMS.find((s) => s.enemy === 'rebel')!
+  const rebels = STREAMS.find((stream) => stream.enemyId === 'rebel')!
 
   it('улучшение баллисты не становится намного выгоднее постройки', () => {
     // В v1 баллиста III давала на 48% больше урона на монету, чем баллиста I

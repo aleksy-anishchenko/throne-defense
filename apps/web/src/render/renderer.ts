@@ -1,18 +1,41 @@
 // Рисует поле каждый кадр. Ничего не меняет в игре — только смотрит на game.state.
 
-import { TOWERS, towerStats, type Game } from '@throne/game'
-import type { BoardView } from '@/types'
+import { TOWERS, towerStats, type Game, type Tower } from '@throne/game'
+import type { BoardView, Cell } from '@/types'
 import { createEffects } from './effects'
-import { drawEnemy, enemyArt } from './enemies'
+import { drawEnemy, getEnemyArt } from './enemies'
 import { buildHall, drawThrone } from './hall'
-import { GOLD, PARCH, circle, reduceMotion } from './shapes'
+import {
+  CELL_CENTER,
+  FLOOR_COLOR,
+  GOLD,
+  PARCHMENT,
+  TOWER_IDLE_AIM_ANGLE,
+  circle,
+  prefersReducedMotion,
+} from './shapes'
 import { drawShot } from './shots'
 import { drawTower } from './towers'
+
+/** Больше стольких настоящих пикселей на один CSS-пиксель не рисуем (иначе тяжело) */
+const MAX_PIXEL_RATIO = 3
+/** Клетка не мельче этого размера, CSS-пикселей */
+const MIN_CELL_CSS_PX = 16
+/** Отступ вокруг поля, CSS-пикселей */
+const BOARD_MARGIN_CSS_PX = 10
+/** Размер клетки до первого resize, CSS-пикселей */
+const INITIAL_CELL_CSS_PX = 40
+/** Башня рисуется «готовой к выстрелу», когда осталось меньше этой доли перезарядки */
+const READY_COOLDOWN_SHARE = 0.55
+/** Насколько башня «раздувается» при подпрыгивании (множитель к остатку подпрыгивания) */
+const POP_SCALE = 0.8
+/** Размах тряски поля, в долях клетки */
+const SHAKE_AMPLITUDE = 0.5
 
 export interface Renderer {
   /** Подогнать поле под размер области (в CSS-пикселях) */
   resize(width: number, height: number): void
-  draw(realDt: number, view: BoardView): void
+  draw(realDt: number, boardView: BoardView): void
   dispose(): void
 }
 
@@ -21,141 +44,191 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   const { cols, rows, throne } = game.level.def
   const effects = createEffects(game)
 
-  let tilePx = 40 // размер клетки в CSS-пикселях
-  let dpr = 1 // сколько настоящих пикселей экрана в одном CSS-пикселе
-  let S = 40 // размер клетки в настоящих пикселях
-  let hall: HTMLCanvasElement | null = null
-  let lastTime = 0
+  let cellCssPx = INITIAL_CELL_CSS_PX // размер клетки в CSS-пикселях
+  let pixelRatio = 1 // сколько настоящих пикселей экрана в одном CSS-пикселе
+  let cellDevicePx = INITIAL_CELL_CSS_PX // размер клетки в настоящих пикселях
+  let hallLayer: HTMLCanvasElement | null = null
+  let lastGameTime = 0
 
-  function drawRange(x: number, y: number, range: number, ok: boolean) {
-    ctx.fillStyle = ok ? 'rgba(243,233,210,.07)' : 'rgba(240,90,70,.08)'
+  /** isAllowed = false — красная подсветка: поставить нельзя, не хватает золота */
+  function drawRange(x: number, y: number, range: number, isAllowed: boolean) {
+    ctx.fillStyle = isAllowed ? 'rgba(243,233,210,.07)' : 'rgba(240,90,70,.08)'
     circle(ctx, x, y, range)
     ctx.fill()
-    ctx.strokeStyle = ok ? 'rgba(227,178,74,.75)' : 'rgba(240,110,80,.8)'
+    ctx.strokeStyle = isAllowed ? 'rgba(227,178,74,.75)' : 'rgba(240,110,80,.8)'
     ctx.lineWidth = 0.03
     ctx.setLineDash([0.14, 0.1])
     ctx.stroke()
     ctx.setLineDash([])
   }
 
+  /** Точки на свободных плитах, когда выбираем, куда ставить */
+  function drawFreeCellDots() {
+    ctx.fillStyle = 'rgba(227,178,74,.3)'
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        if (!game.isCellFree(col, row)) continue
+        circle(ctx, col + CELL_CENTER, row + CELL_CENTER, 0.05)
+        ctx.fill()
+      }
+    }
+  }
+
+  /** Золотая пунктирная рамка вокруг выбранной пустой плиты */
+  function drawSelectedEmptyCell(cell: Cell) {
+    ctx.strokeStyle = GOLD
+    ctx.lineWidth = 0.05
+    ctx.setLineDash([0.16, 0.1])
+    ctx.strokeRect(cell.col + 0.07, cell.row + 0.07, 0.86, 0.86)
+    ctx.setLineDash([])
+  }
+
+  function drawTowers(time: number, selectedTower: Tower | null | undefined) {
+    for (const tower of game.state.towers) {
+      ctx.save()
+      ctx.translate(tower.x, tower.y)
+      const popTimeLeft = effects.popTimeLeft(tower)
+      if (popTimeLeft > 0 && !prefersReducedMotion) {
+        ctx.scale(1 + popTimeLeft * POP_SCALE, 1 + popTimeLeft * POP_SCALE)
+      }
+      const isReady = tower.cooldownLeft < towerStats(tower).cooldown * READY_COOLDOWN_SHARE
+      drawTower(ctx, tower.def.id, tower.tier, tower.aimAngle, time, isReady)
+      if (tower === selectedTower) {
+        ctx.strokeStyle = GOLD
+        ctx.lineWidth = 0.045
+        circle(ctx, 0, 0, 0.41)
+        ctx.stroke()
+      }
+      ctx.restore()
+    }
+  }
+
+  /** Сначала обычные враги, потом большие — чтобы те были сверху */
+  function drawEnemies(time: number) {
+    for (const isTopLayer of [false, true]) {
+      for (const enemy of game.state.enemies) {
+        // У обычных врагов drawOnTop не задан (undefined) — это то же, что false.
+        // Без «?? false» сравнение undefined с false не сошлось бы, и враг не нарисовался бы вовсе
+        const drawOnTop = getEnemyArt(enemy.def.id).drawOnTop ?? false
+        if (drawOnTop !== isTopLayer) continue
+        drawEnemy(ctx, enemy, time, effects.bobPhase(enemy), effects.isFlashing(enemy))
+      }
+    }
+  }
+
+  /** Полупрозрачная башня под курсором — «вот так встанет» */
+  function drawGhostTower(armedTowerId: string, ghostCell: Cell, time: number) {
+    const def = TOWERS[armedTowerId]
+    const canAfford = game.state.gold >= def.cost
+    drawRange(
+      ghostCell.col + CELL_CENTER,
+      ghostCell.row + CELL_CENTER,
+      def.tiers[0].range,
+      canAfford,
+    )
+    ctx.save()
+    ctx.translate(ghostCell.col + CELL_CENTER, ghostCell.row + CELL_CENTER)
+    ctx.globalAlpha = canAfford ? 0.7 : 0.35
+    drawTower(ctx, armedTowerId, 0, TOWER_IDLE_AIM_ANGLE, time, true)
+    ctx.restore()
+  }
+
+  /** Рамка клавиатурного курсора */
+  function drawCursor(cursorCell: Cell) {
+    ctx.strokeStyle = PARCHMENT
+    ctx.lineWidth = 0.045
+    ctx.strokeRect(cursorCell.col + 0.04, cursorCell.row + 0.04, 0.92, 0.92)
+  }
+
+  /** Красная виньетка, когда трон ранен */
+  function drawHurtVignette() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    const width = canvas.width
+    const height = canvas.height
+    const vignetteGradient = ctx.createRadialGradient(
+      width / 2,
+      height / 2,
+      height * 0.25,
+      width / 2,
+      height / 2,
+      height * 0.7,
+    )
+    vignetteGradient.addColorStop(0, 'rgba(200,30,40,0)')
+    vignetteGradient.addColorStop(1, `rgba(200,30,40,${Math.min(0.5, effects.throneHurtTime)})`)
+    ctx.fillStyle = vignetteGradient
+    ctx.fillRect(0, 0, width, height)
+  }
+
   return {
     resize(width, height) {
       if (!width || !height) return
-      dpr = Math.min(window.devicePixelRatio || 1, 3)
-      tilePx = Math.max(16, Math.floor(Math.min((width - 10) / cols, (height - 10) / rows)))
-      canvas.style.width = cols * tilePx + 'px'
-      canvas.style.height = rows * tilePx + 'px'
-      canvas.width = Math.round(cols * tilePx * dpr)
-      canvas.height = Math.round(rows * tilePx * dpr)
-      S = canvas.width / cols
-      hall = buildHall(game.level, canvas.width, canvas.height, S)
+      pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO)
+      cellCssPx = Math.max(
+        MIN_CELL_CSS_PX,
+        Math.floor(
+          Math.min((width - BOARD_MARGIN_CSS_PX) / cols, (height - BOARD_MARGIN_CSS_PX) / rows),
+        ),
+      )
+      canvas.style.width = cols * cellCssPx + 'px'
+      canvas.style.height = rows * cellCssPx + 'px'
+      canvas.width = Math.round(cols * cellCssPx * pixelRatio)
+      canvas.height = Math.round(rows * cellCssPx * pixelRatio)
+      cellDevicePx = canvas.width / cols
+      hallLayer = buildHall(game.level, canvas.width, canvas.height, cellDevicePx)
     },
 
-    draw(realDt, view) {
-      const s = game.state
-      const time = s.time
-      const simDt = Math.max(0, time - lastTime)
-      lastTime = time
+    draw(realDt, boardView) {
+      const state = game.state
+      const time = state.time
+      const simDt = Math.max(0, time - lastGameTime)
+      lastGameTime = time
       effects.update(simDt, realDt)
 
       // Тряска: всё поле сдвигается на случайные доли клетки
-      let shx = 0
-      let shy = 0
-      if (effects.shake > 0 && !reduceMotion) {
-        shx = (Math.random() - 0.5) * effects.shake * 0.5 * S
-        shy = (Math.random() - 0.5) * effects.shake * 0.5 * S
+      let shakeX = 0
+      let shakeY = 0
+      if (effects.shakeTime > 0 && !prefersReducedMotion) {
+        shakeX = (Math.random() - 0.5) * effects.shakeTime * SHAKE_AMPLITUDE * cellDevicePx
+        shakeY = (Math.random() - 0.5) * effects.shakeTime * SHAKE_AMPLITUDE * cellDevicePx
       }
 
       ctx.setTransform(1, 0, 0, 1, 0, 0)
-      ctx.fillStyle = '#171a28'
+      ctx.fillStyle = FLOOR_COLOR
       ctx.fillRect(0, 0, canvas.width, canvas.height)
-      if (hall) ctx.drawImage(hall, shx, shy)
+      if (hallLayer) ctx.drawImage(hallLayer, shakeX, shakeY)
       // Дальше рисуем в клетках: 1 единица = 1 клетка
-      ctx.setTransform(S, 0, 0, S, shx, shy)
+      ctx.setTransform(cellDevicePx, 0, 0, cellDevicePx, shakeX, shakeY)
 
-      const playing = s.phase === 'build' || s.phase === 'wave'
+      const isPlaying = game.isPlaying()
 
-      // Точки на свободных плитах, когда выбираем, куда ставить
-      if (playing && (view.armed || view.tile)) {
-        ctx.fillStyle = 'rgba(227,178,74,.3)'
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            if (!game.isFree(c, r)) continue
-            circle(ctx, c + 0.5, r + 0.5, 0.05)
-            ctx.fill()
-          }
-        }
-      }
-      if (view.tile) {
-        ctx.strokeStyle = GOLD
-        ctx.lineWidth = 0.05
-        ctx.setLineDash([0.16, 0.1])
-        ctx.strokeRect(view.tile.c + 0.07, view.tile.r + 0.07, 0.86, 0.86)
-        ctx.setLineDash([])
-      }
-      const selected = view.selected && game.towerAt(view.selected.c, view.selected.r)
-      if (selected) drawRange(selected.x, selected.y, towerStats(selected).range, true)
-
-      drawThrone(ctx, throne, time, effects.hurt)
-
-      for (const t of s.towers) {
-        ctx.save()
-        ctx.translate(t.x, t.y)
-        const pop = effects.popOf(t)
-        if (pop > 0 && !reduceMotion) ctx.scale(1 + pop * 0.8, 1 + pop * 0.8)
-        drawTower(ctx, t.def.id, t.lv, t.aim, time, t.cd < towerStats(t).rate * 0.55)
-        if (t === selected) {
-          ctx.strokeStyle = GOLD
-          ctx.lineWidth = 0.045
-          circle(ctx, 0, 0, 0.41)
-          ctx.stroke()
-        }
-        ctx.restore()
+      if (isPlaying && (boardView.armedTowerId || boardView.selectedEmptyCell)) drawFreeCellDots()
+      if (boardView.selectedEmptyCell) drawSelectedEmptyCell(boardView.selectedEmptyCell)
+      const selectedTower =
+        boardView.selectedTowerCell &&
+        game.towerAt(boardView.selectedTowerCell.col, boardView.selectedTowerCell.row)
+      if (selectedTower) {
+        // Выбранная башня: подсветка всегда обычная (не красная)
+        drawRange(selectedTower.x, selectedTower.y, towerStats(selectedTower).range, true)
       }
 
-      // Сначала обычные враги, потом большие — чтобы те были сверху
-      for (const front of [false, true]) {
-        for (const e of s.enemies) {
-          if (!!enemyArt(e.def.id).front !== front) continue
-          drawEnemy(ctx, e, time, effects.phaseOf(e), effects.flashOf(e))
-        }
-      }
+      drawThrone(ctx, throne, time, effects.throneHurtTime)
+      drawTowers(time, selectedTower)
+      drawEnemies(time)
 
-      for (const shot of s.shots) drawShot(ctx, shot)
+      for (const shot of state.shots) drawShot(ctx, shot)
       effects.draw(ctx)
 
-      // Полупрозрачная башня под курсором — «вот так встанет»
-      const ghost = playing && view.armed ? (view.hover ?? view.cursor) : null
-      if (ghost && view.armed && game.isFree(ghost.c, ghost.r)) {
-        const def = TOWERS[view.armed]
-        const ok = s.gold >= def.cost
-        drawRange(ghost.c + 0.5, ghost.r + 0.5, def.levels[0].range, ok)
-        ctx.save()
-        ctx.translate(ghost.c + 0.5, ghost.r + 0.5)
-        ctx.globalAlpha = ok ? 0.7 : 0.35
-        drawTower(ctx, view.armed, 0, -Math.PI / 2, time, true)
-        ctx.restore()
+      const ghostCell =
+        isPlaying && boardView.armedTowerId ? (boardView.hoverCell ?? boardView.cursorCell) : null
+      if (ghostCell && boardView.armedTowerId && game.isCellFree(ghostCell.col, ghostCell.row)) {
+        drawGhostTower(boardView.armedTowerId, ghostCell, time)
       }
-      if (playing && view.cursor) {
-        ctx.strokeStyle = PARCH
-        ctx.lineWidth = 0.045
-        ctx.strokeRect(view.cursor.c + 0.04, view.cursor.r + 0.04, 0.92, 0.92)
-      }
+      if (isPlaying && boardView.cursorCell) drawCursor(boardView.cursorCell)
 
-      ctx.setTransform(dpr, 0, 0, dpr, shx, shy)
-      effects.drawTexts(ctx, tilePx)
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, shakeX, shakeY)
+      effects.drawTexts(ctx, cellCssPx)
 
-      // Красная виньетка, когда трон ранен
-      if (effects.hurt > 0) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-        const w = canvas.width
-        const h = canvas.height
-        const gr = ctx.createRadialGradient(w / 2, h / 2, h * 0.25, w / 2, h / 2, h * 0.7)
-        gr.addColorStop(0, 'rgba(200,30,40,0)')
-        gr.addColorStop(1, `rgba(200,30,40,${Math.min(0.5, effects.hurt)})`)
-        ctx.fillStyle = gr
-        ctx.fillRect(0, 0, w, h)
-      }
+      if (effects.throneHurtTime > 0) drawHurtVignette()
     },
 
     dispose() {

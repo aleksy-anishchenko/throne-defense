@@ -10,7 +10,7 @@ describe('постройка', () => {
     expect(tower).not.toBeNull()
     expect(game.state.gold).toBe(150 - TOWERS.archer.cost)
     expect(game.towerAt(5, 11)).toBe(tower)
-    expect(game.isFree(5, 11)).toBe(false)
+    expect(game.isCellFree(5, 11)).toBe(false)
   })
 
   it('нельзя строить на ковре, на помосте, на занятой клетке и за краем поля', () => {
@@ -48,7 +48,7 @@ describe('улучшение и продажа', () => {
     expect(game.upgrade(5, 11)).toBe(true)
     expect(game.upgrade(5, 11)).toBe(true)
     expect(game.upgrade(5, 11)).toBe(false) // уже III
-    expect(game.towerAt(5, 11)!.lv).toBe(2)
+    expect(game.towerAt(5, 11)!.tier).toBe(2)
     expect(game.state.gold).toBe(1000 - 50 - 45 - 85)
   })
 
@@ -60,16 +60,16 @@ describe('улучшение и продажа', () => {
 
     expect(game.sell(5, 11)).toBe(57) // floor(95 × 0.6)
     expect(game.state.gold).toBe(before + 57)
-    expect(game.isFree(5, 11)).toBe(true)
+    expect(game.isCellFree(5, 11)).toBe(true)
     expect(game.state.towers).toHaveLength(0)
   })
 
   it('сообщает о постройке, улучшении и продаже событиями', () => {
     const game = newGame()
-    const log = recordEvents(game)
+    const recordedEvents = recordEvents(game)
     game.build('archer', 5, 11)
     game.upgrade(5, 11)
     game.sell(5, 11)
-    expect(log).toEqual(['build', 'upgrade', 'sell'])
+    expect(recordedEvents).toEqual(['build', 'upgrade', 'sell'])
   })
 })

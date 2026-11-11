@@ -9,14 +9,16 @@ export {
   BALANCE_VERSION,
   REFUND_RATE,
   SCORE,
-  STEP,
-  TUNE,
-  hpMul,
+  MAX_SPEED,
+  MIN_SPEED,
+  SIMULATION_STEP,
+  TUNING,
+  hpMultiplier,
   waveBonus,
 } from './data/balance.ts'
 export { ENEMIES } from './data/enemies.ts'
 export { TOWERS, TOWER_LIST } from './data/towers.ts'
 export { LEVELS } from './levels/index.ts'
-export { invested, refundFor, towerStats, upgradeCost } from './systems/towers.ts'
+export { investedGold, refundFor, towerStats, upgradeCost } from './systems/towers.ts'
 
 export type * from './types.ts'

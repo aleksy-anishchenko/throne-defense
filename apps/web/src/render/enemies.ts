@@ -1,224 +1,248 @@
 // Как выглядит каждый враг. Новый враг в @throne/game → добавь его рисунок сюда.
 
 import type { Enemy } from '@throne/game'
-import { GOLD, circle, reduceMotion } from './shapes'
-
-type Ctx = CanvasRenderingContext2D
+import { GOLD, circle, prefersReducedMotion } from './shapes'
+import type { Canvas2D } from './shapes'
 
 export interface EnemyArt {
-  /** Нарисовать врага. (0, 0) — центр, r — радиус */
-  body(c: Ctx, r: number): void
+  /** Нарисовать врага. (0, 0) — центр, radius — радиус */
+  body(ctx: Canvas2D, radius: number): void
   /** Цвет искр, когда враг гибнет */
-  color: string
+  sparkColor: string
   /** Сколько искр */
-  sparks: number
+  sparkCount: number
   /** Насколько выше врага полоска здоровья */
-  barOffset?: number
+  healthBarOffset?: number
   /** Рисовать поверх остальных (большие враги) */
-  front?: boolean
+  drawOnTop?: boolean
 }
 
 export const ENEMY_ART: Record<string, EnemyArt> = {
   rebel: {
-    color: '#c98f55',
-    sparks: 5,
-    body(c, r) {
-      c.fillStyle = '#c98f55'
-      c.strokeStyle = '#5a3b1f'
-      circle(c, 0, 0, r)
-      c.fill()
-      c.stroke()
-      c.fillStyle = '#7a4f28'
-      c.beginPath()
-      c.arc(0, 0, r, Math.PI, 0)
-      c.closePath()
-      c.fill()
+    sparkColor: '#c98f55',
+    sparkCount: 5,
+    body(ctx, radius) {
+      ctx.fillStyle = '#c98f55'
+      ctx.strokeStyle = '#5a3b1f'
+      circle(ctx, 0, 0, radius)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = '#7a4f28'
+      ctx.beginPath()
+      ctx.arc(0, 0, radius, Math.PI, 0)
+      ctx.closePath()
+      ctx.fill()
       // вилы
-      c.strokeStyle = '#d9d2c0'
-      c.lineWidth = 0.03
-      c.beginPath()
-      c.moveTo(0.1, 0.16)
-      c.lineTo(0.24, -0.2)
-      c.moveTo(0.16, -0.22)
-      c.lineTo(0.2, -0.1)
-      c.lineTo(0.3, -0.14)
-      c.stroke()
-      c.fillStyle = '#2a1a0c'
-      circle(c, -0.06, 0.05, 0.025)
-      c.fill()
-      circle(c, 0.05, 0.05, 0.025)
-      c.fill()
+      ctx.strokeStyle = '#d9d2c0'
+      ctx.lineWidth = 0.03
+      ctx.beginPath()
+      ctx.moveTo(0.1, 0.16)
+      ctx.lineTo(0.24, -0.2)
+      ctx.moveTo(0.16, -0.22)
+      ctx.lineTo(0.2, -0.1)
+      ctx.lineTo(0.3, -0.14)
+      ctx.stroke()
+      ctx.fillStyle = '#2a1a0c'
+      circle(ctx, -0.06, 0.05, 0.025)
+      ctx.fill()
+      circle(ctx, 0.05, 0.05, 0.025)
+      ctx.fill()
     },
   },
 
   scout: {
-    color: '#3a8a83',
-    sparks: 5,
-    body(c, r) {
-      c.fillStyle = '#2c6f69'
-      c.strokeStyle = '#163d3a'
-      circle(c, 0, 0, r)
-      c.fill()
-      c.stroke()
+    sparkColor: '#3a8a83',
+    sparkCount: 5,
+    body(ctx, radius) {
+      ctx.fillStyle = '#2c6f69'
+      ctx.strokeStyle = '#163d3a'
+      circle(ctx, 0, 0, radius)
+      ctx.fill()
+      ctx.stroke()
       // капюшон
-      c.fillStyle = '#163d3a'
-      c.beginPath()
-      c.moveTo(-r, -0.02)
-      c.lineTo(0, -r * 1.5)
-      c.lineTo(r, -0.02)
-      c.closePath()
-      c.fill()
-      c.fillStyle = '#ffe07a'
-      circle(c, -0.05, 0.03, 0.028)
-      c.fill()
-      circle(c, 0.05, 0.03, 0.028)
-      c.fill()
+      ctx.fillStyle = '#163d3a'
+      ctx.beginPath()
+      ctx.moveTo(-radius, -0.02)
+      ctx.lineTo(0, -radius * 1.5)
+      ctx.lineTo(radius, -0.02)
+      ctx.closePath()
+      ctx.fill()
+      ctx.fillStyle = '#ffe07a'
+      circle(ctx, -0.05, 0.03, 0.028)
+      ctx.fill()
+      circle(ctx, 0.05, 0.03, 0.028)
+      ctx.fill()
     },
   },
 
   armor: {
-    color: '#a9b4c6',
-    sparks: 5,
-    body(c, r) {
-      c.fillStyle = '#a9b4c6'
-      c.strokeStyle = '#4d566a'
-      circle(c, 0, 0, r)
-      c.fill()
-      c.stroke()
+    sparkColor: '#a9b4c6',
+    sparkCount: 5,
+    body(ctx, radius) {
+      ctx.fillStyle = '#a9b4c6'
+      ctx.strokeStyle = '#4d566a'
+      circle(ctx, 0, 0, radius)
+      ctx.fill()
+      ctx.stroke()
       // забрало
-      c.fillStyle = '#2a3040'
-      c.fillRect(-r * 0.62, -0.04, r * 1.24, 0.07)
-      c.fillRect(-0.025, -0.04, 0.05, r * 0.7)
+      ctx.fillStyle = '#2a3040'
+      ctx.fillRect(-radius * 0.62, -0.04, radius * 1.24, 0.07)
+      ctx.fillRect(-0.025, -0.04, 0.05, radius * 0.7)
       // плюмаж
-      c.fillStyle = '#c0392b'
-      c.beginPath()
-      c.moveTo(-0.05, -r)
-      c.quadraticCurveTo(0, -r - 0.16, 0.09, -r - 0.1)
-      c.lineTo(0.05, -r)
-      c.closePath()
-      c.fill()
+      ctx.fillStyle = '#c0392b'
+      ctx.beginPath()
+      ctx.moveTo(-0.05, -radius)
+      ctx.quadraticCurveTo(0, -radius - 0.16, 0.09, -radius - 0.1)
+      ctx.lineTo(0.05, -radius)
+      ctx.closePath()
+      ctx.fill()
     },
   },
 
   ogre: {
-    color: '#86a24e',
-    sparks: 10,
-    body(c, r) {
-      c.fillStyle = '#86a24e'
-      c.strokeStyle = '#42541f'
-      c.lineWidth = 0.045
-      circle(c, 0, 0, r)
-      c.fill()
-      c.stroke()
+    sparkColor: '#86a24e',
+    sparkCount: 10,
+    body(ctx, radius) {
+      ctx.fillStyle = '#86a24e'
+      ctx.strokeStyle = '#42541f'
+      ctx.lineWidth = 0.045
+      circle(ctx, 0, 0, radius)
+      ctx.fill()
+      ctx.stroke()
       // брови и глаза
-      c.fillStyle = '#42541f'
-      c.fillRect(-0.17, -0.12, 0.13, 0.04)
-      c.fillRect(0.04, -0.12, 0.13, 0.04)
-      c.fillStyle = '#1e2a0c'
-      circle(c, -0.1, -0.05, 0.035)
-      c.fill()
-      circle(c, 0.1, -0.05, 0.035)
-      c.fill()
+      ctx.fillStyle = '#42541f'
+      ctx.fillRect(-0.17, -0.12, 0.13, 0.04)
+      ctx.fillRect(0.04, -0.12, 0.13, 0.04)
+      ctx.fillStyle = '#1e2a0c'
+      circle(ctx, -0.1, -0.05, 0.035)
+      ctx.fill()
+      circle(ctx, 0.1, -0.05, 0.035)
+      ctx.fill()
       // клыки
-      c.fillStyle = '#f1ead6'
-      c.beginPath()
-      c.moveTo(-0.15, 0.1)
-      c.lineTo(-0.11, -0.02)
-      c.lineTo(-0.06, 0.1)
-      c.closePath()
-      c.fill()
-      c.beginPath()
-      c.moveTo(0.15, 0.1)
-      c.lineTo(0.11, -0.02)
-      c.lineTo(0.06, 0.1)
-      c.closePath()
-      c.fill()
+      ctx.fillStyle = '#f1ead6'
+      ctx.beginPath()
+      ctx.moveTo(-0.15, 0.1)
+      ctx.lineTo(-0.11, -0.02)
+      ctx.lineTo(-0.06, 0.1)
+      ctx.closePath()
+      ctx.fill()
+      ctx.beginPath()
+      ctx.moveTo(0.15, 0.1)
+      ctx.lineTo(0.11, -0.02)
+      ctx.lineTo(0.06, 0.1)
+      ctx.closePath()
+      ctx.fill()
     },
   },
 
   boss: {
-    color: '#7a45b8',
-    sparks: 22,
-    barOffset: 0.32,
-    front: true,
-    body(c, r) {
-      c.fillStyle = '#4a2478'
-      circle(c, 0, 0.04, r)
-      c.fill()
-      c.fillStyle = '#7a45b8'
-      c.strokeStyle = '#2f1650'
-      c.lineWidth = 0.045
-      circle(c, 0, 0, r * 0.8)
-      c.fill()
-      c.stroke()
-      c.fillStyle = '#ff5a4a'
-      circle(c, -0.1, 0, 0.04)
-      c.fill()
-      circle(c, 0.1, 0, 0.04)
-      c.fill()
+    sparkColor: '#7a45b8',
+    sparkCount: 22,
+    healthBarOffset: 0.32,
+    drawOnTop: true,
+    body(ctx, radius) {
+      ctx.fillStyle = '#4a2478'
+      circle(ctx, 0, 0.04, radius)
+      ctx.fill()
+      ctx.fillStyle = '#7a45b8'
+      ctx.strokeStyle = '#2f1650'
+      ctx.lineWidth = 0.045
+      circle(ctx, 0, 0, radius * 0.8)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = '#ff5a4a'
+      circle(ctx, -0.1, 0, 0.04)
+      ctx.fill()
+      circle(ctx, 0.1, 0, 0.04)
+      ctx.fill()
       // корона
-      c.fillStyle = GOLD
-      c.beginPath()
-      c.moveTo(-0.22, -0.2)
-      c.lineTo(-0.24, -0.44)
-      c.lineTo(-0.11, -0.32)
-      c.lineTo(0, -0.48)
-      c.lineTo(0.11, -0.32)
-      c.lineTo(0.24, -0.44)
-      c.lineTo(0.22, -0.2)
-      c.closePath()
-      c.fill()
+      ctx.fillStyle = GOLD
+      ctx.beginPath()
+      ctx.moveTo(-0.22, -0.2)
+      ctx.lineTo(-0.24, -0.44)
+      ctx.lineTo(-0.11, -0.32)
+      ctx.lineTo(0, -0.48)
+      ctx.lineTo(0.11, -0.32)
+      ctx.lineTo(0.24, -0.44)
+      ctx.lineTo(0.22, -0.2)
+      ctx.closePath()
+      ctx.fill()
     },
   },
 }
 
-const FALLBACK: EnemyArt = {
-  color: '#d8394a',
-  sparks: 5,
-  body(c, r) {
-    c.fillStyle = '#d8394a'
-    circle(c, 0, 0, r)
-    c.fill()
+const FALLBACK_ENEMY_ART: EnemyArt = {
+  sparkColor: '#d8394a',
+  sparkCount: 5,
+  body(ctx, radius) {
+    ctx.fillStyle = '#d8394a'
+    circle(ctx, 0, 0, radius)
+    ctx.fill()
   },
 }
 
-export const enemyArt = (id: string): EnemyArt => ENEMY_ART[id] ?? FALLBACK
+export const getEnemyArt = (enemyId: string): EnemyArt => ENEMY_ART[enemyId] ?? FALLBACK_ENEMY_ART
+
+// Полоска здоровья (размеры в клетках)
+/** Минимальная ширина полоски */
+const MIN_HEALTH_BAR_WIDTH = 0.36
+/** На сколько полоска выше врага, если у рисунка нет своего healthBarOffset */
+const DEFAULT_HEALTH_BAR_OFFSET = 0.16
+/** Доля здоровья, выше которой полоска зелёная */
+const HEALTH_HIGH_THRESHOLD = 0.5
+/** Доля здоровья, выше которой полоска золотая (ниже — оранжевая) */
+const HEALTH_MEDIUM_THRESHOLD = 0.25
+
+/** Цвет полоски здоровья: зелёный — здоров, золотой — ранен, оранжевый — при смерти */
+function healthBarColor(healthFraction: number): string {
+  if (healthFraction > HEALTH_HIGH_THRESHOLD) return '#7fd16a'
+  if (healthFraction > HEALTH_MEDIUM_THRESHOLD) return GOLD
+  return '#f0863a'
+}
 
 /** Враг целиком: тень, покачивание, сам враг, замедление, вспышка от удара, здоровье */
-export function drawEnemy(c: Ctx, e: Enemy, time: number, phase: number, flash: boolean): void {
-  const art = enemyArt(e.def.id)
-  const r = e.def.r
-  const bob = reduceMotion ? 0 : Math.sin(time * 9 * e.def.speed + phase) * 0.02
+export function drawEnemy(
+  ctx: Canvas2D,
+  enemy: Enemy,
+  time: number,
+  bobPhase: number,
+  isFlashing: boolean,
+): void {
+  const art = getEnemyArt(enemy.def.id)
+  const radius = enemy.def.radius
+  const bobOffset = prefersReducedMotion
+    ? 0
+    : Math.sin(time * 9 * enemy.def.speed + bobPhase) * 0.02
 
-  c.save()
-  c.translate(e.x, e.y + bob)
-  c.fillStyle = 'rgba(8,9,18,.35)'
-  c.beginPath()
-  c.ellipse(0, r * 0.8, r * 0.9, r * 0.35, 0, 0, Math.PI * 2)
-  c.fill()
+  ctx.save()
+  ctx.translate(enemy.x, enemy.y + bobOffset)
+  ctx.fillStyle = 'rgba(8,9,18,.35)'
+  ctx.beginPath()
+  ctx.ellipse(0, radius * 0.8, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2)
+  ctx.fill()
 
-  c.lineWidth = 0.035
-  art.body(c, r)
+  ctx.lineWidth = 0.035
+  art.body(ctx, radius)
 
-  if (e.slowT > 0) {
-    c.strokeStyle = 'rgba(170,230,255,.9)'
-    c.lineWidth = 0.04
-    circle(c, 0, 0, r + 0.04)
-    c.stroke()
+  if (enemy.slowTimeLeft > 0) {
+    ctx.strokeStyle = 'rgba(170,230,255,.9)'
+    ctx.lineWidth = 0.04
+    circle(ctx, 0, 0, radius + 0.04)
+    ctx.stroke()
   }
-  if (flash) {
-    c.fillStyle = 'rgba(255,255,255,.55)'
-    circle(c, 0, 0, r)
-    c.fill()
+  if (isFlashing) {
+    ctx.fillStyle = 'rgba(255,255,255,.55)'
+    circle(ctx, 0, 0, radius)
+    ctx.fill()
   }
-  if (e.hp < e.maxHp) {
-    const w = Math.max(0.36, r * 2)
-    const f = Math.max(0, e.hp / e.maxHp)
-    const y = -r - (art.barOffset ?? 0.16)
-    c.fillStyle = 'rgba(8,9,18,.75)'
-    c.fillRect(-w / 2 - 0.015, y - 0.015, w + 0.03, 0.085)
-    c.fillStyle = f > 0.5 ? '#7fd16a' : f > 0.25 ? GOLD : '#f0863a'
-    c.fillRect(-w / 2, y, w * f, 0.055)
+  if (enemy.hp < enemy.maxHp) {
+    const barWidth = Math.max(MIN_HEALTH_BAR_WIDTH, radius * 2)
+    const healthFraction = Math.max(0, enemy.hp / enemy.maxHp)
+    const barY = -radius - (art.healthBarOffset ?? DEFAULT_HEALTH_BAR_OFFSET)
+    ctx.fillStyle = 'rgba(8,9,18,.75)'
+    ctx.fillRect(-barWidth / 2 - 0.015, barY - 0.015, barWidth + 0.03, 0.085)
+    ctx.fillStyle = healthBarColor(healthFraction)
+    ctx.fillRect(-barWidth / 2, barY, barWidth * healthFraction, 0.055)
   }
-  c.restore()
+  ctx.restore()
 }

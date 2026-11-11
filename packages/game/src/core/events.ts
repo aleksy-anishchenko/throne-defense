@@ -16,10 +16,10 @@ export function createEmitter<E>(): Emitter<E> {
 
   return {
     on(type, fn) {
-      const set = (listeners[type] ??= new Set())
-      set.add(fn)
+      const typeListeners = (listeners[type] ??= new Set())
+      typeListeners.add(fn)
       return () => {
-        set.delete(fn)
+        typeListeners.delete(fn)
       }
     },
     emit(type, payload) {

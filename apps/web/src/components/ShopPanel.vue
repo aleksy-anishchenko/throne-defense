@@ -9,12 +9,12 @@ const store = useGameStore()
 <template>
   <div class="shop" role="group" aria-label="Стража">
     <TowerCard
-      v-for="def in TOWER_LIST"
-      :key="def.id"
-      :def="def"
-      :pressed="store.armed === def.id"
-      :poor="store.hud.gold < def.cost"
-      @pick="store.pickCard(def.id)"
+      v-for="towerDef in TOWER_LIST"
+      :key="towerDef.id"
+      :def="towerDef"
+      :is-armed="store.armedTowerId === towerDef.id"
+      :is-unaffordable="store.hud.gold < towerDef.cost"
+      @pick="store.chooseShopTower(towerDef.id)"
     />
   </div>
 </template>

@@ -1,60 +1,60 @@
 import type { EnemyDef } from '../types.ts'
 
-const LIST: EnemyDef[] = [
+const ENEMY_LIST: EnemyDef[] = [
   {
     id: 'rebel',
-    name: ['бунтовщик', 'бунтовщика', 'бунтовщиков'],
+    nameForms: ['бунтовщик', 'бунтовщика', 'бунтовщиков'],
     hp: 30,
     speed: 1,
     armor: 0,
     reward: 6,
-    dmg: 1,
-    r: 0.2,
+    throneDamage: 1,
+    radius: 0.2,
   },
   {
     id: 'scout',
-    name: ['лазутчик', 'лазутчика', 'лазутчиков'],
+    nameForms: ['лазутчик', 'лазутчика', 'лазутчиков'],
     hp: 18,
     speed: 1.9,
     armor: 0,
     reward: 5,
-    dmg: 1,
-    r: 0.15,
+    throneDamage: 1,
+    radius: 0.15,
   },
   {
     id: 'armor',
-    name: ['латник', 'латника', 'латников'],
+    nameForms: ['латник', 'латника', 'латников'],
     hp: 90,
     speed: 0.65,
     armor: 5,
     reward: 14,
-    dmg: 2,
-    r: 0.23,
+    throneDamage: 2,
+    radius: 0.23,
   },
   {
     id: 'ogre',
-    name: ['огр', 'огра', 'огров'],
+    nameForms: ['огр', 'огра', 'огров'],
     hp: 320,
     speed: 0.5,
     armor: 0,
     reward: 40,
-    dmg: 4,
-    r: 0.33,
+    throneDamage: 4,
+    radius: 0.33,
   },
   {
     id: 'boss',
-    name: ['узурпатор', 'узурпатора', 'узурпаторов'],
+    nameForms: ['узурпатор', 'узурпатора', 'узурпаторов'],
     hp: 1500,
     speed: 0.4,
     armor: 4,
     reward: 200,
-    dmg: 20,
-    r: 0.42,
-    slowResist: 0.5,
+    throneDamage: 20,
+    radius: 0.42,
+    slowResistance: 0.5,
   },
 ]
 
 /** Все враги по id */
 export const ENEMIES: Readonly<Record<string, EnemyDef>> = Object.fromEntries(
-  LIST.map((e) => [e.id, e]),
+  ENEMY_LIST.map((enemyDef) => [enemyDef.id, enemyDef]),
 )

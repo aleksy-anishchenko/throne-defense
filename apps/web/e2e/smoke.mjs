@@ -5,13 +5,17 @@
 // с клавиатуры, улучшение, продажа, волна, пауза, поражение, рекорд, победа, телефон.
 // Состояние игры читает через window.__throne (доступен только с ?debug).
 //
-// Нужен установленный Google Chrome. Если его нет: `npx playwright install chromium`.
+// Нужен установленный Google Chrome. Если его нет: `npx playwright-core install chromium`.
 
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 import { preview } from 'vite'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
+// Размер поля в клетках (как в уровне «Тронный зал»)
+const COLS = 9
+const ROWS = 13
+
 let failed = 0
 const errors = []
 
@@ -28,7 +32,7 @@ async function launchBrowser() {
       return await chromium.launch({ headless: true })
     } catch {
       console.error(
-        'Не найден браузер. Установи Google Chrome или выполни: npx playwright install chromium',
+        'Не найден браузер. Установи Google Chrome или выполни: npx playwright-core install chromium',
       )
       process.exit(1)
     }
@@ -36,50 +40,58 @@ async function launchBrowser() {
 }
 
 function watchErrors(page, label) {
-  page.on('console', (m) => m.type() === 'error' && errors.push(`${label}: ${m.text()}`))
-  page.on('pageerror', (e) => errors.push(`${label}: ${e.message}`))
+  page.on(
+    'console',
+    (message) => message.type() === 'error' && errors.push(`${label}: ${message.text()}`),
+  )
+  page.on('pageerror', (error) => errors.push(`${label}: ${error.message}`))
 }
 
 /** Состояние игры коротко */
-const state = (page) =>
+const readGameSnapshot = (page) =>
   page.evaluate(() => {
-    const s = window.__throne.game.state
+    const state = window.__throne.game.state
     return {
-      phase: s.phase,
-      wave: s.wave,
-      gold: s.gold,
-      lives: s.lives,
-      paused: s.paused,
-      time: s.time,
-      towers: s.towers.map((t) => `${t.def.id}${t.lv}@${t.c},${t.r}`),
+      phase: state.phase,
+      wave: state.wave,
+      gold: state.gold,
+      lives: state.lives,
+      paused: state.isPaused,
+      time: state.time,
+      towers: state.towers.map((tower) => `${tower.def.id}${tower.tier}@${tower.col},${tower.row}`),
     }
   })
 
 /** Дождаться, пока Vue обновит экран (пара кадров) */
-const frames = (page) =>
-  page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+const waitForFrames = (page) =>
+  page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  )
 
 /**
  * Снять фокус с кнопки. Пробел на кнопке по задумке нажимает саму кнопку,
  * а нам нужно, чтобы он дошёл до игры. (body.focus() не помогает: body не фокусируется.)
  */
-const blur = (page) => page.evaluate(() => document.activeElement?.blur())
+const blurActiveElement = (page) => page.evaluate(() => document.activeElement?.blur())
 
 /** Нажать на клетку поля */
-async function clickTile(page, c, r) {
-  const box = await page.locator('#board').boundingBox()
-  await page.mouse.click(box.x + ((c + 0.5) / 9) * box.width, box.y + ((r + 0.5) / 13) * box.height)
-  await frames(page)
+async function clickCell(page, col, row) {
+  const bounds = await page.locator('#board').boundingBox()
+  await page.mouse.click(
+    bounds.x + ((col + 0.5) / COLS) * bounds.width,
+    bounds.y + ((row + 0.5) / ROWS) * bounds.height,
+  )
+  await waitForFrames(page)
 }
 
 async function desktop(browser, url) {
   console.log('\nКомпьютер')
   const page = await browser.newPage({ viewport: { width: 1280, height: 860 } })
   watchErrors(page, 'компьютер')
-  const play = page.getByRole('button', { name: 'Играть' })
+  const playButton = page.getByRole('button', { name: 'Играть' })
 
   await page.goto(url)
-  await play.waitFor()
+  await playButton.waitFor()
   await page.evaluate(() => document.fonts.ready)
   check(
     'шрифты загрузились',
@@ -94,8 +106,8 @@ async function desktop(browser, url) {
     await page.evaluate(() => document.activeElement?.textContent?.trim() === 'Играть'),
   )
 
-  await play.click()
-  await frames(page)
+  await playButton.click()
+  await waitForFrames(page)
   check('меню закрылось', (await page.locator('.overlay').count()) === 0)
   check(
     'подсказка для новичка',
@@ -106,63 +118,73 @@ async function desktop(browser, url) {
   const archerCard = page.getByRole('button', { name: /Лучник/ })
   await archerCard.click()
   check('карточка в магазине нажата', (await archerCard.getAttribute('aria-pressed')) === 'true')
-  await clickTile(page, 5, 11)
-  await clickTile(page, 2, 9)
-  let s = await state(page)
-  check('две башни, осталось 50 золота', s.towers.length === 2 && s.gold === 50, JSON.stringify(s))
+  await clickCell(page, 5, 11)
+  await clickCell(page, 2, 9)
+  let snapshot = await readGameSnapshot(page)
+  check(
+    'две башни, осталось 50 золота',
+    snapshot.towers.length === 2 && snapshot.gold === 50,
+    JSON.stringify(snapshot),
+  )
 
   // Выбор, улучшение, продажа
   await page.keyboard.press('Escape')
-  await clickTile(page, 5, 11)
-  check('панель башни', (await page.locator('.towerbox b').textContent()) === 'Лучник I')
-  const stats = (await page.locator('.towerbox .who span').allTextContents()).join(' | ')
-  check('характеристики в панели', stats === 'урон 9 → 15 | дальность 2,3 → 2,5', stats)
+  await clickCell(page, 5, 11)
+  check('панель башни', (await page.locator('.tower-info b').textContent()) === 'Лучник I')
+  const statLines = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
+    ' | ',
+  )
+  check('характеристики в панели', statLines === 'урон 9 → 15 | дальность 2,3 → 2,5', statLines)
   await page.getByRole('button', { name: /Улучшить/ }).click()
-  await frames(page)
-  s = await state(page)
-  check('улучшение', s.gold === 5 && s.towers.includes('archer1@5,11'), JSON.stringify(s))
+  await waitForFrames(page)
+  snapshot = await readGameSnapshot(page)
+  check(
+    'улучшение',
+    snapshot.gold === 5 && snapshot.towers.includes('archer1@5,11'),
+    JSON.stringify(snapshot),
+  )
   await page.getByRole('button', { name: /Улучшить/ }).click()
-  await frames(page)
+  await waitForFrames(page)
   check(
     'тост «не хватает золота»',
-    !!(await page.locator('.toast.on').textContent())?.includes('Не хватает золота'),
+    !!(await page.locator('.toast.visible').textContent())?.includes('Не хватает золота'),
   )
   await page.getByRole('button', { name: /Продать/ }).click()
-  await frames(page)
-  s = await state(page)
+  await waitForFrames(page)
+  snapshot = await readGameSnapshot(page)
   check(
     'продажа вернула 60% (57 золота)',
-    s.gold === 62 && s.towers.length === 1,
-    JSON.stringify(s),
+    snapshot.gold === 62 && snapshot.towers.length === 1,
+    JSON.stringify(snapshot),
   )
-  check('панель башни скрылась', (await page.locator('.towerbox').count()) === 0)
+  check('панель башни скрылась', (await page.locator('.tower-info').count()) === 0)
 
   // Постройка с клавиатуры: 1, стрелки к клетке (5, 11), Enter
   await page.keyboard.press('1')
   await page.keyboard.press('ArrowRight')
   for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
-  await frames(page)
-  s = await state(page)
+  await waitForFrames(page)
+  snapshot = await readGameSnapshot(page)
   check(
     'постройка с клавиатуры',
-    s.towers.includes('archer0@5,11') && s.gold === 12,
-    JSON.stringify(s),
+    snapshot.towers.includes('archer0@5,11') && snapshot.gold === 12,
+    JSON.stringify(snapshot),
   )
   await page.keyboard.press('Escape')
 
   // Волна: пробел, скорость ×3
-  await blur(page)
+  await blurActiveElement(page)
   await page.keyboard.press('Space')
-  await frames(page)
-  check('пробел начал волну', (await state(page)).phase === 'wave')
+  await waitForFrames(page)
+  check('пробел начал волну', (await readGameSnapshot(page)).phase === 'wave')
   check(
     'кнопка «Идёт бой» неактивна',
     await page.getByRole('button', { name: 'Идёт бой' }).isDisabled(),
   )
-  const speed = page.getByRole('button', { name: 'Скорость игры' })
-  await speed.click()
-  await speed.click()
+  const speedButton = page.getByRole('button', { name: 'Скорость игры' })
+  await speedButton.click()
+  await speedButton.click()
   await page.waitForFunction(() => window.__throne.game.state.enemies.length >= 3)
   check(
     'подсказка «Врагов осталось»',
@@ -171,8 +193,12 @@ async function desktop(browser, url) {
   await page.waitForFunction(() => window.__throne.game.state.phase === 'build', null, {
     timeout: 60_000,
   })
-  s = await state(page)
-  check('первая волна отбита без потерь', s.wave === 2 && s.lives === 20, JSON.stringify(s))
+  snapshot = await readGameSnapshot(page)
+  check(
+    'первая волна отбита без потерь',
+    snapshot.wave === 2 && snapshot.lives === 20,
+    JSON.stringify(snapshot),
+  )
   check(
     'шапка «Волна 2 из 20»',
     (await page.locator('.hud .wave').textContent()) === 'Волна 2 из 20',
@@ -185,10 +211,13 @@ async function desktop(browser, url) {
   // Пауза
   await page.getByRole('button', { name: 'Начать волну' }).click()
   await page.getByRole('button', { name: 'Пауза' }).click()
-  const t1 = (await state(page)).time
+  const timeBefore = (await readGameSnapshot(page)).time
   await page.waitForTimeout(400)
-  const t2 = (await state(page)).time
-  check('пауза останавливает время', t1 === t2 && (await state(page)).paused)
+  const timeAfter = (await readGameSnapshot(page)).time
+  check(
+    'пауза останавливает время',
+    timeBefore === timeAfter && (await readGameSnapshot(page)).paused,
+  )
   check('подсказка паузы', (await page.locator('#hint').textContent()).startsWith('Пауза'))
   await page.getByRole('button', { name: 'Продолжить' }).click()
 
@@ -197,7 +226,7 @@ async function desktop(browser, url) {
     window.__throne.game.state.lives = 1
   })
   await page.getByRole('heading', { name: 'Трон пал' }).waitFor({ timeout: 60_000 })
-  await frames(page)
+  await waitForFrames(page)
   check(
     'экран поражения',
     (await page.locator('.sheet p').first().textContent()).startsWith('Отбито волн: 1.'),
@@ -208,23 +237,26 @@ async function desktop(browser, url) {
   )
   check(
     '«Это ваш новый рекорд»',
-    (await page.locator('.sheet .dim').textContent()) === 'Это ваш новый рекорд.',
+    (await page.locator('.sheet .note').textContent()) === 'Это ваш новый рекорд.',
   )
   await page.getByRole('button', { name: 'Сыграть ещё раз' }).click()
-  await frames(page)
-  s = await state(page)
+  await waitForFrames(page)
+  snapshot = await readGameSnapshot(page)
   check(
     'новая партия',
-    s.phase === 'build' && s.gold === 150 && s.lives === 20 && !s.towers.length,
-    JSON.stringify(s),
+    snapshot.phase === 'build' &&
+      snapshot.gold === 150 &&
+      snapshot.lives === 20 &&
+      !snapshot.towers.length,
+    JSON.stringify(snapshot),
   )
 
   // Победа: перескакиваем сразу на 20-ю волну
   await page.evaluate(() => {
-    const g = window.__throne.game
-    g.state.wave = 20
-    g.startWave()
-    g.state.queue = []
+    const game = window.__throne.game
+    game.state.wave = 20
+    game.startWave()
+    game.state.spawnQueue = []
   })
   await page.getByRole('heading', { name: 'Трон устоял' }).waitFor({ timeout: 10_000 })
   check(
@@ -232,21 +264,23 @@ async function desktop(browser, url) {
     (await page.locator('.sheet p').first().textContent()).startsWith('Все 20 волн отбиты.'),
   )
   await page.getByRole('button', { name: 'Играть дальше' }).click()
-  await frames(page)
+  await waitForFrames(page)
   check('бесконечный режим', (await page.locator('.hud .wave').textContent()) === 'Волна 21')
 
   // Баллиста (баланс v2): начинаем новую партию, чтобы хватило золота
   await page.evaluate(() => window.__throne.store.newGame())
   await page.getByRole('button', { name: /Баллиста/ }).click()
-  await clickTile(page, 5, 11)
+  await clickCell(page, 5, 11)
   await page.keyboard.press('Escape')
-  await clickTile(page, 5, 11)
-  const ballista = (await page.locator('.towerbox .who span').allTextContents()).join(' | ')
+  await clickCell(page, 5, 11)
+  const ballista = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
+    ' | ',
+  )
   check('баллиста: числа баланса v2', ballista === 'урон 50 → 80 | дальность 3,4 → 3,6', ballista)
 
   // Зажатый пробел не должен ставить паузу (повторы клавиши игнорируются)
   await page.keyboard.press('Escape')
-  await blur(page)
+  await blurActiveElement(page)
   await page.keyboard.down('Space')
   for (let i = 0; i < 5; i++) {
     await page.evaluate(() =>
@@ -256,14 +290,18 @@ async function desktop(browser, url) {
     )
   }
   await page.keyboard.up('Space')
-  s = await state(page)
-  check('зажатый пробел: волна идёт, паузы нет', s.phase === 'wave' && !s.paused, JSON.stringify(s))
+  snapshot = await readGameSnapshot(page)
+  check(
+    'зажатый пробел: волна идёт, паузы нет',
+    snapshot.phase === 'wave' && !snapshot.paused,
+    JSON.stringify(snapshot),
+  )
 
   // Испорченный рекорд в localStorage не ломает меню
   await page.evaluate(() => localStorage.setItem('throne-best', '123'))
   await page.reload()
   await page.waitForTimeout(500)
-  check('испорченный рекорд: меню на месте', (await play.count()) === 1)
+  check('испорченный рекорд: меню на месте', (await playButton.count()) === 1)
   await page.evaluate(() => localStorage.removeItem('throne-best'))
   await page.close()
 }
@@ -280,8 +318,11 @@ async function phone(browser, url) {
   await page.goto(url)
   await page.getByRole('button', { name: 'Играть' }).tap()
   await page.getByRole('button', { name: /Огневик/ }).tap()
-  const box = await page.locator('#board').boundingBox()
-  await page.touchscreen.tap(box.x + (5.5 / 9) * box.width, box.y + (11.5 / 13) * box.height)
+  const bounds = await page.locator('#board').boundingBox()
+  await page.touchscreen.tap(
+    bounds.x + (5.5 / COLS) * bounds.width,
+    bounds.y + (11.5 / ROWS) * bounds.height,
+  )
   await page.waitForTimeout(100)
   check(
     'постройка касанием',
@@ -304,8 +345,8 @@ try {
   await phone(browser, url)
   console.log('\nКонсоль браузера')
   check('нет ошибок', errors.length === 0, errors.join('\n'))
-} catch (e) {
-  console.error('\nПроверка прервалась:', e.message)
+} catch (error) {
+  console.error('\nПроверка прервалась:', error.message)
   failed++
 } finally {
   await browser.close()

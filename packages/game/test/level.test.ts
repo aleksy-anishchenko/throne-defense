@@ -11,39 +11,59 @@ describe('проверка уровня при загрузке', () => {
 
   it('ковёр и помост закрыты для постройки', () => {
     const level = createLevel(throneHall)
-    expect(level.blocked.has('4,12')).toBe(true) // ковёр у двери
-    expect(level.blocked.has('4,0')).toBe(true) // помост
-    expect(level.blocked.has('5,11')).toBe(false) // свободная плита
+    expect(level.blockedCellKeys.has('4,12')).toBe(true) // ковёр у двери
+    expect(level.blockedCellKeys.has('4,0')).toBe(true) // помост
+    expect(level.blockedCellKeys.has('5,11')).toBe(false) // свободная плита
   })
 
   it('первая точка пути может быть за краем — это дверь', () => {
-    expect(throneHall.path[0][1]).toBeGreaterThanOrEqual(throneHall.rows)
+    expect(throneHall.pathPoints[0][1]).toBeGreaterThanOrEqual(throneHall.rows)
     expect(() => createLevel(throneHall)).not.toThrow()
   })
 
-  const broken: [string, Partial<LevelDef>, string][] = [
-    ['неизвестный враг', withWaves([[['dragon', 1, 0, 0]]]), 'неизвестный враг «dragon» в волне 1'],
-    ['пустая волна', withWaves([[['rebel', 3, 1, 0]], []]), 'волна 2 пустая'],
-    ['ноль врагов в группе', withWaves([[['rebel', 0, 1, 0]]]), 'нужно целое ≥ 1'],
-    ['дробное число врагов', withWaves([[['rebel', 2.5, 1, 0]]]), 'нужно целое ≥ 1'],
-    ['отрицательная пауза', withWaves([[['rebel', 3, -1, 0]]]), 'отрицательная'],
-    ['нет волн', withWaves([]), 'нет ни одной волны'],
-    ['трон за краем', { throne: [4.5, 20] }, 'трон'],
-    [
-      'путь уходит за край',
-      {
-        path: [
+  const broken: { name: string; patch: Partial<LevelDef>; message: string }[] = [
+    {
+      name: 'неизвестный враг',
+      patch: withWaves([[['dragon', 1, 0, 0]]]),
+      message: 'неизвестный враг «dragon» в волне 1',
+    },
+    {
+      name: 'пустая волна',
+      patch: withWaves([[['rebel', 3, 1, 0]], []]),
+      message: 'волна 2 пустая',
+    },
+    {
+      name: 'ноль врагов в группе',
+      patch: withWaves([[['rebel', 0, 1, 0]]]),
+      message: 'нужно целое ≥ 1',
+    },
+    {
+      name: 'дробное число врагов',
+      patch: withWaves([[['rebel', 2.5, 1, 0]]]),
+      message: 'нужно целое ≥ 1',
+    },
+    {
+      name: 'отрицательная пауза',
+      patch: withWaves([[['rebel', 3, -1, 0]]]),
+      message: 'отрицательная',
+    },
+    { name: 'нет волн', patch: withWaves([]), message: 'нет ни одной волны' },
+    { name: 'трон за краем', patch: { throne: [4.5, 20] }, message: 'трон' },
+    {
+      name: 'путь уходит за край',
+      patch: {
+        pathPoints: [
           [4.5, 13.5],
           [4.5, -2],
         ],
       },
-      'путь должен заканчиваться на поле',
-    ],
-    ['помост за краем', { blocked: [[9, 0]] }, 'закрытая клетка'],
-    ['нет жизней', { startLives: 0 }, 'хотя бы одна жизнь'],
+      message: 'путь должен заканчиваться на поле',
+    },
+    { name: 'помост за краем', patch: { blockedCells: [[9, 0]] }, message: 'закрытая клетка' },
+    { name: 'нет жизней', patch: { startLives: 0 }, message: 'хотя бы одна жизнь' },
   ]
 
-  for (const [name, patch, message] of broken) {
+  for (const { name, patch, message } of broken) {
     it(`${name} — понятная ошибка`, () => {
       expect(() => createLevel({ ...throneHall, ...patch })).toThrow(message)
     })

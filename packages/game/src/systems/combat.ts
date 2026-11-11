@@ -1,161 +1,216 @@
 // Урон, снаряды и «выстрелы-ауры». Башни (data/towers.ts) собираются из этих кирпичиков.
 
 import { SCORE } from '../data/balance.ts'
-import type { DamageKind, Enemy, Tower, TowerStats, World } from '../types.ts'
+import type { DamageKind, Enemy, HomingShot, LineShot, Tower, TowerStats, World } from '../types.ts'
+
+/** Какая доля брони врага всё ещё режет пробивающий урон (0.5 = половина брони; физический урон режется всей бронёй, магический — не режется вовсе) */
+const PIERCING_ARMOR_FACTOR = 0.5
+
+/** Запас на попадание для снаряда, летящего по прямой (болт баллисты), в клетках: чуть щедрее радиуса врага */
+const LINE_SHOT_HIT_MARGIN = 0.1
+
+/** Какую долю радиуса врага добавляем к радиусу взрыва, в долях радиуса (0.5 = половину) */
+const SPLASH_ENEMY_RADIUS_SHARE = 0.5
+
+/** Настройки снаряда, который летит за целью */
+export interface HomingShotOptions {
+  /** Как рисовать снаряд: 'arrow' | 'orb' | 'bolt' */
+  look: string
+  /** Скорость полёта, клеток в секунду */
+  speed: number
+  damage: number
+  damageKind: DamageKind
+  /** Радиус взрыва в клетках; без него снаряд бьёт только цель */
+  splashRadius?: number
+}
+
+/** Настройки снаряда, который летит по прямой */
+export interface LineShotOptions {
+  /** Как рисовать снаряд: 'arrow' | 'orb' | 'bolt' */
+  look: string
+  /** Скорость полёта, клеток в секунду */
+  speed: number
+  damage: number
+  damageKind: DamageKind
+  /** Сколько врагов снаряд пробивает насквозь */
+  pierceCount: number
+  /** Сколько клеток снаряд пролетит, прежде чем исчезнуть */
+  maxDistance: number
+}
 
 /** Нанести урон врагу с учётом брони. Если враг погиб — награда и событие kill */
-export function hurt(w: World, e: Enemy, dmg: number, kind: DamageKind): void {
-  if (e.dead) return
-  let v = dmg
-  if (kind === 'phys') v = Math.max(1, dmg - e.def.armor)
-  else if (kind === 'pierce') v = Math.max(1, dmg - e.def.armor * 0.5)
-  e.hp -= v
-  w.emit('hit', e)
-  if (e.hp <= 0) {
-    const s = w.state
-    e.dead = true
-    s.gold += e.def.reward
-    s.score += e.def.reward * SCORE.perGold
-    s.kills++
-    w.emit('kill', e)
+export function damageEnemy(
+  world: World,
+  enemy: Enemy,
+  damage: number,
+  damageKind: DamageKind,
+): void {
+  if (enemy.isDead) return
+  let effectiveDamage = damage
+  if (damageKind === 'physical') effectiveDamage = Math.max(1, damage - enemy.def.armor)
+  else if (damageKind === 'piercing')
+    effectiveDamage = Math.max(1, damage - enemy.def.armor * PIERCING_ARMOR_FACTOR)
+  enemy.hp -= effectiveDamage
+  world.emit('hit', enemy)
+  if (enemy.hp <= 0) {
+    const state = world.state
+    enemy.isDead = true
+    state.gold += enemy.def.reward
+    state.score += enemy.def.reward * SCORE.perGold
+    state.kills++
+    world.emit('kill', enemy)
   }
 }
 
-/** Снаряд, который летит за целью. С splash > 0 взрывается и бьёт всех вокруг */
+/** Снаряд, который летит за целью. С splashRadius > 0 взрывается и бьёт всех вокруг */
 export function shootHoming(
-  w: World,
-  t: Tower,
+  world: World,
+  tower: Tower,
   target: Enemy,
-  o: { look: string; speed: number; dmg: number; damage: DamageKind; splash?: number },
+  options: HomingShotOptions,
 ): void {
-  w.state.shots.push({
+  world.state.shots.push({
     kind: 'homing',
-    look: o.look,
-    x: t.x,
-    y: t.y,
-    aim: t.aim,
+    look: options.look,
+    x: tower.x,
+    y: tower.y,
+    angle: tower.aimAngle,
     target,
-    tx: target.x,
-    ty: target.y,
-    speed: o.speed,
-    dmg: o.dmg,
-    damage: o.damage,
-    splash: o.splash ?? 0,
-    done: false,
+    targetX: target.x,
+    targetY: target.y,
+    speed: options.speed,
+    damage: options.damage,
+    damageKind: options.damageKind,
+    splashRadius: options.splashRadius ?? 0,
+    isDone: false,
   })
 }
 
-/** Снаряд, который летит по прямой на `reach` клеток и пробивает `pierce` врагов */
+/** Снаряд, который летит по прямой на `maxDistance` клеток и пробивает `pierceCount` врагов */
 export function shootLine(
-  w: World,
-  t: Tower,
+  world: World,
+  tower: Tower,
   target: Enemy,
-  o: {
-    look: string
-    speed: number
-    dmg: number
-    damage: DamageKind
-    pierce: number
-    reach: number
-  },
+  options: LineShotOptions,
 ): void {
-  const dist = Math.hypot(target.x - t.x, target.y - t.y) || 1
-  w.state.shots.push({
+  const distance = Math.hypot(target.x - tower.x, target.y - tower.y) || 1
+  world.state.shots.push({
     kind: 'line',
-    look: o.look,
-    x: t.x,
-    y: t.y,
-    aim: t.aim,
-    dx: (target.x - t.x) / dist,
-    dy: (target.y - t.y) / dist,
-    speed: o.speed,
-    left: o.reach,
-    dmg: o.dmg,
-    damage: o.damage,
-    pierce: o.pierce,
-    hit: new Set(),
-    done: false,
+    look: options.look,
+    x: tower.x,
+    y: tower.y,
+    angle: tower.aimAngle,
+    directionX: (target.x - tower.x) / distance,
+    directionY: (target.y - tower.y) / distance,
+    speed: options.speed,
+    distanceLeft: options.maxDistance,
+    damage: options.damage,
+    damageKind: options.damageKind,
+    piercesLeft: options.pierceCount,
+    hitEnemies: new Set(),
+    isDone: false,
   })
 }
 
 /** Волна холода: замедляет и ранит всех в радиусе башни */
-export function frostPulse(w: World, t: Tower, s: TowerStats): void {
-  const slow = s.slow ?? 0
-  const dur = s.dur ?? 0
-  const r2 = s.range * s.range
-  for (const e of w.state.enemies) {
-    if (e.dead || (e.x - t.x) ** 2 + (e.y - t.y) ** 2 > r2) continue
-    const f = slow * (1 - (e.def.slowResist ?? 0))
-    e.slowF = e.slowT > 0 ? Math.max(e.slowF, f) : f
-    e.slowT = Math.max(e.slowT, dur)
-    hurt(w, e, s.dmg, 'magic')
+export function frostPulse(world: World, tower: Tower, stats: TowerStats): void {
+  const slowAmount = stats.slowAmount ?? 0
+  const slowDuration = stats.slowDuration ?? 0
+  const rangeSquared = stats.range * stats.range
+  for (const enemy of world.state.enemies) {
+    if (enemy.isDead || (enemy.x - tower.x) ** 2 + (enemy.y - tower.y) ** 2 > rangeSquared) continue
+    const slowFactor = slowAmount * (1 - (enemy.def.slowResistance ?? 0))
+    // Если враг уже замедлен — оставляем более сильное замедление; если прежнее замедление
+    // кончилось — берём новое как есть. (Сила и длительность обновляются по отдельности —
+    // так было в оригинале, баланс настроен с этим.)
+    enemy.slowFactor = enemy.slowTimeLeft > 0 ? Math.max(enemy.slowFactor, slowFactor) : slowFactor
+    enemy.slowTimeLeft = Math.max(enemy.slowTimeLeft, slowDuration)
+    damageEnemy(world, enemy, stats.damage, 'magic')
   }
 }
 
-/** Расстояние от точки P до отрезка AB */
-function distToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
-  const dx = bx - ax
-  const dy = by - ay
-  const l2 = dx * dx + dy * dy
-  let f = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0
-  f = Math.max(0, Math.min(1, f))
-  return Math.hypot(px - ax - dx * f, py - ay - dy * f)
+/**
+ * Расстояние от точки P (px, py) до отрезка AB (ax, ay — начало, bx, by — конец).
+ * Названия px/py/ax/ay/bx/by — обычные в геометрии.
+ */
+function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
+  const segmentX = bx - ax
+  const segmentY = by - ay
+  const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY
+  // Где на отрезке ближайшая к P точка: 0 — это A, 1 — это B
+  let along = segmentLengthSquared
+    ? ((px - ax) * segmentX + (py - ay) * segmentY) / segmentLengthSquared
+    : 0
+  along = Math.max(0, Math.min(1, along))
+  return Math.hypot(px - ax - segmentX * along, py - ay - segmentY * along)
 }
 
 /** Сдвинуть все снаряды на dt секунд и нанести урон тем, в кого попали */
-export function updateShots(w: World, dt: number): void {
-  const { enemies } = w.state
+export function updateShots(world: World, dt: number): void {
+  for (const shot of world.state.shots) {
+    if (shot.kind === 'line') updateLineShot(world, shot, dt)
+    else updateHomingShot(world, shot, dt)
+  }
+}
 
-  for (const s of w.state.shots) {
-    if (s.kind === 'line') {
-      const mv = Math.min(s.speed * dt, s.left)
-      const nx = s.x + s.dx * mv
-      const ny = s.y + s.dy * mv
-      for (const e of enemies) {
-        if (e.dead || s.hit.has(e)) continue
-        if (distToSegment(e.x, e.y, s.x, s.y, nx, ny) <= e.def.r + 0.1) {
-          s.hit.add(e)
-          hurt(w, e, s.dmg, s.damage)
-          if (--s.pierce <= 0) {
-            s.done = true
-            break
-          }
-        }
+/** Снаряд по прямой: бьёт всех, кого задел на этом шаге, пока не кончатся пробития или дальность */
+function updateLineShot(world: World, shot: LineShot, dt: number): void {
+  const travelDistance = Math.min(shot.speed * dt, shot.distanceLeft)
+  const newX = shot.x + shot.directionX * travelDistance
+  const newY = shot.y + shot.directionY * travelDistance
+  for (const enemy of world.state.enemies) {
+    if (enemy.isDead || shot.hitEnemies.has(enemy)) continue
+    if (
+      distanceToSegment(enemy.x, enemy.y, shot.x, shot.y, newX, newY) <=
+      enemy.def.radius + LINE_SHOT_HIT_MARGIN
+    ) {
+      shot.hitEnemies.add(enemy)
+      damageEnemy(world, enemy, shot.damage, shot.damageKind)
+      shot.piercesLeft--
+      if (shot.piercesLeft <= 0) {
+        shot.isDone = true
+        break
       }
-      s.x = nx
-      s.y = ny
-      s.left -= mv
-      if (s.left <= 0) s.done = true
-      continue
     }
+  }
+  shot.x = newX
+  shot.y = newY
+  shot.distanceLeft -= travelDistance
+  if (shot.distanceLeft <= 0) shot.isDone = true
+}
 
-    // Снаряд за целью: пока цель жива — следим за ней
-    if (!s.target.dead) {
-      s.tx = s.target.x
-      s.ty = s.target.y
-    }
-    const dx = s.tx - s.x
-    const dy = s.ty - s.y
-    const dist = Math.hypot(dx, dy)
-    const mv = s.speed * dt
-    if (dist > mv) {
-      s.x += (dx / dist) * mv
-      s.y += (dy / dist) * mv
-      s.aim = Math.atan2(dy, dx)
-      continue
-    }
+/** Снаряд за целью: летит к ней, а долетев — бьёт цель или взрывается */
+function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
+  // Пока цель жива — следим за ней
+  if (!shot.target.isDead) {
+    shot.targetX = shot.target.x
+    shot.targetY = shot.target.y
+  }
+  const deltaX = shot.targetX - shot.x
+  const deltaY = shot.targetY - shot.y
+  const distance = Math.hypot(deltaX, deltaY)
+  const travelDistance = shot.speed * dt
+  if (distance > travelDistance) {
+    shot.x += (deltaX / distance) * travelDistance
+    shot.y += (deltaY / distance) * travelDistance
+    shot.angle = Math.atan2(deltaY, deltaX)
+    return
+  }
 
-    // Долетел
-    s.done = true
-    if (s.splash > 0) {
-      for (const e of enemies) {
-        if (!e.dead && Math.hypot(e.x - s.tx, e.y - s.ty) <= s.splash + e.def.r * 0.5) {
-          hurt(w, e, s.dmg, s.damage)
-        }
+  // Долетел
+  shot.isDone = true
+  if (shot.splashRadius > 0) {
+    for (const enemy of world.state.enemies) {
+      if (
+        !enemy.isDead &&
+        Math.hypot(enemy.x - shot.targetX, enemy.y - shot.targetY) <=
+          shot.splashRadius + enemy.def.radius * SPLASH_ENEMY_RADIUS_SHARE
+      ) {
+        damageEnemy(world, enemy, shot.damage, shot.damageKind)
       }
-      w.emit('splash', { x: s.tx, y: s.ty, radius: s.splash })
-    } else if (!s.target.dead) {
-      hurt(w, s.target, s.dmg, s.damage)
     }
+    world.emit('splash', { x: shot.targetX, y: shot.targetY, radius: shot.splashRadius })
+  } else if (!shot.target.isDead) {
+    damageEnemy(world, shot.target, shot.damage, shot.damageKind)
   }
 }

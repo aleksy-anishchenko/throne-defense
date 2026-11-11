@@ -2,185 +2,280 @@
 // Логика игры про них ничего не знает — эффекты появляются в ответ на её события.
 
 import type { Enemy, Game, Tower } from '@throne/game'
-import { enemyArt } from './enemies'
-import { GOLD, circle, reduceMotion } from './shapes'
+import { getEnemyArt } from './enemies'
+import { GOLD, circle, prefersReducedMotion, type Canvas2D } from './shapes'
 import { TOWER_ART } from './towers'
 
-type Ctx = CanvasRenderingContext2D
-
-export type Fx =
-  | { k: 'text'; x: number; y: number; str: string; life: number; max: number }
-  | {
-      k: 'spark'
-      x: number
-      y: number
-      vx: number
-      vy: number
-      color: string
-      life: number
-      max: number
-    }
-  | { k: 'ring'; x: number; y: number; r0: number; r1: number; life: number; max: number }
-  | { k: 'boom'; x: number; y: number; r1: number; life: number; max: number }
-
-export interface FxApi {
-  add(f: Fx): void
+interface TextEffect {
+  kind: 'text'
+  x: number
+  y: number
+  text: string
+  /** Сколько эффекту осталось жить, с */
+  timeLeft: number
+  /** Сколько он живёт всего, с */
+  duration: number
 }
 
-export interface Effects extends FxApi {
+interface SparkEffect {
+  kind: 'spark'
+  x: number
+  y: number
+  vx: number
+  vy: number
+  color: string
+  timeLeft: number
+  duration: number
+}
+
+interface RingEffect {
+  kind: 'ring'
+  x: number
+  y: number
+  /** Радиус в начале, клеток */
+  startRadius: number
+  /** Радиус в конце, клеток */
+  endRadius: number
+  timeLeft: number
+  duration: number
+}
+
+interface BoomEffect {
+  kind: 'boom'
+  x: number
+  y: number
+  /** Радиус взрыва, клеток */
+  radius: number
+  timeLeft: number
+  duration: number
+}
+
+export type Effect = TextEffect | SparkEffect | RingEffect | BoomEffect
+
+export interface EffectSink {
+  add(effect: Effect): void
+}
+
+export interface Effects extends EffectSink {
   /** Тряска экрана, с (идёт в реальном времени) */
-  readonly shake: number
+  readonly shakeTime: number
   /** Красная вспышка ранения трона, с */
-  readonly hurt: number
+  readonly throneHurtTime: number
   update(simDt: number, realDt: number): void
   /** Сколько ещё длится «подпрыгивание» башни после постройки/улучшения */
-  popOf(t: Tower): number
+  popTimeLeft(tower: Tower): number
   /** Белая вспышка врага от удара */
-  flashOf(e: Enemy): boolean
+  isFlashing(enemy: Enemy): boolean
   /** Сдвиг фазы покачивания, чтобы враги шагали не в ногу */
-  phaseOf(e: Enemy): number
-  draw(c: Ctx): void
+  bobPhase(enemy: Enemy): number
+  draw(ctx: Canvas2D): void
   /** Надписи рисуются в пикселях, а не в клетках — так шрифт не мылится */
-  drawTexts(c: Ctx, tilePx: number): void
+  drawTexts(ctx: Canvas2D, cellCssPx: number): void
   dispose(): void
 }
 
-const MAX_FX = 260
+/** Больше стольких эффектов одновременно не заводим */
+const MAX_EFFECTS = 260
+/** Сколько длится «подпрыгивание» башни после постройки/улучшения, с */
+const POP_DURATION = 0.25
+/** Сколько длится белая вспышка врага от удара, с */
+const HIT_FLASH_DURATION = 0.09
+/** Сколько живёт всплывающая надпись «+6», с */
+const KILL_TEXT_DURATION = 0.8
+/** Сколько длится взрыв, с */
+const BOOM_DURATION = 0.3
+/** Тряска экрана при потере жизни, с */
+const LEAK_SHAKE_DURATION = 0.35
+/** Красная вспышка при потере жизни, с */
+const THRONE_HURT_DURATION = 0.5
+/** Как быстро искры падают вниз, клеток/с² (прибавка скорости вниз) */
+const SPARK_GRAVITY = 2.5
+/** Как быстро надпись всплывает вверх, клеток/с */
+const TEXT_RISE_SPEED = 0.7
+/** Если эффектов больше стольких — убираем погасшие, даже если самый старый ещё не погас */
+const COMPACTION_THRESHOLD = 40
+/** Искры: самая малая скорость и разброс скорости, клеток/с */
+const SPARK_MIN_SPEED = 0.8
+const SPARK_SPEED_SPREAD = 1.8
+/** Искры: самое малое время жизни и разброс, с */
+const SPARK_MIN_LIFETIME = 0.3
+const SPARK_LIFETIME_SPREAD = 0.3
+/** Искры: подброс вверх в начале, клеток/с */
+const SPARK_LIFT = 0.6
+/** Размер шрифта надписи в долях клетки */
+const TEXT_FONT_SHARE = 0.34
+/** Сдвиг тени надписи, px */
+const TEXT_SHADOW_OFFSET_PX = 1
 
 export function createEffects(game: Game): Effects {
-  let fx: Fx[] = []
-  let shake = 0
-  let hurt = 0
+  let activeEffects: Effect[] = []
+  let shakeTime = 0
+  let throneHurtTime = 0
   // До какого игрового времени длится эффект. WeakMap — чтобы не мешать сборщику мусора
-  const popUntil = new WeakMap<Tower, number>()
-  const flashUntil = new WeakMap<Enemy, number>()
-  const phases = new WeakMap<Enemy, number>()
+  const popEndTime = new WeakMap<Tower, number>()
+  const flashEndTime = new WeakMap<Enemy, number>()
+  // Случайная фаза покачивания каждого врага — чтобы шагали не в ногу
+  const bobPhases = new WeakMap<Enemy, number>()
 
-  const add = (f: Fx) => {
-    if (fx.length < MAX_FX) fx.push(f)
+  const add = (effect: Effect) => {
+    if (activeEffects.length < MAX_EFFECTS) activeEffects.push(effect)
   }
 
-  function burst(x: number, y: number, color: string, n: number) {
-    if (reduceMotion) return
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2
-      const v = 0.8 + Math.random() * 1.8
-      const life = 0.3 + Math.random() * 0.3
+  function spawnSparks(x: number, y: number, color: string, count: number) {
+    if (prefersReducedMotion) return
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const speed = SPARK_MIN_SPEED + Math.random() * SPARK_SPEED_SPREAD
+      const timeLeft = SPARK_MIN_LIFETIME + Math.random() * SPARK_LIFETIME_SPREAD
       add({
-        k: 'spark',
+        kind: 'spark',
         x,
         y,
-        vx: Math.cos(a) * v,
-        vy: Math.sin(a) * v - 0.6,
-        life,
-        max: life,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - SPARK_LIFT,
+        timeLeft,
+        duration: timeLeft,
         color,
       })
     }
   }
 
-  const now = () => game.state.time
-  const pop = (t: Tower) => popUntil.set(t, now() + 0.25)
+  const gameTime = () => game.state.time
+  const startPop = (tower: Tower) => popEndTime.set(tower, gameTime() + POP_DURATION)
 
-  const unsubscribe = [
+  function drawRing(ctx: Canvas2D, ring: RingEffect, lifeShare: number) {
+    ctx.strokeStyle = `rgba(170,230,255,${lifeShare * 0.8})`
+    ctx.lineWidth = 0.05
+    circle(
+      ctx,
+      ring.x,
+      ring.y,
+      ring.startRadius + (ring.endRadius - ring.startRadius) * (1 - lifeShare),
+    )
+    ctx.stroke()
+  }
+
+  function drawBoom(ctx: Canvas2D, boom: BoomEffect, lifeShare: number) {
+    ctx.fillStyle = `rgba(255,140,50,${lifeShare * 0.45})`
+    circle(ctx, boom.x, boom.y, boom.radius * (1 - lifeShare * 0.6))
+    ctx.fill()
+  }
+
+  function drawSpark(ctx: Canvas2D, spark: SparkEffect, lifeShare: number) {
+    ctx.globalAlpha = lifeShare
+    ctx.fillStyle = spark.color
+    ctx.fillRect(spark.x - 0.035, spark.y - 0.035, 0.07, 0.07)
+    ctx.globalAlpha = 1
+  }
+
+  const unsubscribers = [
     game.on('reset', () => {
-      fx = []
-      shake = 0
-      hurt = 0
+      activeEffects = []
+      shakeTime = 0
+      throneHurtTime = 0
     }),
-    game.on('build', pop),
-    game.on('upgrade', pop),
-    game.on('hit', (e) => flashUntil.set(e, now() + 0.09)),
-    game.on('kill', (e) => {
-      add({ k: 'text', x: e.x, y: e.y - e.def.r, str: '+' + e.def.reward, life: 0.8, max: 0.8 })
-      const art = enemyArt(e.def.id)
-      burst(e.x, e.y, art.color, art.sparks)
+    game.on('build', startPop),
+    game.on('upgrade', startPop),
+    game.on('hit', (enemy) => flashEndTime.set(enemy, gameTime() + HIT_FLASH_DURATION)),
+    game.on('kill', (enemy) => {
+      add({
+        kind: 'text',
+        x: enemy.x,
+        y: enemy.y - enemy.def.radius,
+        text: '+' + enemy.def.reward,
+        timeLeft: KILL_TEXT_DURATION,
+        duration: KILL_TEXT_DURATION,
+      })
+      const art = getEnemyArt(enemy.def.id)
+      spawnSparks(enemy.x, enemy.y, art.sparkColor, art.sparkCount)
     }),
     game.on('fire', ({ tower, stats }) => TOWER_ART[tower.def.id]?.onFire?.({ add }, tower, stats)),
     game.on('splash', ({ x, y, radius }) =>
-      add({ k: 'boom', x, y, r1: radius, life: 0.3, max: 0.3 }),
+      add({ kind: 'boom', x, y, radius, timeLeft: BOOM_DURATION, duration: BOOM_DURATION }),
     ),
     game.on('leak', () => {
-      shake = 0.35
-      hurt = 0.5
+      shakeTime = LEAK_SHAKE_DURATION
+      throneHurtTime = THRONE_HURT_DURATION
     }),
   ]
 
   return {
     add,
-    get shake() {
-      return shake
+    get shakeTime() {
+      return shakeTime
     },
-    get hurt() {
-      return hurt
+    get throneHurtTime() {
+      return throneHurtTime
     },
 
     update(simDt, realDt) {
-      if (shake > 0) shake -= realDt
-      if (hurt > 0) hurt -= realDt
-      for (const f of fx) {
-        f.life -= simDt
-        if (f.k === 'spark') {
-          f.x += f.vx * simDt
-          f.y += f.vy * simDt
-          f.vy += 2.5 * simDt
-        } else if (f.k === 'text') {
-          f.y -= 0.7 * simDt
+      if (shakeTime > 0) shakeTime -= realDt
+      if (throneHurtTime > 0) throneHurtTime -= realDt
+      for (const effect of activeEffects) {
+        effect.timeLeft -= simDt
+        if (effect.kind === 'spark') {
+          effect.x += effect.vx * simDt
+          effect.y += effect.vy * simDt
+          effect.vy += SPARK_GRAVITY * simDt
+        } else if (effect.kind === 'text') {
+          effect.y -= TEXT_RISE_SPEED * simDt
         }
       }
-      if ((fx.length && fx[0].life <= 0) || fx.length > 40) fx = fx.filter((f) => f.life > 0)
-    },
-
-    popOf: (t) => (popUntil.get(t) ?? 0) - now(),
-    flashOf: (e) => (flashUntil.get(e) ?? 0) > now(),
-    phaseOf(e) {
-      let p = phases.get(e)
-      if (p === undefined) {
-        p = Math.random() * Math.PI * 2
-        phases.set(e, p)
+      if (
+        (activeEffects.length && activeEffects[0].timeLeft <= 0) ||
+        activeEffects.length > COMPACTION_THRESHOLD
+      ) {
+        activeEffects = activeEffects.filter((effect) => effect.timeLeft > 0)
       }
-      return p
     },
 
-    draw(c) {
-      for (const f of fx) {
-        if (f.life <= 0) continue
-        const a = f.life / f.max
-        if (f.k === 'ring') {
-          c.strokeStyle = `rgba(170,230,255,${a * 0.8})`
-          c.lineWidth = 0.05
-          circle(c, f.x, f.y, f.r0 + (f.r1 - f.r0) * (1 - a))
-          c.stroke()
-        } else if (f.k === 'boom') {
-          c.fillStyle = `rgba(255,140,50,${a * 0.45})`
-          circle(c, f.x, f.y, f.r1 * (1 - a * 0.6))
-          c.fill()
-        } else if (f.k === 'spark') {
-          c.globalAlpha = a
-          c.fillStyle = f.color
-          c.fillRect(f.x - 0.035, f.y - 0.035, 0.07, 0.07)
-          c.globalAlpha = 1
+    popTimeLeft: (tower) => (popEndTime.get(tower) ?? 0) - gameTime(),
+    isFlashing: (enemy) => (flashEndTime.get(enemy) ?? 0) > gameTime(),
+    bobPhase(enemy) {
+      let phase = bobPhases.get(enemy)
+      if (phase === undefined) {
+        phase = Math.random() * Math.PI * 2
+        bobPhases.set(enemy, phase)
+      }
+      return phase
+    },
+
+    draw(ctx) {
+      for (const effect of activeEffects) {
+        if (effect.timeLeft <= 0) continue
+        // Доля оставшейся жизни: 1 — только появился, 0 — погас
+        const lifeShare = effect.timeLeft / effect.duration
+        if (effect.kind === 'ring') {
+          drawRing(ctx, effect, lifeShare)
+        } else if (effect.kind === 'boom') {
+          drawBoom(ctx, effect, lifeShare)
+        } else if (effect.kind === 'spark') {
+          drawSpark(ctx, effect, lifeShare)
         }
       }
     },
 
-    drawTexts(c, tilePx) {
-      c.textAlign = 'center'
-      c.textBaseline = 'middle'
-      c.font = `800 ${Math.round(tilePx * 0.34)}px "Alegreya Sans",system-ui,sans-serif`
-      for (const f of fx) {
-        if (f.k !== 'text' || f.life <= 0) continue
-        c.globalAlpha = Math.min(1, (f.life / f.max) * 2)
-        c.fillStyle = 'rgba(8,9,18,.8)'
-        c.fillText(f.str, f.x * tilePx + 1, f.y * tilePx + 1)
-        c.fillStyle = GOLD
-        c.fillText(f.str, f.x * tilePx, f.y * tilePx)
+    drawTexts(ctx, cellCssPx) {
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.font = `800 ${Math.round(cellCssPx * TEXT_FONT_SHARE)}px "Alegreya Sans",system-ui,sans-serif`
+      for (const effect of activeEffects) {
+        if (effect.kind !== 'text' || effect.timeLeft <= 0) continue
+        ctx.globalAlpha = Math.min(1, (effect.timeLeft / effect.duration) * 2)
+        ctx.fillStyle = 'rgba(8,9,18,.8)'
+        ctx.fillText(
+          effect.text,
+          effect.x * cellCssPx + TEXT_SHADOW_OFFSET_PX,
+          effect.y * cellCssPx + TEXT_SHADOW_OFFSET_PX,
+        )
+        ctx.fillStyle = GOLD
+        ctx.fillText(effect.text, effect.x * cellCssPx, effect.y * cellCssPx)
       }
-      c.globalAlpha = 1
+      ctx.globalAlpha = 1
     },
 
     dispose() {
-      unsubscribe.forEach((off) => off())
+      unsubscribers.forEach((off) => off())
     },
   }
 }

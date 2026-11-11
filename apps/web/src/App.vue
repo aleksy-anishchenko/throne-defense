@@ -16,17 +16,17 @@ const UNLOCK_EVENTS = ['pointerup', 'click', 'keydown'] as const
 const unlockAudio = () => sfx.unlock()
 
 // Свернули вкладку посреди боя — ставим на паузу
-function onVisibility() {
+function onVisibilityChange() {
   if (document.hidden) store.pauseIfFighting()
 }
 
 onMounted(() => {
   for (const type of UNLOCK_EVENTS) document.addEventListener(type, unlockAudio, { passive: true })
-  document.addEventListener('visibilitychange', onVisibility)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 onUnmounted(() => {
   for (const type of UNLOCK_EVENTS) document.removeEventListener(type, unlockAudio)
-  document.removeEventListener('visibilitychange', onVisibility)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 </script>
 

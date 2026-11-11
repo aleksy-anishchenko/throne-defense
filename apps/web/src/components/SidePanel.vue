@@ -8,7 +8,7 @@ const store = useGameStore()
 </script>
 
 <template>
-  <aside class="panel" :class="{ tw: store.hud.selType !== null }">
+  <aside class="panel" :class="{ 'has-selected-tower': store.hud.selectedTowerId !== null }">
     <p id="hint">{{ store.hint }}</p>
     <TowerInfo />
     <ShopPanel />

@@ -1,5 +1,5 @@
-import { STEP, createGame, type Game, type GameEvents } from '../src/index.ts'
-import { spawn } from '../src/systems/enemies.ts'
+import { SIMULATION_STEP, createGame, type Game, type GameEvents } from '../src/index.ts'
+import { spawnEnemy } from '../src/systems/enemies.ts'
 import { throneHall } from '../src/levels/throne-hall.ts'
 import type { Enemy, World } from '../src/types.ts'
 
@@ -10,29 +10,34 @@ export function newGame(): Game {
   return game
 }
 
-/** Мир для прямого вызова систем (hurt, spawn и т.п.) */
+/** Мир для прямого вызова систем (damageEnemy, spawnEnemy и т.п.) */
 export function worldOf(game: Game): World {
   return { state: game.state, level: game.level, emit: () => {} }
 }
 
-/** Выпустить врага и поставить его в точку пути d */
-export function placeEnemy(game: Game, id: string, d = 0): Enemy {
-  spawn(worldOf(game), id)
-  const e = game.state.enemies[game.state.enemies.length - 1]
-  e.d = d
-  ;[e.x, e.y] = game.level.path.posAt(d)
-  return e
+/** Выпустить врага и поставить его в точку пути pathDistance */
+export function placeEnemy(game: Game, enemyId: string, pathDistance = 0): Enemy {
+  spawnEnemy(worldOf(game), enemyId)
+  const enemy = game.state.enemies[game.state.enemies.length - 1]
+  enemy.pathDistance = pathDistance
+  const [x, y] = game.level.path.positionAt(pathDistance)
+  enemy.x = x
+  enemy.y = y
+  return enemy
 }
 
 /** Шагать, пока не выполнится условие (или не кончится лимит) */
-export function stepUntil(game: Game, done: () => boolean, maxSeconds = 600): void {
-  for (let i = 0; i < maxSeconds / STEP && !done(); i++) game.step(STEP)
+export function stepUntil(game: Game, isDone: () => boolean, maxSeconds = 600): void {
+  for (let i = 0; i < maxSeconds / SIMULATION_STEP && !isDone(); i++) game.step(SIMULATION_STEP)
 }
 
-/** Записывать события игры */
+/**
+ * Подписывается на основные события и возвращает массив, в который по порядку добавляются их названия.
+ * Частые события (fire, hit, splash) не пишем — иначе в тестах слишком много шума.
+ */
 export function recordEvents(game: Game): (keyof GameEvents)[] {
-  const log: (keyof GameEvents)[] = []
-  const types: (keyof GameEvents)[] = [
+  const recordedEvents: (keyof GameEvents)[] = []
+  const eventTypes: (keyof GameEvents)[] = [
     'build',
     'upgrade',
     'sell',
@@ -43,6 +48,6 @@ export function recordEvents(game: Game): (keyof GameEvents)[] {
     'victory',
     'defeat',
   ]
-  for (const t of types) game.on(t, () => log.push(t))
-  return log
+  for (const eventType of eventTypes) game.on(eventType, () => recordedEvents.push(eventType))
+  return recordedEvents
 }

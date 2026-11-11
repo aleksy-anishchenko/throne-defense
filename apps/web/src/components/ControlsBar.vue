@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { TOWER_LIST } from '@throne/game'
+import { MAX_HOTKEY_DIGIT } from '@/composables/useKeyboard'
 import { useGameStore } from '@/stores/game'
 
 const store = useGameStore()
-const lastKey = Math.min(9, TOWER_LIST.length)
+const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
 </script>
 
 <template>
@@ -22,11 +23,11 @@ const lastKey = Math.min(9, TOWER_LIST.length)
     <button
       class="btn icon"
       type="button"
-      :aria-label="store.hud.paused ? 'Продолжить' : 'Пауза'"
-      :aria-pressed="store.hud.paused"
+      :aria-label="store.hud.isPaused ? 'Продолжить' : 'Пауза'"
+      :aria-pressed="store.hud.isPaused"
       @click="store.togglePause"
     >
-      <svg v-if="store.hud.paused" viewBox="0 0 24 24" aria-hidden="true">
+      <svg v-if="store.hud.isPaused" viewBox="0 0 24 24" aria-hidden="true">
         <path fill="currentColor" d="M7 4l13 8-13 8z" />
       </svg>
       <svg v-else viewBox="0 0 24 24" aria-hidden="true">
@@ -37,13 +38,13 @@ const lastKey = Math.min(9, TOWER_LIST.length)
       class="btn icon"
       type="button"
       aria-label="Звук"
-      :aria-pressed="!store.muted"
-      @click="store.toggleSound"
+      :aria-pressed="!store.isMuted"
+      @click="store.toggleMute"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path fill="currentColor" d="M4 9h4l5-4v14l-5-4H4z" />
         <path
-          v-if="store.muted"
+          v-if="store.isMuted"
           fill="none"
           stroke="currentColor"
           stroke-width="2"
@@ -61,8 +62,8 @@ const lastKey = Math.min(9, TOWER_LIST.length)
       </svg>
     </button>
     <p class="keys">
-      Клавиши: 1–{{ lastKey }} выбирают стража, пробел начинает волну и ставит паузу, стрелки и
-      Enter ставят стража без мыши.
+      Клавиши: 1–{{ lastHotkeyDigit }} выбирают стража, пробел начинает волну и ставит паузу,
+      стрелки и Enter ставят стража без мыши.
     </p>
   </div>
 </template>

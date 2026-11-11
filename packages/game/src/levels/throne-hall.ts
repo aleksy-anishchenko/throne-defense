@@ -1,6 +1,6 @@
 import type { LevelDef, WaveGroup } from '../types.ts'
 
-// Каждая волна — список групп: [кто, сколько, пауза между врагами (с), задержка начала (с)]
+// Каждая волна — список групп: [id врага, сколько, пауза между врагами (с), задержка начала (с)]
 const waves: WaveGroup[][] = [
   [['rebel', 8, 1.1, 0]],
   [['rebel', 12, 0.9, 0]],
@@ -80,12 +80,18 @@ const waves: WaveGroup[][] = [
   ],
 ]
 
+/** В бесконечном режиме босс выходит на каждой 5-й волне (номер волны кратен 5) */
+const ENDLESS_BOSS_EVERY = 5
+
+/** Каждые столько волн бесконечного режима боссов в волне становится на одного больше */
+const ENDLESS_EXTRA_BOSS_EVERY = 10
+
 export const throneHall: LevelDef = {
   id: 'throne-hall',
   name: 'Тронный зал',
   cols: 9,
   rows: 13,
-  path: [
+  pathPoints: [
     [4.5, 13.5],
     [4.5, 10.5],
     [1.5, 10.5],
@@ -99,7 +105,7 @@ export const throneHall: LevelDef = {
   ],
   throne: [4.5, 0.46],
   // Помост с троном
-  blocked: [
+  blockedCells: [
     [3, 0],
     [4, 0],
     [5, 0],
@@ -108,14 +114,16 @@ export const throneHall: LevelDef = {
   startLives: 20,
   waves,
 
-  endless(n) {
-    const k = n - waves.length
+  endlessWaveGroups(waveNumber) {
+    // Сколько волн прошло после последней волны из таблицы
+    const wavesPastEnd = waveNumber - waves.length
     const groups: WaveGroup[] = [
-      ['armor', 14 + 2 * k, 0.6, 0],
-      ['ogre', 6 + k, 1.8, 3],
-      ['scout', 24 + 3 * k, 0.25, 8],
+      ['armor', 14 + 2 * wavesPastEnd, 0.6, 0],
+      ['ogre', 6 + wavesPastEnd, 1.8, 3],
+      ['scout', 24 + 3 * wavesPastEnd, 0.25, 8],
     ]
-    if (n % 5 === 0) groups.push(['boss', 1 + Math.floor(k / 10), 6, 0])
+    if (waveNumber % ENDLESS_BOSS_EVERY === 0)
+      groups.push(['boss', 1 + Math.floor(wavesPastEnd / ENDLESS_EXTRA_BOSS_EVERY), 6, 0])
     return groups
   },
 }

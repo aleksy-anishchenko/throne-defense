@@ -1,62 +1,63 @@
 // Враги: появление, движение по ковру, прорыв к трону.
 
-import { hpMul } from '../data/balance.ts'
+import { hpMultiplier } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
 import type { World } from '../types.ts'
 
-export function spawn(w: World, enemyId: string): void {
+export function spawnEnemy(world: World, enemyId: string): void {
   const def = ENEMIES[enemyId]
-  const s = w.state
-  const hp = Math.round(def.hp * hpMul(s.wave, w.level.maxWave))
-  const [x, y] = w.level.path.points[0]
-  s.enemies.push({
-    id: s.nextId++,
+  const state = world.state
+  const hp = Math.round(def.hp * hpMultiplier(state.wave, world.level.waveCount))
+  const [x, y] = world.level.path.points[0]
+  state.enemies.push({
+    id: state.nextId++,
     def,
     hp,
     maxHp: hp,
-    d: 0,
+    pathDistance: 0,
     x,
     y,
-    slowT: 0,
-    slowF: 0,
-    dead: false,
+    slowTimeLeft: 0,
+    slowFactor: 0,
+    isDead: false,
   })
 }
 
 /**
  * Сдвинуть всех врагов на dt секунд.
- * Возвращает false, если кто-то дошёл до трона и трон пал.
+ * Возвращает true, если трон устоял (можно продолжать бой),
+ * и false, если кто-то дошёл до трона и жизни кончились — трон пал, игра проиграна.
  */
-export function moveEnemies(w: World, dt: number): boolean {
-  const s = w.state
-  const { path } = w.level
+export function moveEnemies(world: World, dt: number): boolean {
+  const state = world.state
+  const { path } = world.level
 
-  for (const e of s.enemies) {
-    if (e.dead) continue
-    let sp = e.def.speed
-    if (e.slowT > 0) {
-      sp *= 1 - e.slowF
-      e.slowT -= dt
+  for (const enemy of state.enemies) {
+    if (enemy.isDead) continue
+    let speed = enemy.def.speed
+    if (enemy.slowTimeLeft > 0) {
+      speed *= 1 - enemy.slowFactor
+      enemy.slowTimeLeft -= dt
     }
-    e.d += sp * dt
+    enemy.pathDistance += speed * dt
 
-    if (e.d >= path.length) {
+    if (enemy.pathDistance >= path.length) {
       // Дошёл до трона
-      e.dead = true
-      s.lives -= e.def.dmg
-      w.emit('leak', e)
-      if (s.lives <= 0) {
-        s.lives = 0
-        s.phase = 'over'
-        w.emit('defeat', undefined)
+      enemy.isDead = true
+      state.lives -= enemy.def.throneDamage
+      world.emit('leak', enemy)
+      if (state.lives <= 0) {
+        state.lives = 0
+        state.phase = 'lost'
+        world.emit('defeat', undefined)
         return false
       }
       continue
     }
 
-    const [x, y] = path.posAt(e.d)
-    e.x = x
-    e.y = y
+    const [x, y] = path.positionAt(enemy.pathDistance)
+    enemy.x = x
+    enemy.y = y
   }
   return true
 }
