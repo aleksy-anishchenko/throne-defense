@@ -5,6 +5,8 @@ import { ENEMIES } from '../data/enemies.ts'
 import type { World } from '../types.ts'
 
 export function spawnEnemy(world: World, enemyId: string): void {
+  // Волны проверены при загрузке уровня, так что сюда неизвестный id попадает только по ошибке в коде
+  if (!Object.hasOwn(ENEMIES, enemyId)) throw new Error(`Неизвестный враг «${enemyId}»`)
   const def = ENEMIES[enemyId]
   const state = world.state
   const hp = Math.round(def.hp * hpMultiplier(state.wave, world.level.waveCount))

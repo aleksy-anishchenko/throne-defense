@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SIMULATION_STEP, createGame, waveBonus } from '../src/index.ts'
+import { SIMULATION_STEP, createGame, waveBonus, type GameEvents } from '../src/index.ts'
 import { throneHall } from '../src/levels/throne-hall.ts'
 import { newGame, recordEvents, stepUntil } from './helpers.ts'
 
@@ -99,11 +99,20 @@ describe('волны', () => {
 })
 
 describe('время', () => {
+  // Сравниваем число шагов (время × 60, округлённое): прямое toBe(0.5) не пройдёт
+  // из-за дробной погрешности, а toBeCloseTo(…, 1) пропускал ошибку в 3 шага из 18
+
   it('advance делает шаги по 1/60 с и учитывает скорость', () => {
     const game = newGame()
     game.setSpeed(3)
     game.advance(0.1)
-    expect(game.state.time).toBeCloseTo(0.3, 1)
+    expect(Math.round(game.state.time * 60)).toBe(18)
+  })
+
+  it('60 вызовов advance(1/120) дают ровно 30 шагов', () => {
+    const game = newGame()
+    for (let i = 0; i < 60; i++) game.advance(1 / 120)
+    expect(Math.round(game.state.time * 60)).toBe(30)
   })
 
   it('на паузе время стоит', () => {
@@ -123,20 +132,51 @@ describe('время', () => {
   })
 
   it('одинаковые действия всегда дают одинаковый результат', () => {
-    // Это важно для защиты рейтинга: сервер сможет повторить партию и проверить счёт
+    // Это важно для защиты рейтинга: сервер сможет повторить партию и проверить счёт.
+    // Все клетки свободны: если постройка не удалась, тест падает, а не сравнивает
+    // две одинаково неудавшиеся партии
+    const frostCells = [
+      [3, 8],
+      [3, 6],
+      [3, 5],
+      [5, 8],
+      [6, 8],
+    ]
     function play() {
       const game = createGame(throneHall)
+      // Полный журнал: и частые события (выстрелы, попадания), и время каждого
+      const eventLog: string[] = []
+      const eventTypes: (keyof GameEvents)[] = [
+        'build',
+        'upgrade',
+        'sell',
+        'waveStart',
+        'waveCleared',
+        'fire',
+        'hit',
+        'splash',
+        'kill',
+        'leak',
+        'victory',
+        'defeat',
+      ]
+      for (const eventType of eventTypes) {
+        game.on(eventType, () => eventLog.push(`${game.state.time.toFixed(6)} ${eventType}`))
+      }
       game.reset()
-      game.build('archer', 5, 11)
-      game.build('mage', 2, 9)
-      for (let waveIndex = 0; waveIndex < 5 && game.state.phase === 'build'; waveIndex++) {
+      expect(game.build('archer', 5, 11)).not.toBeNull()
+      expect(game.build('mage', 2, 9)).not.toBeNull()
+      for (const [col, row] of frostCells) {
+        if (game.state.phase !== 'build') break
         game.startWave()
         stepUntil(game, () => game.state.phase !== 'wave')
-        if (game.state.gold >= 70) game.build('frost', 3, 8 - waveIndex)
+        if (game.state.gold >= 70) expect(game.build('frost', col, row)).not.toBeNull()
       }
-      const { gold, lives, score, kills, wave } = game.state
-      return { gold, lives, score, kills, wave }
+      const { gold, lives, score, kills, wave, towers } = game.state
+      return { gold, lives, score, kills, wave, towerCount: towers.length, eventLog }
     }
-    expect(play()).toEqual(play())
+    const first = play()
+    expect(first.towerCount).toBeGreaterThan(2) // хоть один Морозко действительно встал
+    expect(play()).toEqual(first)
   })
 })

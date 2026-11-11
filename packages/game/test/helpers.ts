@@ -26,9 +26,16 @@ export function placeEnemy(game: Game, enemyId: string, pathDistance = 0): Enemy
   return enemy
 }
 
-/** Шагать, пока не выполнится условие (или не кончится лимит) */
+/**
+ * Шагать, пока не выполнится условие. Не дождались за maxSeconds игрового времени — ошибка:
+ * иначе зависшая волна молча считалась бы «дошагали»
+ */
 export function stepUntil(game: Game, isDone: () => boolean, maxSeconds = 600): void {
-  for (let i = 0; i < maxSeconds / SIMULATION_STEP && !isDone(); i++) game.step(SIMULATION_STEP)
+  for (let i = 0; i < maxSeconds / SIMULATION_STEP; i++) {
+    if (isDone()) return
+    game.step(SIMULATION_STEP)
+  }
+  if (!isDone()) throw new Error(`stepUntil: условие не выполнилось за ${maxSeconds} с игры`)
 }
 
 /**

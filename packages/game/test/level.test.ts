@@ -61,6 +61,21 @@ describe('проверка уровня при загрузке', () => {
     },
     { name: 'помост за краем', patch: { blockedCells: [[9, 0]] }, message: 'закрытая клетка' },
     { name: 'нет жизней', patch: { startLives: 0 }, message: 'хотя бы одна жизнь' },
+    { name: 'дробные жизни', patch: { startLives: 2.5 }, message: 'хотя бы одна жизнь' },
+    { name: 'золото — не число', patch: { startGold: NaN }, message: 'стартовое золото' },
+    {
+      name: 'бесконечная пауза',
+      patch: withWaves([[['rebel', 3, Infinity, 0]]]),
+      message: 'не число',
+    },
+    {
+      name: 'опечатка в бесконечном режиме',
+      patch: {
+        endlessWaveGroups: (waveNumber) =>
+          waveNumber === 25 ? [['dragon', 1, 0, 0]] : [['rebel', 1, 0, 0]],
+      },
+      message: 'неизвестный враг «dragon» в волне 25',
+    },
   ]
 
   for (const { name, patch, message } of broken) {

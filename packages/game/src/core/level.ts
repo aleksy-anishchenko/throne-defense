@@ -1,5 +1,5 @@
 import { ENEMIES } from '../data/enemies.ts'
-import type { Level, LevelDef, Point } from '../types.ts'
+import type { Level, LevelDef, Point, WaveGroup } from '../types.ts'
 import { createPath } from './path.ts'
 
 /** Ключ клетки для Set/Map: "столбец,строка" */
@@ -8,9 +8,18 @@ export const cellKey = (col: number, row: number): string => `${col},${row}`
 /** Через сколько клеток ковра проверяем, по какой клетке он идёт (меньше клетки, чтобы ничего не пропустить) */
 const CARPET_SAMPLE_STEP = 0.1
 
-/** Лежит ли точка (или клетка) внутри поля уровня */
+/** Лежит ли точка внутри поля уровня (координаты могут быть дробными: трон, путь) */
 export function isInsideLevelField(def: LevelDef, col: number, row: number): boolean {
   return col >= 0 && col < def.cols && row >= 0 && row < def.rows
+}
+
+/**
+ * Клетка ли это поля: целые столбец и строка внутри поля.
+ * Дробная «клетка» (4.5, 10.5) даёт ключ "4.5,10.5", который не совпадает
+ * ни с одной закрытой клеткой, — без этой проверки башню можно было поставить на ковёр.
+ */
+export function isLevelCell(def: LevelDef, col: number, row: number): boolean {
+  return Number.isInteger(col) && Number.isInteger(row) && isInsideLevelField(def, col, row)
 }
 
 function fail(def: LevelDef, message: string): never {
@@ -36,36 +45,56 @@ function checkThroneAndPath(def: LevelDef): void {
 
 function checkBlockedCells(def: LevelDef): void {
   for (const [col, row] of def.blockedCells) {
-    const isWholeCell = Number.isInteger(col) && Number.isInteger(row)
-    if (!isWholeCell || !isInsideLevelField(def, col, row)) {
+    if (!isLevelCell(def, col, row)) {
       fail(def, `закрытая клетка (${col},${row}) — не целая или за краем поля`)
     }
   }
 }
 
+/** Число, а не NaN или бесконечность, и не меньше min */
+const isNumberAtLeast = (value: number, min: number) => Number.isFinite(value) && value >= min
+
 function checkStartValues(def: LevelDef): void {
-  if (def.startGold < 0) fail(def, `стартовое золото не может быть отрицательным`)
-  if (def.startLives < 1) fail(def, `у трона должна быть хотя бы одна жизнь`)
+  if (!isNumberAtLeast(def.startGold, 0)) {
+    fail(def, `стартовое золото должно быть числом не меньше 0, а оно ${def.startGold}`)
+  }
+  if (!Number.isInteger(def.startLives) || def.startLives < 1) {
+    fail(def, `у трона должна быть хотя бы одна жизнь (целое число), а их ${def.startLives}`)
+  }
 }
+
+/** Проверить одну волну: waveNumber — её номер (для понятного текста ошибки) */
+function checkWave(def: LevelDef, waveGroups: readonly WaveGroup[], waveNumber: number): void {
+  if (!waveGroups.length) fail(def, `волна ${waveNumber} пустая`)
+  for (const [enemyId, count, gap, delay] of waveGroups) {
+    if (!Object.hasOwn(ENEMIES, enemyId))
+      fail(def, `неизвестный враг «${enemyId}» в волне ${waveNumber}`)
+    if (!Number.isInteger(count) || count < 1)
+      fail(def, `в волне ${waveNumber} врагов «${enemyId}»: ${count} — нужно целое ≥ 1`)
+    if (!isNumberAtLeast(gap, 0) || !isNumberAtLeast(delay, 0)) {
+      fail(
+        def,
+        `в волне ${waveNumber} у «${enemyId}» пауза ${gap} или задержка ${delay} отрицательная или не число`,
+      )
+    }
+  }
+}
+
+/**
+ * Сколько волн бесконечного режима проверяем при загрузке. Их состав считает функция,
+ * так что все не проверить; без этого опечатка всплыла бы только после победы
+ */
+const ENDLESS_WAVES_TO_CHECK = 30
 
 function checkWaves(def: LevelDef): void {
   if (!def.waves.length) fail(def, `нет ни одной волны`)
+  def.waves.forEach((waveGroups, i) => checkWave(def, waveGroups, i + 1))
 
-  def.waves.forEach((waveGroups, i) => {
-    const waveNumber = i + 1
-    if (!waveGroups.length) fail(def, `волна ${waveNumber} пустая`)
-    for (const [enemyId, count, gap, delay] of waveGroups) {
-      if (!ENEMIES[enemyId]) fail(def, `неизвестный враг «${enemyId}» в волне ${waveNumber}`)
-      if (!Number.isInteger(count) || count < 1)
-        fail(def, `в волне ${waveNumber} врагов «${enemyId}»: ${count} — нужно целое ≥ 1`)
-      if (!(gap >= 0) || !(delay >= 0)) {
-        fail(
-          def,
-          `в волне ${waveNumber} у «${enemyId}» пауза ${gap} или задержка ${delay} отрицательная`,
-        )
-      }
-    }
-  })
+  const firstEndlessWave = def.waves.length + 1
+  for (let offset = 0; offset < ENDLESS_WAVES_TO_CHECK; offset++) {
+    const waveNumber = firstEndlessWave + offset
+    checkWave(def, def.endlessWaveGroups(waveNumber), waveNumber)
+  }
 }
 
 /**

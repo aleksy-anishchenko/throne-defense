@@ -10,7 +10,7 @@ import { buildSpawnQueue, finishWave, getWaveGroups, spawnDueEnemies } from '../
 import { updateShots } from '../systems/combat.ts'
 import type { GameEvents, GameState, Level, LevelDef, Tower, WaveGroup, World } from '../types.ts'
 import { createEmitter, type Emitter } from './events.ts'
-import { cellKey, createLevel, isInsideLevelField } from './level.ts'
+import { cellKey, createLevel, isLevelCell } from './level.ts'
 
 export interface Game {
   readonly state: GameState
@@ -22,7 +22,7 @@ export interface Game {
   reset(): void
   /** Идёт ли партия: между волнами (build) или во время волны (wave) */
   isPlaying(): boolean
-  /** Лежит ли клетка (столбец, строка) внутри поля */
+  /** Лежит ли клетка (столбец, строка) внутри поля. Дробные столбец и строка — не клетка */
   isInsideField(col: number, row: number): boolean
   /** Можно ли поставить башню на клетку (без учёта золота) */
   isCellFree(col: number, row: number): boolean
@@ -55,6 +55,11 @@ export interface Game {
 const INITIAL_AIM_ANGLE = -Math.PI / 2
 /** Смещение от угла клетки к её центру, клеток */
 const CELL_CENTER_OFFSET = 0.5
+/**
+ * Больше стольких секунд игрового времени advance за один вызов не считает (60 шагов).
+ * Браузер присылает не больше 0,1 с × скорость 3 = 0,3 с, так что запас втрое
+ */
+const MAX_PENDING_TIME = 1
 
 function initialState(level: Level): GameState {
   return {
@@ -88,7 +93,7 @@ export function createGame(levelDef: LevelDef): Game {
   let pendingTime = 0
 
   const isPlaying = () => state.phase === 'build' || state.phase === 'wave'
-  const isInsideField = (col: number, row: number) => isInsideLevelField(level.def, col, row)
+  const isInsideField = (col: number, row: number) => isLevelCell(level.def, col, row)
 
   const isCellFree = (col: number, row: number) =>
     isInsideField(col, row) &&
@@ -140,8 +145,11 @@ export function createGame(levelDef: LevelDef): Game {
     },
 
     build(towerId, col, row) {
+      // Object.hasOwn, а не просто TOWERS[towerId]: иначе id 'constructor' найдёт
+      // встроенную функцию объекта вместо башни (см. «прототип» в словарике PLAN.md)
+      if (!Object.hasOwn(TOWERS, towerId)) return null
       const def = TOWERS[towerId]
-      if (!def || !isPlaying() || !isCellFree(col, row) || state.gold < def.cost) return null
+      if (!isPlaying() || !isCellFree(col, row) || state.gold < def.cost) return null
       state.gold -= def.cost
       const tower: Tower = {
         id: state.nextId++,
@@ -204,12 +212,18 @@ export function createGame(levelDef: LevelDef): Game {
     },
 
     setSpeed(speed) {
+      // NaN и бесконечность пропускаем: Math.round(NaN) — это NaN, и партия замерла бы навсегда
+      if (!Number.isFinite(speed)) return
       state.speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, Math.round(speed)))
     },
 
     advance(realDt) {
       if (!isPlaying() || state.isPaused) return
-      pendingTime += realDt * state.speed
+      // NaN навсегда испортил бы накопитель, а отрицательное время не бывает
+      if (!Number.isFinite(realDt) || realDt <= 0) return
+      // Один вызов не делает больше MAX_PENDING_TIME секунд игры (тысячи шагов разом
+      // повесили бы вкладку). Браузер и сам режет кадр до 0,1 с, так что игрок разницы не видит
+      pendingTime = Math.min(pendingTime + realDt * state.speed, MAX_PENDING_TIME)
       while (pendingTime >= SIMULATION_STEP) {
         pendingTime -= SIMULATION_STEP
         step(SIMULATION_STEP)
