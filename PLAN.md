@@ -29,7 +29,7 @@
 | Бэкенд | Node 24 + Fastify + SQLite, процессом управляет pm2 |
 | Хостинг | Свой VPS `77.91.113.61`, nginx + certbot (HTTPS от Let's Encrypt). Не GitHub Pages и не Caddy — так решил владелец проекта. Подробности — в [справочнике](#сервер) |
 | Домен | `throne-defense.ru` (куплен): игра на `/`, API на `/api` (один адрес, CORS не нужен) |
-| VPN на том же VPS | На сервере Amnezia VPN в Docker. AmneziaWG и WireGuard (UDP 36548 и 43365) должны работать всегда — их не трогаем. XRay занимал TCP 443 и, похоже, не использовался: его контейнер `amnezia-xray` остановлен (не удалён, `docker start amnezia-xray` вернёт), 443 отдан nginx. Понадобится XRay — ставить его за nginx (сортировка по SNI, `ssl_preread`), а не обратно на 443. ⚠️ Docker открывает порты контейнеров в обход `ufw` |
+| VPN на том же VPS | На сервере Amnezia VPN в Docker: AmneziaWG и WireGuard (UDP 36548 и 43365) должны работать всегда — их не трогаем. Порт 443 — только у nginx. ⚠️ Docker открывает порты контейнеров в обход `ufw` |
 | `www` | `www.throne-defense.ru` перенаправляет (301) на `throne-defense.ru`: рекорды в браузере хранятся отдельно для каждого адреса, поэтому адрес один |
 | Код | GitHub `aleksy-anishchenko/throne-defense`, автодеплой через GitHub Actions |
 | Качество | `npm run check` — оформление, линтер, типы, тесты и сборка разом |
@@ -388,11 +388,8 @@ npm run format       # Prettier: оформить код (format:check — то�
 | nginx 1.24 | Конфиг сайта — `deploy/nginx/throne-defense.conf` → на сервере `/etc/nginx/sites-available/throne-defense` (+ ссылка в `sites-enabled`); заголовки — `deploy/nginx/throne-security.conf` → `/etc/nginx/snippets/`. Заглушка `default` отключена. HTTP/2 на этой версии — словом `http2` в `listen` |
 | Файлы игры | `/var/www/throne-defense` — только сборка, больше ничего: `rsync --delete` удаляет всё, чего нет в `dist` |
 | HTTPS | certbot 2.9, сертификат на оба адреса в `/etc/letsencrypt/live/throne-defense.ru/`, e-mail для писем об ошибках продления — владельца. Продлевает таймер `certbot.timer`; проверить: `certbot renew --dry-run` |
-| VPN | Amnezia в Docker: `amnezia-awg2` (UDP 36548) и `amnezia-wireguard` (UDP 43365) — не трогать. `amnezia-xray` остановлен (см. «Принятые решения»). Docker не перезапускать без нужды — оборвётся VPN |
-| Резервная копия | `/root/throne-defense.certbot.bak` — конфиг nginx в том виде, как его записал certbot (до перехода на версию из `deploy/`). Можно удалить |
+| VPN | Amnezia в Docker: `amnezia-awg2` (UDP 36548) и `amnezia-wireguard` (UDP 43365) — не трогать. Docker не перезапускать без нужды — оборвётся VPN |
 
 **Поменять конфиг nginx:** правим `deploy/nginx/…` → на Mac `scp deploy/nginx/throne-defense.conf root@77.91.113.61:/etc/nginx/sites-available/throne-defense` → на сервере `nginx -t && systemctl reload nginx`. Если `nginx -t` ругается, `reload` не выполнится и работающий сайт не пострадает.
 
 **Выложить игру вручную** (до автодеплоя, из корня репозитория): `deploy/scripts/deploy-web.sh` — показать, что изменится; `deploy/scripts/deploy-web.sh --apply` — выложить. Скрипт сам собирает игру и не запускает `rsync`, если сборка пустая.
-
-**Если понадобится XRay:** не возвращать его на 443, а поставить за nginx — блок `stream` с `ssl_preread`: `throne-defense.ru` (и другие свои сайты) → nginx, всё остальное → XRay на внутреннем порту.
