@@ -12,6 +12,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    // obj.key только для известных полей; для «словарей» (Record<string, …>) — obj['key']
+    "noPropertyAccessFromIndexSignature": true,
     "verbatimModuleSyntax": true,
     // Только тот TypeScript, который Node умеет запускать напрямую (без enum и т.п.)
     "erasableSyntaxOnly": true,

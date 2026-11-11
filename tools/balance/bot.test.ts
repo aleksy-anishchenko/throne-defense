@@ -32,8 +32,8 @@ describe('выгодность башен', () => {
 
   it('улучшение баллисты не становится намного выгоднее постройки', () => {
     // В v1 баллиста III давала на 48% больше урона на монету, чем баллиста I
-    const first = damagePerGold(throneHall, TOWERS.ballista, 0, rebels)
-    const third = damagePerGold(throneHall, TOWERS.ballista, 2, rebels)
+    const first = damagePerGold(throneHall, TOWERS['ballista'], 0, rebels)
+    const third = damagePerGold(throneHall, TOWERS['ballista'], 2, rebels)
     expect(third / first).toBeLessThan(1.25)
   })
 })

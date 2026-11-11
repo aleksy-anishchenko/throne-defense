@@ -10,6 +10,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    // obj.key только для известных полей; для «словарей» (Record<string, …>) — obj['key']
+    "noPropertyAccessFromIndexSignature": true,
     "verbatimModuleSyntax": true,
     // @throne/game импортирует свои файлы с расширением .ts — разрешаем
     "allowImportingTsExtensions": true,

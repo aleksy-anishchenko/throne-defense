@@ -8,7 +8,7 @@ describe('постройка', () => {
     const tower = game.build('archer', 5, 11)
 
     expect(tower).not.toBeNull()
-    expect(game.state.gold).toBe(150 - TOWERS.archer.cost)
+    expect(game.state.gold).toBe(150 - TOWERS['archer'].cost)
     expect(game.towerAt(5, 11)).toBe(tower)
     expect(game.isCellFree(5, 11)).toBe(false)
   })
