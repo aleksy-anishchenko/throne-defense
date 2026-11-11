@@ -40,7 +40,13 @@ function cellFromPointer(event: PointerEvent): Cell {
   }
 }
 
+/** event.button основной кнопки: левая кнопка мыши, касание пальцем, кончик пера */
+const PRIMARY_BUTTON = 0
+
 function onPointerDown(event: PointerEvent) {
+  // Правая и средняя кнопки мыши ничего не строят.
+  // isPrimary отсекает второй палец при касании двумя пальцами
+  if (!event.isPrimary || event.button !== PRIMARY_BUTTON) return
   event.preventDefault()
   store.cursorCell = null
   const { col, row } = cellFromPointer(event)
@@ -80,6 +86,7 @@ onUnmounted(() => {
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
       @pointerleave="store.hoverCell = null"
+      @contextmenu.prevent
     ></canvas>
     <div class="toast" :class="{ visible: store.toast.isVisible }" role="status" aria-live="polite">
       {{ store.toast.text }}

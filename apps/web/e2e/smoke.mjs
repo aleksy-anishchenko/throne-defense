@@ -74,14 +74,30 @@ const waitForFrames = (page) =>
  */
 const blurActiveElement = (page) => page.evaluate(() => document.activeElement?.blur())
 
-/** Нажать на клетку поля */
-async function clickCell(page, col, row) {
+/** Нажать на клетку поля (button: 'left', 'right' или 'middle') */
+async function clickCell(page, col, row, button = 'left') {
   const bounds = await page.locator('#board').boundingBox()
   await page.mouse.click(
     bounds.x + ((col + 0.5) / COLS) * bounds.width,
     bounds.y + ((row + 0.5) / ROWS) * bounds.height,
+    { button },
   )
   await waitForFrames(page)
+}
+
+/** Кнопка «Начать волну» целиком внутри окна (а не за краем экрана) */
+async function checkStartButtonVisible(page) {
+  const { width, height } = page.viewportSize()
+  const bounds = await page.getByRole('button', { name: 'Начать волну' }).boundingBox()
+  check(
+    `${width}×${height}: «Начать волну» на экране`,
+    bounds !== null &&
+      bounds.x >= 0 &&
+      bounds.y >= 0 &&
+      bounds.x + bounds.width <= width &&
+      bounds.y + bounds.height <= height,
+    JSON.stringify(bounds),
+  )
 }
 
 async function desktop(browser, url) {
@@ -118,6 +134,9 @@ async function desktop(browser, url) {
   const archerCard = page.getByRole('button', { name: /Лучник/ })
   await archerCard.click()
   check('карточка в магазине нажата', (await archerCard.getAttribute('aria-pressed')) === 'true')
+  await clickCell(page, 5, 11, 'right')
+  await clickCell(page, 5, 11, 'middle')
+  check('правая и средняя кнопки не строят', (await readGameSnapshot(page)).towers.length === 0)
   await clickCell(page, 5, 11)
   await clickCell(page, 2, 9)
   let snapshot = await readGameSnapshot(page)
@@ -328,6 +347,12 @@ async function phone(browser, url) {
     'постройка касанием',
     await page.evaluate(() => window.__throne.game.state.towers.length === 1),
   )
+
+  // Раскладка: кнопки управления не уезжают за край экрана ни в какой ориентации
+  await checkStartButtonVisible(page)
+  await page.setViewportSize({ width: 932, height: 430 }) // iPhone Plus/Max набок
+  await waitForFrames(page)
+  await checkStartButtonVisible(page)
   await page.close()
 }
 

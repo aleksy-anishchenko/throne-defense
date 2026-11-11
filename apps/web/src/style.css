@@ -383,8 +383,11 @@ button {
   font-size: 1.15rem;
 }
 
-/* Широкий экран: панель справа */
-@media (min-width: 860px) and (min-aspect-ratio: 1/1) {
+/* Широкий экран: панель справа.
+   Включается по ориентации, а не только по ширине: телефон набок (844×390) тоже
+   получает боковую панель, иначе поле сжимается до крошечного прямоугольника.
+   Если меняешь условие — поменяй его и в двух запросах ниже. */
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) {
   #app {
     grid-template-columns: minmax(0, 1fr) 340px;
     grid-template-rows: auto minmax(0, 1fr);
@@ -406,6 +409,10 @@ button {
     grid-template-rows: 112px auto minmax(0, 1fr) auto;
     gap: 10px;
     padding: 6px 16px 18px 0;
+    /* Страховка: если панель всё же не влезла по высоте, её можно прокрутить,
+       а не потерять кнопки за краем экрана */
+    min-height: 0;
+    overflow-y: auto;
   }
   #hint {
     height: auto;
@@ -484,7 +491,65 @@ button {
     color: var(--parch-dim);
   }
 }
-@media (max-height: 640px) and (max-width: 859px) {
+/* Низкий экран с боковой панелью (телефон набок): панель компактная —
+   без описаний в карточках и подсказки про клавиши, а панель башни
+   встаёт на место магазина, как на телефоне в вертикальной раскладке */
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 560px) {
+  #app {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    column-gap: 16px;
+  }
+  .hud {
+    padding: 6px 16px 4px;
+  }
+  .brand {
+    font-size: 1.3rem;
+  }
+  .panel {
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 6px;
+    padding: 2px 16px 10px 0;
+  }
+  #hint {
+    height: 1.3em;
+    white-space: nowrap;
+    font-size: 0.95rem;
+  }
+  .panel.has-selected-tower #hint {
+    display: block;
+  }
+  .panel.has-selected-tower .shop {
+    display: none;
+  }
+  .tower-info {
+    grid-row: 2;
+  }
+  .shop {
+    gap: 6px;
+  }
+  .card {
+    grid-template-columns: 32px 1fr auto;
+    grid-template-areas: 'ico nm cost';
+    padding: 4px 10px 4px 6px;
+  }
+  .card canvas {
+    width: 32px;
+    height: 32px;
+  }
+  .card .card-description,
+  .keys {
+    display: none;
+  }
+  /* Подсказка про клавиши скрыта, переносить кнопки на вторую строку незачем */
+  .controls {
+    flex-wrap: nowrap;
+  }
+  .btn.icon {
+    width: 44px;
+  }
+}
+/* Низкий экран без боковой панели (узкое окно на компьютере) */
+@media (max-height: 640px) and (max-width: 639px) {
   .shop,
   .tower-info {
     height: 70px;
