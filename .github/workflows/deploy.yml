@@ -1,10 +1,10 @@
 # Автодеплой: пуш в main → проверки → если всё зелёное, сборка уезжает на сервер.
 # Красные проверки = на сервер ничего не попадает.
 #
-# Секреты (Settings → Secrets and variables → Actions):
-#   DEPLOY_SSH_KEY     — приватный ключ пользователя deploy (на Mac: ~/.ssh/throne_deploy)
-#   DEPLOY_KNOWN_HOSTS — «отпечаток» сервера (ssh-keyscan 77.91.113.61). Без него нельзя быть
-#                        уверенным, что подключаемся к своему серверу, а не к подменённому
+# Секрет (Settings → Secrets and variables → Actions):
+#   DEPLOY_SSH_KEY — приватный ключ пользователя deploy (на Mac: ~/.ssh/throne_deploy)
+# Публичный ключ самого сервера — в deploy/known_hosts: по нему проверяем, что подключаемся
+# к своему серверу, а не к подменённому. Он не секрет, поэтому лежит в репозитории
 #
 # На сервере пользователь deploy может только rsync в /var/www/throne-defense (rrsync),
 # поэтому путь назначения — «/»: для rrsync это корень папки игры.
@@ -53,18 +53,18 @@ jobs:
       - name: Ключ для сервера
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           install -d -m 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Понятная ошибка, если секрет не задан или вставился не целиком
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null || { echo "Секрет DEPLOY_SSH_KEY пустой или испорчен"; exit 1; }
 
       # Опции те же, что в deploy/scripts/deploy-web.sh — меняешь здесь, поменяй и там
       - name: Выложить на сервер
         run: >
           rsync -av --delete --delay-updates --no-owner --no-group
-          -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes"
+          -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=deploy/known_hosts"
           apps/web/dist/ "$DEPLOY_USER@$DEPLOY_HOST:/"
 
       - name: Сайт отвечает

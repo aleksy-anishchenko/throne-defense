@@ -1,0 +1,4 @@
+# Публичный ключ SSH-сервера 77.91.113.61 (ED25519). Не секрет: его видит любой, кто подключается.
+# По нему GitHub Actions проверяет, что выкладывает игру на свой сервер, а не на подменённый.
+# Отпечаток: SHA256:dl0Kdm8qTiwQlu1DpBC3w77WIxjSPG0BhQJs2D/RW0o (на сервере: ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub)
+77.91.113.61 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGJUxmzADhlR7c6L5exC+ED/RoGOHBsr2/88qiJwMg5M
