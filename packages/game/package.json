@@ -1,0 +1,14 @@
+{
+  "name": "@throne/game",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.tools.json",
+    "balance": "node tools/balance.ts",
+    "towers": "node tools/towers.ts"
+  }
+}

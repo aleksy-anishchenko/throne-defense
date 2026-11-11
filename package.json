@@ -1,0 +1,39 @@
+{
+  "name": "throne-defense",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @throne/web",
+    "build": "npm run build -w @throne/web",
+    "preview": "npm run preview -w @throne/web",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "balance": "npm run balance -w @throne/game",
+    "towers": "npm run towers -w @throne/game",
+    "typecheck": "npm run typecheck -w @throne/game && npm run typecheck -w @throne/web",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "e2e": "npm run build && npm run e2e -w @throne/web",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.12.1",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
+  }
+}
