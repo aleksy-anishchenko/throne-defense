@@ -1,0 +1,32 @@
+# Проверка кода на каждый пуш (кроме main — там это делает deploy.yml) и на каждый pull request.
+# То же, что npm run check и npm run e2e у себя на компьютере.
+
+name: Проверка
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+
+# Новый пуш в ту же ветку отменяет недоделанную проверку предыдущего
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # npm ci — установка строго по package-lock.json (как npm install, но без изменений lock-файла)
+      - run: npm ci
+      - run: npm run check
+      # Проверка в браузере. На ubuntu-latest Google Chrome уже установлен
+      - run: npm run e2e

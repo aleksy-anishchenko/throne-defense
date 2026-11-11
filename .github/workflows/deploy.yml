@@ -1,0 +1,71 @@
+# Автодеплой: пуш в main → проверки → если всё зелёное, сборка уезжает на сервер.
+# Красные проверки = на сервер ничего не попадает.
+#
+# Секреты (Settings → Secrets and variables → Actions):
+#   DEPLOY_SSH_KEY     — приватный ключ пользователя deploy (на Mac: ~/.ssh/throne_deploy)
+#   DEPLOY_KNOWN_HOSTS — «отпечаток» сервера (ssh-keyscan 77.91.113.61). Без него нельзя быть
+#                        уверенным, что подключаемся к своему серверу, а не к подменённому
+#
+# На сервере пользователь deploy может только rsync в /var/www/throne-defense (rrsync),
+# поэтому путь назначения — «/»: для rrsync это корень папки игры.
+
+name: Деплой
+
+on:
+  push:
+    branches: [main]
+  # Кнопка «Run workflow» на вкладке Actions — выложить ещё раз без нового коммита
+  workflow_dispatch:
+
+# Два деплоя одновременно не идут: второй ждёт, пока закончится первый
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  DEPLOY_HOST: 77.91.113.61
+  DEPLOY_USER: deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://throne-defense.ru
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      # check собирает игру в apps/web/dist; e2e проверяет эту сборку в браузере
+      - run: npm run check
+      - run: npm run e2e
+
+      # Предохранитель: пустая сборка не должна стереть работающий сайт (rsync --delete)
+      - name: Сборка не пустая
+        run: test -s apps/web/dist/index.html
+
+      - name: Ключ для сервера
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # Опции те же, что в deploy/scripts/deploy-web.sh — меняешь здесь, поменяй и там
+      - name: Выложить на сервер
+        run: >
+          rsync -av --delete --delay-updates --no-owner --no-group
+          -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes"
+          apps/web/dist/ "$DEPLOY_USER@$DEPLOY_HOST:/"
+
+      - name: Сайт отвечает
+        run: curl --fail --silent --show-error --output /dev/null https://throne-defense.ru/
