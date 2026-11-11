@@ -279,7 +279,8 @@ button {
   white-space: nowrap;
 }
 .btn:disabled {
-  opacity: 0.5;
+  /* Видно, что кнопка выключена, но надпись читается */
+  opacity: 0.65;
   cursor: default;
 }
 .btn.primary {
@@ -571,12 +572,31 @@ button {
     height: 26px;
   }
   .btn {
-    min-height: 42px;
+    /* 44 px — меньше палец промахивается (рекомендация Apple для кнопок) */
+    min-height: 44px;
+  }
+}
+/* Очень узкий телефон (320 px): кнопки «Улучшить» и «Продать» по ширине текста,
+   иначе строка «дальность 2,3 → 2,5» не влезает */
+@media (max-width: 359px) {
+  .btn.action {
+    min-width: 0;
+    padding: 0 6px;
+    font-size: 0.9rem;
+  }
+  .btn.action .price {
+    font-size: 0.85rem;
+  }
+  .tower-info .tower-stats span {
+    font-size: 0.85rem;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .overlay,
   .stat.bump {
     animation: none;
+  }
+  .toast {
+    transition: none;
   }
 }

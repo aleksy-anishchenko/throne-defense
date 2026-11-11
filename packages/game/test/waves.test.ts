@@ -49,6 +49,8 @@ describe('волны', () => {
     expect(game.state.phase).toBe('lost')
     expect(game.state.lives).toBe(0)
     expect(recordedEvents).toContain('defeat')
+    // Дошедший до трона враг не остаётся на поле «мёртвым»
+    expect(game.state.enemies.some((enemy) => enemy.isDead)).toBe(false)
   })
 
   it('после поражения мир стоит: лишние шаги ничего не меняют', () => {

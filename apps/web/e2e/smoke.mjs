@@ -85,17 +85,20 @@ async function clickCell(page, col, row, button = 'left') {
   await waitForFrames(page)
 }
 
-/** Насколько (сумма разниц по R, G, B) должна поменяться точка, если убрать врага */
-const ENEMY_PIXEL_MIN_DIFFERENCE = 30
+/** Пиксель «изменился», если сумма разниц по R, G, B больше этого */
+const PIXEL_CHANGE_THRESHOLD = 30
+/** Враг нарисован, если без него поменялась хотя бы такая доля пикселей в квадрате вокруг него */
+const ENEMY_MIN_CHANGED_SHARE = 0.2
 
 /**
  * Нарисован ли враг. Тесты состояния этого не видят: при чистке кода обычные враги
  * пропали с поля, а состояние игры было верным. Поэтому смотрим на сам canvas:
- * цвет точки в центре врага, потом убираем врагов на пару кадров и сравниваем.
+ * квадрат вокруг врага с врагом и без него (убираем врагов на пару кадров).
+ * Одной точки мало: в центре врага цвет бывает близок к цвету ковра.
  * Игра на это время стоит на паузе, чтобы враг не ушёл с места
  */
-const compareEnemyPixel = (page) =>
-  page.evaluate(async () => {
+const compareEnemyPixels = (page, pixelChangeThreshold) =>
+  page.evaluate(async (threshold) => {
     const { game } = window.__throne
     const canvas = document.querySelector('#board')
     const ctx = canvas.getContext('2d')
@@ -107,22 +110,28 @@ const compareEnemyPixel = (page) =>
     // Обычный враг (не босс): именно они пропадали
     const enemy = game.state.enemies.find((candidate) => candidate.def.id === 'rebel')
     const cellPx = canvas.width / game.level.def.cols
-    const x = Math.round(enemy.x * cellPx)
-    const y = Math.round(enemy.y * cellPx)
-    const readPixel = () => [...ctx.getImageData(x, y, 1, 1).data.slice(0, 3)]
-    const withEnemy = readPixel()
+    // Квадрат со стороной в радиус врага, с центром во враге
+    const side = Math.max(2, Math.round(enemy.def.radius * cellPx))
+    const left = Math.round(enemy.x * cellPx - side / 2)
+    const top = Math.round(enemy.y * cellPx - side / 2)
+    const readArea = () => ctx.getImageData(left, top, side, side).data
+    const withEnemy = readArea()
     const enemies = game.state.enemies
     game.state.enemies = []
     await nextFrames()
-    const withoutEnemy = readPixel()
+    const withoutEnemy = readArea()
     game.state.enemies = enemies
     game.setPaused(wasPaused)
-    const difference = withEnemy.reduce(
-      (sum, value, i) => sum + Math.abs(value - withoutEnemy[i]),
-      0,
-    )
-    return { withEnemy, withoutEnemy, difference }
-  })
+    let changed = 0
+    for (let i = 0; i < withEnemy.length; i += 4) {
+      const difference =
+        Math.abs(withEnemy[i] - withoutEnemy[i]) +
+        Math.abs(withEnemy[i + 1] - withoutEnemy[i + 1]) +
+        Math.abs(withEnemy[i + 2] - withoutEnemy[i + 2])
+      if (difference > threshold) changed++
+    }
+    return { side, changedShare: changed / (side * side) }
+  }, pixelChangeThreshold)
 
 /** Кнопка «Начать волну» целиком внутри окна (а не за краем экрана) */
 async function checkStartButtonVisible(page) {
@@ -262,16 +271,21 @@ async function desktop(browser, url) {
   const speedButton = page.getByRole('button', { name: 'Скорость игры' })
   await speedButton.click()
   await speedButton.click()
+  await waitForFrames(page)
+  check(
+    'кнопка скорости называет значение',
+    (await speedButton.getAttribute('aria-label')) === 'Скорость игры: ×3',
+  )
   await page.waitForFunction(() => window.__throne.game.state.enemies.length >= 3)
   check(
     'подсказка «Врагов осталось»',
     (await page.locator('#hint').textContent()).startsWith('Врагов осталось'),
   )
-  const enemyPixel = await compareEnemyPixel(page)
+  const enemyPixels = await compareEnemyPixels(page, PIXEL_CHANGE_THRESHOLD)
   check(
     'враг нарисован на поле',
-    enemyPixel.difference > ENEMY_PIXEL_MIN_DIFFERENCE,
-    JSON.stringify(enemyPixel),
+    enemyPixels.changedShare >= ENEMY_MIN_CHANGED_SHARE,
+    JSON.stringify(enemyPixels),
   )
   await page.waitForFunction(() => window.__throne.game.state.phase === 'build', null, {
     timeout: 60_000,
@@ -387,6 +401,20 @@ async function desktop(browser, url) {
     'зажатый пробел: волна идёт, паузы нет',
     snapshot.phase === 'wave' && !snapshot.paused,
     JSON.stringify(snapshot),
+  )
+
+  // Стрелки снимают выбор с плиты: цифра ставит стража под курсор, а не на старую плиту
+  await page.evaluate(() => window.__throne.store.newGame())
+  await clickCell(page, 6, 11) // выбрали пустую плиту
+  await page.keyboard.press('ArrowUp') // курсор: из центра (4, 6) на (4, 5)
+  await page.keyboard.press('1')
+  await page.keyboard.press('Enter')
+  await waitForFrames(page)
+  snapshot = await readGameSnapshot(page)
+  check(
+    'стрелки снимают выбор с плиты',
+    snapshot.towers.length === 1 && snapshot.towers[0] === 'archer0@4,5',
+    JSON.stringify(snapshot.towers),
   )
 
   // Выключенный звук и испорченный рекорд переживают перезагрузку

@@ -17,14 +17,18 @@ const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
     >
       {{ store.hud.phase === 'wave' ? 'Идёт бой' : 'Начать волну' }}
     </button>
-    <button class="btn icon" type="button" aria-label="Скорость игры" @click="store.cycleSpeed">
+    <button
+      class="btn icon"
+      type="button"
+      :aria-label="`Скорость игры: ×${store.hud.speed}`"
+      @click="store.cycleSpeed"
+    >
       ×{{ store.hud.speed }}
     </button>
     <button
       class="btn icon"
       type="button"
       :aria-label="store.hud.isPaused ? 'Продолжить' : 'Пауза'"
-      :aria-pressed="store.hud.isPaused"
       @click="store.togglePause"
     >
       <svg v-if="store.hud.isPaused" viewBox="0 0 24 24" aria-hidden="true">

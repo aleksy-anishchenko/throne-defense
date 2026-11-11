@@ -107,7 +107,11 @@ export function createGame(levelDef: LevelDef): Game {
     if (!isPlaying()) return
     state.time += dt
     if (state.phase === 'wave') spawnDueEnemies(world, dt)
-    if (!moveEnemies(world, dt)) return // трон пал
+    if (!moveEnemies(world, dt)) {
+      // Трон пал. Дошедшего врага убираем из списка, иначе он остался бы на поле «мёртвым»
+      state.enemies = state.enemies.filter((enemy) => !enemy.isDead)
+      return
+    }
     updateTowers(world, dt)
     updateShots(world, dt)
 

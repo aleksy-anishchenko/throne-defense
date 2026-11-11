@@ -31,6 +31,8 @@ const READY_COOLDOWN_SHARE = 0.55
 const POP_SCALE = 0.8
 /** Размах тряски поля, в долях клетки */
 const SHAKE_AMPLITUDE = 0.5
+/** Красная вспышка ранения при «уменьшить движение» в системе — во столько раз слабее */
+const REDUCED_MOTION_HURT_SHARE = 0.35
 
 export interface Renderer {
   /** Подогнать поле под размер области (в CSS-пикселях) */
@@ -167,6 +169,10 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     ctx.strokeRect(cursorCell.col + 0.04, cursorCell.row + 0.04, 0.92, 0.92)
   }
 
+  /** Сила красной вспышки: при «уменьшить движение» в системе — приглушённая */
+  const hurtIntensity = () =>
+    effects.throneHurtTime * (prefersReducedMotion ? REDUCED_MOTION_HURT_SHARE : 1)
+
   /** Красная виньетка, когда трон ранен */
   function drawHurtVignette() {
     ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -181,7 +187,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       height * 0.7,
     )
     vignetteGradient.addColorStop(0, 'rgba(200,30,40,0)')
-    vignetteGradient.addColorStop(1, `rgba(200,30,40,${Math.min(0.5, effects.throneHurtTime)})`)
+    vignetteGradient.addColorStop(1, `rgba(200,30,40,${Math.min(0.5, hurtIntensity())})`)
     ctx.fillStyle = vignetteGradient
     ctx.fillRect(0, 0, width, height)
   }
@@ -243,7 +249,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         drawRange(selectedTower.x, selectedTower.y, towerStats(selectedTower).range, true)
       }
 
-      drawThrone(ctx, throne, time, effects.throneHurtTime)
+      drawThrone(ctx, throne, time, hurtIntensity())
       drawTowers(time, selectedTower)
       drawEnemies(time)
 

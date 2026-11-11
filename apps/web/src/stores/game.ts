@@ -18,7 +18,7 @@ import {
   type Tower,
 } from '@throne/game'
 import { defineStore } from 'pinia'
-import { computed, markRaw, reactive, ref } from 'vue'
+import { computed, markRaw, nextTick, reactive, ref } from 'vue'
 import { sfx } from '@/audio/sfx'
 import type { BoardView, Cell, OverlayScreen } from '@/types'
 import { plural } from '@/utils/format'
@@ -110,7 +110,13 @@ export const useGameStore = defineStore('game', () => {
   const isNewBest = ref(false)
 
   let toastTimeoutId = 0
-  function showToast(text: string) {
+  async function showToast(text: string) {
+    // Скринридер читает область aria-live, только когда текст в ней меняется.
+    // Тот же текст ещё раз: сначала очищаем, и только в следующем обновлении экрана пишем снова
+    if (toast.text === text) {
+      toast.text = ''
+      await nextTick()
+    }
     toast.text = text
     toast.isVisible = true
     clearTimeout(toastTimeoutId)
@@ -240,6 +246,9 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function moveCursor(deltaCol: number, deltaRow: number) {
+    // Курсор ушёл с выбранной плиты — выбор снимаем: иначе цифра поставила бы стража
+    // на старую плиту, а не туда, где курсор
+    selectedEmptyCell.value = null
     const current = cursorCell.value ?? { col: Math.floor(cols / 2), row: Math.floor(rows / 2) }
     cursorCell.value = {
       col: Math.max(0, Math.min(cols - 1, current.col + deltaCol)),

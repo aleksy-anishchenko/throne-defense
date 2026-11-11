@@ -11,9 +11,20 @@ const sheet = useTemplateRef('sheet')
 /** Подсказка после «Поделиться» (заменяет обычную) */
 const shareNote = ref('')
 
+/** Идёт ли «Поделиться» прямо сейчас */
+let isSharing = false
+
 async function share() {
-  if ((await shareResult(store.hud.wavesCleared, store.hud.score)) === 'copied') {
-    shareNote.value = 'Результат скопирован. Вставьте его в чат друзьям.'
+  // Двойное касание открыло бы второе окно «Поделиться» (браузер его отклонит), и после
+  // отказа мы бы скопировали текст и показали «скопировано» поверх первого окна
+  if (isSharing) return
+  isSharing = true
+  try {
+    if ((await shareResult(store.hud.wavesCleared, store.hud.score)) === 'copied') {
+      shareNote.value = 'Результат скопирован. Вставьте его в чат друзьям.'
+    }
+  } finally {
+    isSharing = false
   }
 }
 
