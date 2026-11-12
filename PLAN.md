@@ -29,7 +29,7 @@
 |---|---|
 | Фронтенд | Vite + TypeScript + Vue 3 (+ Pinia). Рисование — Canvas 2D, без игрового движка (Phaser/PixiJS не нужны) |
 | Логика игры | Чистый TypeScript, без Vue и DOM. Общая для браузера и сервера |
-| Бэкенд | Node 24 + Fastify + SQLite (встроенный `node:sqlite`), процессом управляет pm2. Схемы API — TypeBox. Сайт — статичные файлы у nginx, API — отдельный процесс рядом: упало API — игра работает |
+| Бэкенд | Node 24 + Fastify + SQLite (встроенный `node:sqlite`), процессом управляет pm2. Схемы API — TypeBox. Сайт — статичные файлы у nginx, API — отдельный процесс рядом: упало API — игра работает. Не одно приложение (Nuxt/Next): игре не нужен серверный рендер (она — canvas), а статику nginx отдаёт быстрее Node. Fastify, а не чистый `node:http`: проверка запросов по схеме, ограничение частоты, тесты без сети (`app.inject()`) — готовые |
 | Хостинг | Свой VPS `77.91.113.61`, nginx + certbot. Не GitHub Pages и не Caddy — так решил владелец проекта. Подробности — в [«Сервере»](#сервер) |
 | Домен | `throne-defense.ru` (reg.ru): игра на `/`, API на `/api` — один адрес, CORS не нужен. `www` перенаправляет на адрес без `www`: рекорды в браузере хранятся отдельно для каждого адреса |
 | VPN на том же VPS | Amnezia VPN в Docker (AmneziaWG и WireGuard, UDP) должен работать всегда — не трогаем. Порт 443 — только у nginx |
@@ -133,7 +133,6 @@
 
 ## Мелочи без срока
 
-- [ ] Удалить старые локальные ветки на Mac: `git branch -d refactor stage-0 review-fixes content backend` (всё из них уже в `main`)
 - [ ] ⚠️ Бэкапы базы лежат на том же VPS: от поломки базы спасут, от потери сервера — нет. Когда в топе появятся настоящие рекорды — иногда забирать свежий на Mac: `scp root@77.91.113.61:/srv/throne-defense/backups/<последний>.db ~/throne-backups/`
 - [ ] Когда сценариев в `smoke.mjs` станет больше (этапы 4 и 6), разбить его на файлы: запуск, помощники, компьютер, телефон
 - [ ] Нарисовать настоящую картинку для превью ссылки вместо скриншота (`apps/web/public/og-image.png`, 1200×630)
@@ -250,7 +249,8 @@ apps/web/src/audio/          (этап 6)  + gameSounds.ts — подписки 
 
 ```bash
 npm run dev          # игра на http://localhost:5173 (добавь ?debug — в консоли window.__throne.game и .store)
-npm run dev:server   # API на http://127.0.0.1:3000, перезапускается при правках; npm run dev пересылает туда /api
+npm run dev:server   # API на http://127.0.0.1:3000 (база — apps/server/data/), перезапускается при правках.
+                     # npm run dev пересылает туда /api: для топа у себя запусти обе команды в двух окнах
 npm run check        # всё разом: format:check + lint + typecheck + test + build
 npm run e2e          # сборка + проверка в настоящем браузере (нужен Google Chrome)
 npm test             # тесты (npm run test:watch — в режиме наблюдения)
@@ -349,13 +349,13 @@ npm run format       # Prettier: оформить код (format:check — то�
 
 | Что | Где и как |
 |---|---|
-| Машина | VPS `77.91.113.61`, Ubuntu 24.04.5 LTS («минимальная» сборка: части привычных программ может не быть). Вход `ssh root@77.91.113.61`, только по ключу (вход по паролю выключен) |
+| Машина | VPS `77.91.113.61`, Ubuntu 24.04.5 LTS («минимальная» сборка: части привычных программ может не быть — проверяй `which …` перед тем, как на неё рассчитывать). 2 ГБ памяти (API занимает ≈ 100 МБ), 54 ГБ диска. Вход `ssh root@77.91.113.61`, только по ключу (вход по паролю выключен); `fail2ban` блокирует подбор паролей. Часовой пояс — Europe/Moscow |
 | Домен и DNS | reg.ru, DNS-серверы `ns1.reg.ru`/`ns2.reg.ru`, записи `A @` и `A www` → `77.91.113.61`. ⚠️ TTL записей — сутки: после смены адреса часть игроков до 24 часов попадает на старый (у заглушки reg.ru это выглядит как `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`). Перед переездом на другой сервер — за сутки снизить TTL до 300–3600 с («TTL и SOA» в reg.ru) |
 | Фаервол | `ufw`: открыты 22, 80, 443 (TCP). ⚠️ Порты Docker-контейнеров открыты в обход `ufw` — если запустить в Docker что-то новое, его порт окажется в интернете |
 | nginx 1.24 | Конфиг сайта — `deploy/nginx/throne-defense.conf` → на сервере `/etc/nginx/sites-available/throne-defense` (+ ссылка в `sites-enabled`); заголовки — `deploy/nginx/throne-security.conf` → `/etc/nginx/snippets/`. HTTP/2 на этой версии — словом `http2` в `listen`. `/api/` пересылается в `127.0.0.1:3000` |
 | HTTPS | certbot 2.9, сертификат на оба адреса в `/etc/letsencrypt/live/throne-defense.ru/`, письма об ошибках продления — на почту владельца. Продлевает таймер `certbot.timer`; проверить: `certbot renew --dry-run` |
 | Файлы игры | `/var/www/throne-defense`, владелец `deploy` — только сборка, больше ничего: `rsync --delete` удаляет всё, чего нет в `dist` |
-| Автодеплой | `.github/workflows/deploy.yml` (пуш в `main`: проверки → `rsync` сайта → «сайт отвечает» → `rsync` API → `after-upload` → «API отвечает»), `check.yml` (остальные ветки и pull request). Секреты `DEPLOY_SSH_KEY` (сайт, пользователь `deploy`) и `DEPLOY_API_SSH_KEY` (API, пользователь `throne`) — приватные ключи деплоя; публичный ключ сервера — `deploy/known_hosts`. Выложить ещё раз без коммита — «Run workflow» у «Деплой» на вкладке Actions |
+| Автодеплой | `.github/workflows/deploy.yml` (пуш в `main`: проверки → `rsync` сайта → «сайт отвечает» → `rsync` API → `after-upload` → «API отвечает»), `check.yml` (остальные ветки и pull request). Секреты `DEPLOY_SSH_KEY` (сайт, пользователь `deploy`) и `DEPLOY_API_SSH_KEY` (API, пользователь `throne`) — приватные ключи деплоя; публичный ключ сервера — `deploy/known_hosts`. Выложить ещё раз без коммита — «Run workflow» у «Деплой» на вкладке Actions. ⚠️ Окружение `production` не ограничено веткой `main`: «Run workflow» с выбором ветки выкладывает эту ветку (так проверяли автодеплой до слияния). Появятся соавторы — ограничить в Settings → Environments |
 | Пользователь `deploy` | Ключи в `/home/deploy/.ssh/authorized_keys` (ключ GitHub Actions и личный ключ с Mac), оба ограничены `rrsync /var/www/throne-defense`: только `rsync` и только в папку игры, терминала нет. Путь назначения в `rsync` — `deploy@77.91.113.61:/` (для `rrsync` это корень папки игры) |
 | Пользователь `throne` | Единственный ключ в `/home/throne/.ssh/authorized_keys` — ключ автодеплоя API с `command="/srv/throne-defense/bin/deploy-command",restrict`: только `rsync` в папку API и `after-upload`, терминала нет. Поменял `deploy/server/deploy-command.sh` — скопируй заново: `scp deploy/server/deploy-command.sh root@77.91.113.61:/srv/throne-defense/bin/deploy-command` |
 | Бэкап и журналы | `sqlite3`, `cron`, `logrotate` поставлены через `apt` (в «минимальной» Ubuntu их не было). Бэкап базы — понедельник 03:00 MSK, `/srv/throne-defense/backups` (8 последних); сделать руками: `su - throne -c /srv/throne-defense/bin/backup-database`; журнал: `journalctl -t throne-backup`. Файлы в `/srv/throne-defense/bin`, `/etc/cron.d`, `/etc/logrotate.d` — копии из `deploy/`, владелец `root`; поменял в репозитории — скопируй `scp` заново. ⚠️ Часовой пояс сервера — Europe/Moscow, не UTC |
