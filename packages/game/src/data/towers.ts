@@ -115,7 +115,7 @@ const ballista: TowerDef = {
 const bell: TowerDef = {
   id: 'bell',
   name: 'Звонарь',
-  description: 'сам не стреляет, башни рядом стреляют чаще',
+  description: 'башни рядом стреляют чаще',
   cost: 100,
   upgradeCosts: [80, 120],
   tiers: [
@@ -132,7 +132,7 @@ const bell: TowerDef = {
 const treasury: TowerDef = {
   id: 'treasury',
   name: 'Казна',
-  description: 'не стреляет, приносит золото после каждой волны',
+  description: 'приносит золото после каждой волны',
   cost: 80,
   upgradeCosts: [70, 100],
   tiers: [
