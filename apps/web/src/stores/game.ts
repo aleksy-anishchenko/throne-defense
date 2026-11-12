@@ -505,6 +505,14 @@ export const useGameStore = defineStore('game', () => {
     return `Дальше: ${describeWave(hud.wave)}`
   })
 
+  /**
+   * Подсказка сейчас — описание башни «в руке». Там, где карточки магазина сами показывают
+   * описания, оно повторялось бы дважды — SidePanel показывает вместо него, что делать дальше
+   */
+  const isArmedTowerHint = computed(
+    () => !hud.selectedTowerId && !hud.isPaused && armedTowerId.value !== null,
+  )
+
   return {
     game,
     hud,
@@ -523,6 +531,7 @@ export const useGameStore = defineStore('game', () => {
     submission,
     leaderboard,
     hint,
+    isArmedTowerHint,
     syncHud,
     boardView,
     isPlaying,

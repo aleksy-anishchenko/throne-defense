@@ -39,6 +39,13 @@
     display: block;
     grid-row: 1;
   }
+  /* Карточки здесь с описаниями — в подсказке не повторяем, а говорим, что делать дальше */
+  .hint-armed-description {
+    display: none;
+  }
+  .hint-armed-action {
+    display: inline;
+  }
   #hint {
     grid-row: 3;
     height: auto;
@@ -150,6 +157,13 @@
     height: 30px;
   }
   .card .card-description {
+    display: none;
+  }
+  /* Описаний в карточках нет — подсказка снова показывает описание башни «в руке» */
+  .hint-armed-description {
+    display: inline;
+  }
+  .hint-armed-action {
     display: none;
   }
 }

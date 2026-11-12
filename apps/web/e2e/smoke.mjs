@@ -269,6 +269,12 @@ async function desktop(browser, url) {
   const archerCard = page.getByRole('button', { name: /Лучник/ })
   await archerCard.click()
   check('карточка в магазине нажата', (await archerCard.getAttribute('aria-pressed')) === 'true')
+  // innerText, а не textContent: учитывает, что скрыто стилями
+  check(
+    'описание есть в карточке — подсказка его не повторяет, а говорит, что делать',
+    (await page.locator('#hint').innerText()).startsWith('Нажмите на свободную плиту'),
+    await page.locator('#hint').innerText(),
+  )
   await clickCell(page, 5, 11, 'right')
   await clickCell(page, 5, 11, 'middle')
   check('правая и средняя кнопки не строят', (await readGameSnapshot(page)).towers.length === 0)
@@ -697,6 +703,11 @@ async function phone(browser, url) {
   await page.goto(url)
   await page.getByRole('button', { name: 'Играть' }).tap()
   await page.getByRole('button', { name: /Огневик/ }).tap()
+  check(
+    'на телефоне описаний в карточках нет — подсказка показывает описание',
+    (await page.locator('#hint').innerText()).startsWith('Огневик:'),
+    await page.locator('#hint').innerText(),
+  )
   const bounds = await page.locator('#board').boundingBox()
   await page.touchscreen.tap(
     bounds.x + (5.5 / COLS) * bounds.width,

@@ -126,6 +126,10 @@
 .panel.has-selected-tower .shop {
   display: none;
 }
+/* Подсказка для башни «в руке»: по умолчанию — описание (в карточках его нет) */
+.hint-armed-action {
+  display: none;
+}
 /* «Строительство» над магазином — только с боковой панелью (responsive.css) */
 .panel-title {
   display: none;

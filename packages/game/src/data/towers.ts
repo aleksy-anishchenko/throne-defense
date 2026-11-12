@@ -158,9 +158,10 @@ const trapper: TowerDef = {
   tiers: [
     // Радиус сети — splashRadius. Вырвавшийся из сети пару секунд рвёт новые (ROOT_IMMUNITY_SECONDS),
     // поэтому пауза между сетями не короче «сеть + 2 с»: иначе часть сетей пропадала бы зря
-    { damage: 0, cooldown: 6, range: 2.4, splashRadius: 0.6, rootDuration: 1.5 },
-    { damage: 0, cooldown: 5, range: 2.6, splashRadius: 0.7, rootDuration: 2 },
-    { damage: 0, cooldown: 4.5, range: 2.8, splashRadius: 0.9, rootDuration: 2.5 },
+    // Время в сети +0,3 с по просьбе владельца (было 1,5/2/2,5)
+    { damage: 0, cooldown: 6, range: 2.4, splashRadius: 0.6, rootDuration: 1.8 },
+    { damage: 0, cooldown: 5, range: 2.6, splashRadius: 0.7, rootDuration: 2.3 },
+    { damage: 0, cooldown: 4.8, range: 2.8, splashRadius: 0.9, rootDuration: 2.8 },
   ],
   displayStats: ['rootDuration', 'cooldown', 'range'],
   defaultTargetMode: 'first',

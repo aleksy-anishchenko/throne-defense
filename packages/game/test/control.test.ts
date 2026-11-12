@@ -31,7 +31,7 @@ describe('Ловчий', () => {
     game.build('trapper', 5, 11)
     const enemy = placeEnemy(game, 'rebel', 1.5)
     stepUntil(game, () => enemy.rootTimeLeft > 0, 10)
-    // Сеть I ступени держит 1,5 с; иммунитет считается с поимки и длится на 2 с дольше
+    // Сеть I ступени держит 1,8 с; иммунитет считается с поимки и длится на 2 с дольше
     expect(enemy.rootImmunityLeft - enemy.rootTimeLeft).toBeCloseTo(ROOT_IMMUNITY_SECONDS)
   })
 
@@ -40,9 +40,9 @@ describe('Ловчий', () => {
     game.build('trapper', 5, 11)
     const boss = placeEnemy(game, 'boss', 1.5)
     stepUntil(game, () => boss.rootTimeLeft > 0, 10)
-    // 1,5 с × (1 − 0,7); один шаг мог уже пройти
-    expect(boss.rootTimeLeft).toBeGreaterThan(0.45 - steps(2))
-    expect(boss.rootTimeLeft).toBeLessThanOrEqual(0.45 + 1e-9)
+    // 1,8 с × (1 − 0,7); один шаг мог уже пройти
+    expect(boss.rootTimeLeft).toBeGreaterThan(0.54 - steps(2))
+    expect(boss.rootTimeLeft).toBeLessThanOrEqual(0.54 + 1e-9)
   })
 })
 

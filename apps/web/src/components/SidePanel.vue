@@ -14,7 +14,14 @@ const store = useGameStore()
     <h2 class="panel-title">
       {{ store.hud.selectedTowerId !== null ? 'Выбранный страж' : 'Строительство' }}
     </h2>
-    <p id="hint">{{ store.hint }}</p>
+    <!-- Описание башни «в руке» и «что делать дальше»: какое из двух видно, решают стили —
+         с описаниями в карточках описание здесь не повторяем (responsive.css) -->
+    <p id="hint">
+      <span :class="{ 'hint-armed-description': store.isArmedTowerHint }">{{ store.hint }}</span>
+      <span v-if="store.isArmedTowerHint" class="hint-armed-action">
+        Нажмите на свободную плиту, чтобы поставить стража
+      </span>
+    </p>
     <TowerInfo />
     <ShopPanel />
     <ControlsBar />
