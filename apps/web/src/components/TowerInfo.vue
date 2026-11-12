@@ -18,6 +18,9 @@ const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: number) => 
   burnDamage: { label: 'горение', format: String },
   fireRateBonus: { label: 'ускоряет соседей на', format: formatPercent },
   goldPerWave: { label: 'доход за волну', format: String },
+  rootDuration: { label: 'держит в сети', format: (value) => `${formatDecimal(value)} с` },
+  curseAmount: { label: 'урон по проклятым', format: (value) => `+${formatPercent(value)}` },
+  knockbackDistance: { label: 'отбрасывает', format: formatDecimal },
 }
 
 /** Как называть в панели, кого башня выбирает целью */

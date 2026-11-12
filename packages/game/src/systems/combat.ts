@@ -25,6 +25,15 @@ const LINE_SHOT_HIT_MARGIN = 0.1
 /** Какую долю радиуса врага добавляем к радиусу взрыва, в долях радиуса (0.5 = половину) */
 const SPLASH_ENEMY_RADIUS_SHARE = 0.5
 
+/**
+ * Сколько секунд после сети враг рвёт новые сети сразу. Без этого несколько Ловчих бросали бы
+ * сети по очереди, и волна стояла бы на месте вечно
+ */
+export const ROOT_IMMUNITY_SECONDS = 2
+
+/** Сколько секунд после отброса ядро не отбросит врага снова — иначе пушки гоняли бы его бесконечно */
+export const KNOCKBACK_IMMUNITY_SECONDS = 2
+
 /** Настройки снаряда, который летит за целью */
 export interface HomingShotOptions {
   /** Как рисовать снаряд: 'arrow' | 'orb' | 'bolt' | 'twinBolt' (см. SHOT_ART в apps/web) */
@@ -39,6 +48,10 @@ export interface HomingShotOptions {
   burnDamage?: number
   /** За сколько секунд догорает поджог */
   burnDuration?: number
+  /** Сеть: сколько секунд держит всех, кого накрыла (вместе с splashRadius — радиус сети) */
+  rootDuration?: number
+  /** Ядро: на сколько клеток отбрасывает цель назад по ковру */
+  knockbackDistance?: number
 }
 
 /** Настройки снаряда, который летит по прямой */
@@ -76,7 +89,9 @@ export function damageEnemy(
  * мигало бы врагом каждый кадр). Если враг погиб — награда, распад и событие kill
  */
 function loseHp(world: World, enemy: Enemy, amount: number): void {
-  enemy.hp -= amount
+  // Проклятие Колдуна: весь урон — от стрел, огня, пара — больше
+  const curseMultiplier = enemy.curseTimeLeft > 0 ? 1 + enemy.curseAmount : 1
+  enemy.hp -= amount * curseMultiplier
   if (enemy.hp <= 0) {
     const state = world.state
     enemy.isDead = true
@@ -110,6 +125,8 @@ export function shootHoming(
     splashRadius: options.splashRadius ?? 0,
     burnDamage: options.burnDamage ?? 0,
     burnDuration: options.burnDuration ?? 0,
+    rootDuration: options.rootDuration ?? 0,
+    knockbackDistance: options.knockbackDistance ?? 0,
     isDone: false,
   })
 }
@@ -156,6 +173,45 @@ export function frostPulse(world: World, tower: Tower, stats: TowerStats): void 
     damageEnemy(world, enemy, stats.damage, 'magic')
     if (enemy.burnDamageLeft > 0 && !enemy.isDead) extinguishWithSteam(world, enemy)
   }
+}
+
+/**
+ * Проклятие Колдуна: все в радиусе башни какое-то время получают больше урона.
+ * Несколько Колдунов не складываются — действует самое сильное проклятие (как у Звонаря)
+ */
+export function cursePulse(world: World, tower: Tower, stats: TowerStats): void {
+  const curseAmount = stats.curseAmount ?? 0
+  const curseDuration = stats.curseDuration ?? 0
+  const rangeSquared = stats.range * stats.range
+  for (const enemy of world.state.enemies) {
+    if (enemy.isDead || (enemy.x - tower.x) ** 2 + (enemy.y - tower.y) ** 2 > rangeSquared) continue
+    enemy.curseAmount =
+      enemy.curseTimeLeft > 0 ? Math.max(enemy.curseAmount, curseAmount) : curseAmount
+    enemy.curseTimeLeft = Math.max(enemy.curseTimeLeft, curseDuration)
+  }
+}
+
+/** Насколько враг поддаётся сети и ядру: 1 — полностью, 0.3 — на 30% (см. controlResistance) */
+const controlShare = (enemy: Enemy) => 1 - (enemy.def.controlResistance ?? 0)
+
+/** Поймать врага в сеть на duration секунд — если он не рвёт сети после прошлой */
+function rootEnemy(enemy: Enemy, duration: number): void {
+  if (enemy.isDead || duration <= 0 || enemy.rootImmunityLeft > 0) return
+  const rootTime = duration * controlShare(enemy)
+  enemy.rootTimeLeft = rootTime
+  enemy.rootImmunityLeft = rootTime + ROOT_IMMUNITY_SECONDS
+}
+
+/** Отбросить врага назад по ковру на distance клеток — не дальше двери */
+function knockBackEnemy(world: World, enemy: Enemy, distance: number): void {
+  if (enemy.isDead || distance <= 0 || enemy.knockbackImmunityLeft > 0) return
+  enemy.pathDistance = Math.max(0, enemy.pathDistance - distance * controlShare(enemy))
+  // Сразу на новое место: иначе до следующего шага враг рисовался бы там, где его ударило
+  const [x, y] = world.level.path.positionAt(enemy.pathDistance)
+  enemy.x = x
+  enemy.y = y
+  enemy.knockbackImmunityLeft = KNOCKBACK_IMMUNITY_SECONDS
+  world.emit('knockback', enemy)
 }
 
 /** «Пар»: потушить горящего врага — запас огня сразу, но меньше (× STEAM_DAMAGE_MULTIPLIER) */
@@ -244,15 +300,25 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
         Math.hypot(enemy.x - shot.targetX, enemy.y - shot.targetY) <=
           shot.splashRadius + enemy.def.radius * SPLASH_ENEMY_RADIUS_SHARE
       ) {
-        damageEnemy(world, enemy, shot.damage, shot.damageKind)
-        igniteEnemy(enemy, shot.burnDamage, shot.burnDuration)
+        hitWithShot(world, shot, enemy)
       }
     }
-    world.emit('splash', { x: shot.targetX, y: shot.targetY, radius: shot.splashRadius })
+    // Сеть падает, а не взрывается — у неё своё событие и своя картинка
+    const area = { x: shot.targetX, y: shot.targetY, radius: shot.splashRadius }
+    if (shot.rootDuration > 0) world.emit('net', area)
+    else world.emit('splash', area)
   } else if (!shot.target.isDead) {
-    damageEnemy(world, shot.target, shot.damage, shot.damageKind)
-    igniteEnemy(shot.target, shot.burnDamage, shot.burnDuration)
+    hitWithShot(world, shot, shot.target)
   }
+}
+
+/** Всё, что снаряд делает с врагом при попадании: урон, огонь, сеть, отброс */
+function hitWithShot(world: World, shot: HomingShot, enemy: Enemy): void {
+  // Сеть не ранит: без этой проверки броня превратила бы урон 0 в 1 (Math.max(1, …))
+  if (shot.damage > 0) damageEnemy(world, enemy, shot.damage, shot.damageKind)
+  igniteEnemy(enemy, shot.burnDamage, shot.burnDuration)
+  rootEnemy(enemy, shot.rootDuration)
+  knockBackEnemy(world, enemy, shot.knockbackDistance)
 }
 
 /**

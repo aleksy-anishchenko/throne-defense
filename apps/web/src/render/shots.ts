@@ -1,7 +1,7 @@
 // Как выглядят снаряды. Ключ — поле `look`, которое задаёт башня при выстреле.
 
 import type { Shot } from '@throne/game'
-import { PARCHMENT, circle, type Canvas2D } from './shapes'
+import { PARCHMENT, circle, drawNet, prefersReducedMotion, type Canvas2D } from './shapes'
 
 /** Штрих-«хвост» за снарядом: от точки позади до самого снаряда (длина и толщина — в клетках) */
 function drawStreak(ctx: Canvas2D, shot: Shot, length: number, color: string, lineWidth: number) {
@@ -34,6 +34,21 @@ const SHOT_ART: Record<string, (ctx: Canvas2D, shot: Shot) => void> = {
       drawStreak(ctx, shot, BOLT_LENGTH, BOLT_COLOR, BOLT_WIDTH * 0.85)
       ctx.restore()
     }
+  },
+  // Сеть Ловчего летит, раскручиваясь
+  net(ctx, shot) {
+    const spin = prefersReducedMotion ? 0 : shot.x * 4 + shot.y * 4
+    drawNet(ctx, shot.x, shot.y, 0.17, spin, '#a9b4c6')
+  },
+  // Ядро Пушкаря: тёмный шар с бликом и дымным следом
+  cannonball(ctx, shot) {
+    drawStreak(ctx, shot, 0.3, 'rgba(200,195,185,.45)', 0.08)
+    ctx.fillStyle = '#23252f'
+    circle(ctx, shot.x, shot.y, 0.085)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,.35)'
+    circle(ctx, shot.x - 0.025, shot.y - 0.025, 0.03)
+    ctx.fill()
   },
   orb(ctx, shot) {
     ctx.fillStyle = 'rgba(255,140,40,.35)'

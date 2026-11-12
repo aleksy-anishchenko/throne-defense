@@ -5,8 +5,10 @@
 // У каждой башни своя работа (баланс v4):
 // лучник — дешёвый и частый, огневик — против толпы и лат, Морозко — только замедляет,
 // баллиста — против толстых, Звонарь — ускоряет стреляющих соседей, Казна — приносит золото.
+// Баланс v5: Пушкарь — отбрасывает назад, Ловчий — ловит в сеть, Колдун — проклинает
+// (проклятые получают больше урона ото всех)
 
-import { frostPulse, shootHoming, shootLine } from '../systems/combat.ts'
+import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/combat.ts'
 import type { TowerDef } from '../types.ts'
 
 /** Болт баллисты летит дальше её радиуса обстрела: дальность полёта = range × 1.15 (множитель) */
@@ -122,6 +124,78 @@ const ballista: TowerDef = {
     }),
 }
 
+const cannon: TowerDef = {
+  id: 'cannon',
+  name: 'Пушкарь',
+  description: 'ядро отбрасывает врага назад',
+  cost: 140,
+  upgradeCosts: [100, 140],
+  tiers: [
+    { damage: 30, cooldown: 3.5, range: 2.6, knockbackDistance: 0.6 },
+    { damage: 50, cooldown: 3.2, range: 2.8, knockbackDistance: 0.8 },
+    { damage: 80, cooldown: 3, range: 3, knockbackDistance: 1 },
+  ],
+  displayStats: ['damage', 'knockbackDistance', 'range'],
+  defaultTargetMode: 'first',
+  canChooseTarget: false,
+  takesFireRateBonus: true,
+  fire: (world, tower, target, stats) =>
+    shootHoming(world, tower, target, {
+      look: 'cannonball',
+      speed: 9,
+      damage: stats.damage,
+      damageKind: 'physical',
+      knockbackDistance: stats.knockbackDistance,
+    }),
+}
+
+const trapper: TowerDef = {
+  id: 'trapper',
+  name: 'Ловчий',
+  description: 'ловит врагов в сеть, они стоят на месте',
+  cost: 110,
+  upgradeCosts: [70, 100],
+  tiers: [
+    // Радиус сети — splashRadius. Вырвавшийся из сети пару секунд рвёт новые (ROOT_IMMUNITY_SECONDS),
+    // поэтому пауза между сетями не короче «сеть + 2 с»: иначе часть сетей пропадала бы зря
+    { damage: 0, cooldown: 6, range: 2.4, splashRadius: 0.6, rootDuration: 1.5 },
+    { damage: 0, cooldown: 5, range: 2.6, splashRadius: 0.7, rootDuration: 2 },
+    { damage: 0, cooldown: 4.5, range: 2.8, splashRadius: 0.9, rootDuration: 2.5 },
+  ],
+  displayStats: ['rootDuration', 'cooldown', 'range'],
+  defaultTargetMode: 'first',
+  canChooseTarget: false,
+  takesFireRateBonus: true,
+  fire: (world, tower, target, stats) =>
+    shootHoming(world, tower, target, {
+      look: 'net',
+      speed: 7,
+      damage: 0,
+      damageKind: 'physical',
+      splashRadius: stats.splashRadius,
+      rootDuration: stats.rootDuration,
+    }),
+}
+
+const warlock: TowerDef = {
+  id: 'warlock',
+  name: 'Колдун',
+  description: 'проклятые враги получают больше урона',
+  cost: 100,
+  upgradeCosts: [80, 120],
+  tiers: [
+    { damage: 0, cooldown: 1.5, range: 2.2, curseAmount: 0.35, curseDuration: 2 },
+    { damage: 0, cooldown: 1.5, range: 2.4, curseAmount: 0.5, curseDuration: 2.5 },
+    { damage: 0, cooldown: 1.5, range: 2.6, curseAmount: 0.65, curseDuration: 3 },
+  ],
+  displayStats: ['curseAmount', 'range'],
+  defaultTargetMode: 'first',
+  canChooseTarget: false,
+  // Как у Морозко: проклятие держится дольше паузы между волнами проклятия — ускорять нечего
+  takesFireRateBonus: false,
+  fire: (world, tower, _target, stats) => cursePulse(world, tower, stats),
+}
+
 const bell: TowerDef = {
   id: 'bell',
   name: 'Звонарь',
@@ -158,7 +232,17 @@ const treasury: TowerDef = {
 }
 
 /** Башни в порядке магазина (клавиши 1, 2, 3…) */
-export const TOWER_LIST: readonly TowerDef[] = [archer, ballista, mage, frost, bell, treasury]
+export const TOWER_LIST: readonly TowerDef[] = [
+  archer,
+  ballista,
+  cannon,
+  mage,
+  frost,
+  trapper,
+  warlock,
+  bell,
+  treasury,
+]
 
 /** Все башни по id */
 export const TOWERS: Readonly<Record<string, TowerDef>> = Object.fromEntries(

@@ -3,7 +3,7 @@
 
 import type { Enemy, Game, Tower } from '@throne/game'
 import { getEnemyArt } from './enemies'
-import { GOLD, circle, prefersReducedMotion, type Canvas2D } from './shapes'
+import { GOLD, circle, drawNet, prefersReducedMotion, type Canvas2D } from './shapes'
 import { TOWER_ART } from './towers'
 
 interface TextEffect {
@@ -54,6 +54,17 @@ interface BoomEffect {
   duration: number
 }
 
+/** Сеть Ловчего упала: раскрывается на весь радиус и тает */
+interface NetEffect {
+  kind: 'net'
+  x: number
+  y: number
+  /** Радиус сети, клеток */
+  radius: number
+  timeLeft: number
+  duration: number
+}
+
 /** Облачко пара: Морозко потушил горящего врага */
 interface SteamEffect {
   kind: 'steam'
@@ -63,7 +74,7 @@ interface SteamEffect {
   duration: number
 }
 
-export type Effect = TextEffect | SparkEffect | RingEffect | BoomEffect | SteamEffect
+export type Effect = TextEffect | SparkEffect | RingEffect | BoomEffect | SteamEffect | NetEffect
 
 export interface EffectSink {
   add(effect: Effect): void
@@ -117,6 +128,12 @@ const STEAM_PUFFS: readonly (readonly [number, number, number])[] = [
 ]
 /** Цвет числа урона от пара: холодный белый, не путать с золотой наградой */
 const STEAM_TEXT_COLOR = '#e4f6ff'
+/** Сколько раскрывается и тает упавшая сеть, с */
+const NET_DURATION = 0.45
+/** Сколько расходится облачко пыли, когда ядро отбросило врага, с */
+const KNOCKBACK_DUST_DURATION = 0.35
+/** Цвет пыли от отброса */
+const KNOCKBACK_DUST_RGB = '200,190,170'
 /** Сколько длится взрыв, с */
 const BOOM_DURATION = 0.3
 /** Тряска экрана при потере жизни, с */
@@ -141,6 +158,14 @@ const SPARK_LIFT = 0.6
 const TEXT_FONT_SHARE = 0.34
 /** Сдвиг тени надписи, px */
 const TEXT_SHADOW_OFFSET_PX = 1
+
+/** Упавшая сеть: за первую треть жизни раскрывается до полного радиуса, потом тает */
+function drawNetLanding(ctx: Canvas2D, effect: NetEffect, lifeShare: number) {
+  const openShare = Math.min(1, (1 - lifeShare) * 3)
+  ctx.globalAlpha = Math.min(1, lifeShare * 1.5)
+  drawNet(ctx, effect.x, effect.y, effect.radius * (0.5 + 0.5 * openShare), 0.4, '#a9b4c6')
+  ctx.globalAlpha = 1
+}
 
 export function createEffects(game: Game): Effects {
   let activeEffects: Effect[] = []
@@ -239,6 +264,21 @@ export function createEffects(game: Game): Effects {
     game.on('splash', ({ x, y, radius }) =>
       add({ kind: 'boom', x, y, radius, timeLeft: BOOM_DURATION, duration: BOOM_DURATION }),
     ),
+    game.on('net', ({ x, y, radius }) =>
+      add({ kind: 'net', x, y, radius, timeLeft: NET_DURATION, duration: NET_DURATION }),
+    ),
+    game.on('knockback', (enemy) =>
+      add({
+        kind: 'ring',
+        x: enemy.x,
+        y: enemy.y,
+        startRadius: enemy.def.radius,
+        endRadius: enemy.def.radius + 0.25,
+        rgb: KNOCKBACK_DUST_RGB,
+        timeLeft: KNOCKBACK_DUST_DURATION,
+        duration: KNOCKBACK_DUST_DURATION,
+      }),
+    ),
     game.on('heal', ({ x, y, radius }) =>
       add({
         kind: 'ring',
@@ -334,6 +374,8 @@ export function createEffects(game: Game): Effects {
           drawSpark(ctx, effect, lifeShare)
         } else if (effect.kind === 'steam') {
           drawSteam(ctx, effect, lifeShare)
+        } else if (effect.kind === 'net') {
+          drawNetLanding(ctx, effect, lifeShare)
         }
       }
     },

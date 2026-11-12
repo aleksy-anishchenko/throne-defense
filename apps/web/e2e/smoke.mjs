@@ -195,7 +195,8 @@ async function checkShopCardsVisible(page) {
   )
   check(
     `${width}×${height}: все карточки магазина (${cards.length}) видны целиком`,
-    cards.length === 6 && badCards.length === 0,
+    // Девять башен (TOWER_LIST в packages/game/src/data/towers.ts)
+    cards.length === 9 && badCards.length === 0,
     JSON.stringify(badCards),
   )
 }
@@ -677,7 +678,7 @@ async function offline(browser, url) {
     'нет сервера: «Лучшие результаты» говорят, что не загрузились',
     await appears(page.locator('.leaderboard-status').filter({ hasText: 'Не удалось' })),
   )
-  await page.getByRole('button', { name: 'Назад' }).click()
+  await page.getByRole('button', { name: 'Назад', exact: true }).click()
   await page.getByRole('button', { name: 'Сыграть ещё раз' }).click()
   await waitForFrames(page)
   check('нет сервера: новая партия начинается', (await readGameSnapshot(page)).phase === 'build')

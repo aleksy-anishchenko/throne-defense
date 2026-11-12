@@ -23,9 +23,11 @@
   .panel {
     grid-column: 2;
     grid-row: 2;
-    /* 132px — панель башни целиком: имя, две характеристики, «цель: …» и кнопки.
-       Высота постоянная, чтобы магазин не прыгал, когда выбираешь башню */
-    grid-template-rows: 132px auto minmax(0, 1fr) auto;
+    /* Заголовок, магазин, подсказка, свободное место, кнопки. Магазин — в самом верху:
+       подсказка бывает то в одну строку, то в две, и стой она над магазином, карточки
+       прыгали бы. Панель выбранной башни встаёт на место магазина (как на телефоне) —
+       так не нужно держать под неё пустое место */
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
     gap: 10px;
     padding: 6px 16px 18px 0;
     /* Страховка: если панель всё же не влезла по высоте, её можно прокрутить,
@@ -33,20 +35,19 @@
     min-height: 0;
     overflow-y: auto;
   }
+  .panel-title {
+    display: block;
+    grid-row: 1;
+  }
   #hint {
+    grid-row: 3;
     height: auto;
     white-space: normal;
     font-size: 1rem;
     align-self: start;
   }
-  .panel.has-selected-tower #hint {
-    display: none;
-  }
-  .panel.has-selected-tower .shop {
-    display: grid;
-  }
   .tower-info {
-    grid-row: 1;
+    grid-row: 2;
     height: auto;
     flex-wrap: wrap;
     align-content: start;
@@ -98,7 +99,7 @@
     color: var(--parch-dim);
   }
   .controls {
-    grid-row: 4;
+    grid-row: 5;
     flex-wrap: wrap;
   }
   .keys {
@@ -110,18 +111,43 @@
     color: var(--parch-dim);
   }
 }
-/* Невысокий экран с боковой панелью (ноутбук): шесть карточек с описаниями не влезают,
-   и кнопка «Начать волну» уехала бы вниз. Описание башни и так видно в подсказке,
-   когда её выбираешь */
-@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 760px) {
+/* Обычный экран компьютера с боковой панелью: девять карточек в один столбец влезают только
+   в очень высокий экран, иначе панель пришлось бы прокручивать. Ставим их в два столбца —
+   с описаниями: значок, рядом имя и цена, описание под ними во всю ширину карточки */
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 1150px) {
+  .shop {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
   .card {
-    grid-template-columns: 34px 1fr auto;
-    grid-template-areas: 'ico nm cost';
-    padding: 3px 12px 3px 8px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-areas: 'ico nm' 'ico cost' 'ds ds';
+    align-content: start;
+    column-gap: 8px;
+    row-gap: 1px;
+    padding: 7px 9px 8px 7px;
   }
   .card canvas {
-    width: 34px;
-    height: 34px;
+    width: 40px;
+    height: 40px;
+  }
+  .card .card-description {
+    margin-top: 4px;
+    font-size: 0.82rem;
+    line-height: 1.2;
+  }
+}
+/* Невысокий экран с боковой панелью (ноутбук): и карточки с описаниями в два столбца
+   не влезают — оставляем значок, имя и цену. Описание видно в подсказке над магазином */
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 760px) {
+  .card {
+    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-areas: 'ico nm' 'ico cost';
+    padding: 3px 8px 3px 5px;
+  }
+  .card canvas {
+    width: 30px;
+    height: 30px;
   }
   .card .card-description {
     display: none;
@@ -146,10 +172,18 @@
     gap: 6px;
     padding: 2px 16px 10px 0;
   }
+  /* Места мало: без заголовка, подсказка в одну строку над магазином, как на телефоне */
+  .panel-title {
+    display: none;
+  }
   #hint {
+    grid-row: 1;
     height: 1.3em;
     white-space: nowrap;
     font-size: 0.95rem;
+  }
+  .controls {
+    grid-row: 4;
   }
   .panel.has-selected-tower #hint {
     display: block;
@@ -160,7 +194,7 @@
   .tower-info {
     grid-row: 2;
   }
-  /* Шесть карточек в два столбца: в один столбец они не влезают по высоте */
+  /* Карточки в два столбца, имя над ценой: в один столбец они не влезают по высоте */
   .shop {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
@@ -190,7 +224,7 @@
 @media (max-height: 640px) and (max-width: 639px) {
   .shop,
   .tower-info {
-    height: 70px;
+    height: 96px;
   }
   .card canvas {
     width: 22px;

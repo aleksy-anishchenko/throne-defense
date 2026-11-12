@@ -1,7 +1,7 @@
 // Как выглядит каждый враг. Новый враг в @throne/game → добавь его рисунок сюда.
 
 import type { Enemy } from '@throne/game'
-import { GOLD, circle, prefersReducedMotion } from './shapes'
+import { GOLD, circle, drawNet, prefersReducedMotion } from './shapes'
 import type { Canvas2D } from './shapes'
 
 export interface EnemyArt {
@@ -698,6 +698,31 @@ function drawBurning(ctx: Canvas2D, radius: number, time: number, isWet: boolean
   ctx.globalAlpha = 1
 }
 
+/** Цвет проклятия Колдуна (RGB для прозрачности) — тот же, что у его шара */
+const CURSE_RGB = '190,120,255'
+/** Насколько сеть на враге шире самого врага, в долях радиуса */
+const ROOT_NET_SCALE = 1.25
+
+/**
+ * Проклятый враг: фиолетовое кольцо у ног и тёмно-фиолетовый оттенок тела.
+ * Рисуется до тела (кольцо) и после (оттенок) — как замедление
+ */
+function drawCurseRing(ctx: Canvas2D, radius: number, time: number) {
+  const pulse = prefersReducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(time * 6)
+  ctx.strokeStyle = `rgba(${CURSE_RGB},${0.55 + pulse * 0.35})`
+  ctx.lineWidth = 0.03
+  ctx.setLineDash([0.06, 0.05])
+  circle(ctx, 0, 0, radius + 0.06)
+  ctx.stroke()
+  ctx.setLineDash([])
+}
+
+function drawCurseTint(ctx: Canvas2D, radius: number) {
+  ctx.fillStyle = `rgba(${CURSE_RGB},.22)`
+  circle(ctx, 0, 0, radius)
+  ctx.fill()
+}
+
 /** Враг целиком: тень, покачивание, сам враг, замедление, вспышка от удара, здоровье */
 export function drawEnemy(
   ctx: Canvas2D,
@@ -720,6 +745,8 @@ export function drawEnemy(
   ctx.fill()
 
   const isSlowed = enemy.slowTimeLeft > 0
+  const isCursed = enemy.curseTimeLeft > 0
+  if (isCursed) drawCurseRing(ctx, radius, time + bobPhase)
   // Замедление рисуется в два слоя: ледяное свечение — ПОД врагом (иначе оно перечёркивало бы
   // то, что торчит за край тела: дубину огра, крылья Горыныча, щит латника), а голубой
   // оттенок и снежинки — поверх. Так одно правило подходит любому врагу, без отдельного рисунка
@@ -729,6 +756,9 @@ export function drawEnemy(
   art.body(ctx, radius)
 
   if (isSlowed) drawFrostOverlay(ctx, radius)
+  if (isCursed) drawCurseTint(ctx, radius)
+  // В сети — сеть поверх врага, чуть шире его
+  if (enemy.rootTimeLeft > 0) drawNet(ctx, 0, 0, radius * ROOT_NET_SCALE, 0.4, '#a9b4c6')
   if (enemy.burnTimeLeft > 0) drawBurning(ctx, radius, time + bobPhase, isSlowed)
   if (isFlashing) {
     ctx.fillStyle = 'rgba(255,255,255,.55)'

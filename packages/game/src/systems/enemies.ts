@@ -28,6 +28,11 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
     healCooldownLeft: def.heal?.cooldown ?? 0,
     burnDamageLeft: 0,
     burnTimeLeft: 0,
+    rootTimeLeft: 0,
+    rootImmunityLeft: 0,
+    knockbackImmunityLeft: 0,
+    curseTimeLeft: 0,
+    curseAmount: 0,
     isDead: false,
   })
 }
@@ -48,6 +53,9 @@ export function moveEnemies(world: World, dt: number): boolean {
       speed *= 1 - enemy.slowFactor
       enemy.slowTimeLeft -= dt
     }
+    // В сети — стоит. Замедление при этом идёт своим чередом
+    if (enemy.rootTimeLeft > 0) speed = 0
+    tickStatusTimers(enemy, dt)
     enemy.pathDistance += speed * dt
 
     if (enemy.pathDistance >= path.length) {
@@ -69,6 +77,14 @@ export function moveEnemies(world: World, dt: number): boolean {
     enemy.y = y
   }
   return true
+}
+
+/** Часы сети, проклятия и «устойчивости» после них. Не ниже нуля — так проще читать состояние */
+function tickStatusTimers(enemy: Enemy, dt: number): void {
+  enemy.rootTimeLeft = Math.max(0, enemy.rootTimeLeft - dt)
+  enemy.rootImmunityLeft = Math.max(0, enemy.rootImmunityLeft - dt)
+  enemy.knockbackImmunityLeft = Math.max(0, enemy.knockbackImmunityLeft - dt)
+  enemy.curseTimeLeft = Math.max(0, enemy.curseTimeLeft - dt)
 }
 
 /** Лечить ли этого соседа: живой, раненый и в радиусе лечения */

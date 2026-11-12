@@ -116,11 +116,23 @@
 .shop,
 .tower-info {
   grid-row: 2;
-  height: 84px;
+  /* Три ряда карточек магазина. Панель башни той же высоты — поле не прыгает, когда
+     выбираешь башню */
+  height: 112px;
 }
 .controls {
   grid-row: 3;
 }
 .panel.has-selected-tower .shop {
   display: none;
+}
+/* «Строительство» над магазином — только с боковой панелью (responsive.css) */
+.panel-title {
+  display: none;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--parch-dim);
 }

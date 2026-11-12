@@ -49,3 +49,61 @@ export function cellNoise(col: number, row: number): number {
 /** Игрок попросил систему поменьше анимаций — убираем тряску, искры и покачивание */
 export const prefersReducedMotion =
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/**
+ * Сеть: круг из верёвок с ячейками. x, y — центр, radius — радиус, rotation — поворот,
+ * weightColor — цвет грузил по краю (пустая строка — без грузил)
+ */
+export function drawNet(
+  ctx: Canvas2D,
+  x: number,
+  y: number,
+  radius: number,
+  rotation: number,
+  weightColor: string,
+) {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(rotation)
+  // ячейки: сетка линий, обрезанная кругом
+  ctx.save()
+  circle(ctx, 0, 0, radius)
+  ctx.clip()
+  // тёмная подложка под верёвками: сеть видна и на светлом враге, и на красном ковре
+  ctx.strokeStyle = 'rgba(30,22,10,.55)'
+  ctx.lineWidth = radius * 0.16
+  ctx.beginPath()
+  const cellSize = radius / 2.2
+  for (let offset = -radius; offset <= radius; offset += cellSize) {
+    ctx.moveTo(offset, -radius)
+    ctx.lineTo(offset, radius)
+    ctx.moveTo(-radius, offset)
+    ctx.lineTo(radius, offset)
+  }
+  ctx.stroke()
+  ctx.strokeStyle = '#f0dca6'
+  ctx.lineWidth = radius * 0.08
+  ctx.beginPath()
+  for (let offset = -radius; offset <= radius; offset += cellSize) {
+    ctx.moveTo(offset, -radius)
+    ctx.lineTo(offset, radius)
+    ctx.moveTo(-radius, offset)
+    ctx.lineTo(radius, offset)
+  }
+  ctx.stroke()
+  ctx.restore()
+  // край сети — толстая верёвка
+  ctx.strokeStyle = '#a8864a'
+  ctx.lineWidth = radius * 0.16
+  circle(ctx, 0, 0, radius)
+  ctx.stroke()
+  if (weightColor) {
+    ctx.fillStyle = weightColor
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3
+      circle(ctx, Math.cos(angle) * radius, Math.sin(angle) * radius, radius * 0.17)
+      ctx.fill()
+    }
+  }
+  ctx.restore()
+}

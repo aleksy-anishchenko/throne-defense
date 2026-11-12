@@ -35,6 +35,14 @@ export interface TowerStats {
   fireRateBonus?: number
   /** Казна: сколько золота приносит за каждую отбитую волну */
   goldPerWave?: number
+  /** Ловчий: сколько секунд враги стоят в сети */
+  rootDuration?: number
+  /** Колдун: насколько больше урона получает проклятый враг (0.2 — на 20% больше) */
+  curseAmount?: number
+  /** Колдун: сколько секунд держится проклятие */
+  curseDuration?: number
+  /** Пушкарь: на сколько клеток ядро отбрасывает врага назад по ковру */
+  knockbackDistance?: number
 }
 
 /** Какие характеристики можно показать в панели башни */
@@ -48,6 +56,9 @@ export type StatKey =
   | 'burnDamage'
   | 'fireRateBonus'
   | 'goldPerWave'
+  | 'rootDuration'
+  | 'curseAmount'
+  | 'knockbackDistance'
 
 /**
  * Кого башня выбирает целью: first — того, кто ближе всех к трону,
@@ -105,6 +116,11 @@ export interface EnemyDef {
   radius: number
   /** Сопротивление замедлению: 0.5 — замедляется вдвое слабее */
   slowResistance?: number
+  /**
+   * Устойчивость к сети Ловчего и ядру Пушкаря: 0.7 — сеть держит 30% времени,
+   * ядро отбрасывает на 30% расстояния. Крупных (огр, Горыныч, узурпатор) остановить труднее
+   */
+  controlResistance?: number
   /** Лечит других врагов рядом (знахарь) */
   heal?: EnemyHeal
   /** Погибая, распадается на нескольких врагов поменьше (Змей Горыныч) */
@@ -225,6 +241,19 @@ export interface Enemy {
   burnDamageLeft: number
   /** За сколько секунд догорит весь запас огня */
   burnTimeLeft: number
+  /** Сколько ещё секунд враг стоит в сети Ловчего */
+  rootTimeLeft: number
+  /**
+   * Сколько секунд новая сеть его не возьмёт: считается с момента поимки и длится
+   * дольше самой сети — вырвавшись, враг какое-то время рвёт сети сразу
+   */
+  rootImmunityLeft: number
+  /** Сколько секунд ядро Пушкаря его не отбросит (только что отбросило) */
+  knockbackImmunityLeft: number
+  /** Сколько ещё секунд враг проклят Колдуном */
+  curseTimeLeft: number
+  /** Сила проклятия: 0.3 — получает на 30% больше урона */
+  curseAmount: number
   /** Убит: такого врага уберут из списка в конце шага */
   isDead: boolean
 }
@@ -255,6 +284,10 @@ export interface HomingShot {
   burnDamage: number
   /** За сколько секунд догорает поджог, секунд */
   burnDuration: number
+  /** Сеть: сколько секунд держит всех, кого накрыла; 0 — снаряд не сеть */
+  rootDuration: number
+  /** Ядро: на сколько клеток отбрасывает цель назад по ковру; 0 — не отбрасывает */
+  knockbackDistance: number
   /** Снаряд долетел или потерял смысл: его уберут в конце шага */
   isDone: boolean
 }
@@ -368,6 +401,10 @@ export interface GameEvents {
   steam: { x: number; y: number; damage: number }
   /** Знахарь лечит соседей */
   heal: { x: number; y: number; radius: number }
+  /** Сеть Ловчего упала: всех в радиусе — в сеть (кого взяла — видно по rootTimeLeft) */
+  net: { x: number; y: number; radius: number }
+  /** Ядро Пушкаря отбросило врага назад */
+  knockback: Enemy
   leak: Enemy
   victory: void
   defeat: void

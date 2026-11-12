@@ -8,6 +8,7 @@ import {
   PARCHMENT,
   TOWER_IDLE_AIM_ANGLE,
   circle,
+  drawNet,
   prefersReducedMotion,
   roundedRect,
 } from './shapes'
@@ -35,6 +36,20 @@ const MAGE_FLAME_SCALE = [1, 1.15, 1.3]
 const FROST_ARM_LENGTH = [0.25, 0.27, 0.29]
 /** Во сколько раз крупнее колокол Звонаря на ступенях I, II, III */
 const BELL_SCALE = [1, 1.06, 1.1]
+
+/** Ствол Пушкаря на ступенях I, II, III: длина и толщина, клеток */
+const CANNON_BARREL_LENGTH = [0.36, 0.4, 0.43]
+const CANNON_BARREL_WIDTH = [0.13, 0.15, 0.16]
+/** Металл ствола: I — чугун, II — тёмная сталь, III — бронза с золотом */
+const CANNON_BARREL_COLORS = ['#4a4e5e', '#5d6478', '#c9953a']
+
+/** Сеть Ловчего в руках: радиус на ступенях I, II, III, клеток */
+const TRAPPER_NET_RADIUS = [0.15, 0.16, 0.17]
+/** Грузила по краю сети: I — без грузил, II — железные, III — золотые */
+const TRAPPER_WEIGHT_COLORS = ['', '#a9b4c6', GOLD]
+
+/** Колдун: цвет шара на посохе и его свечения (RGB для прозрачности) */
+const WARLOCK_ORB_RGB = '190,120,255'
 
 /** Цвет дерева лука: I — светлое дерево, II — тёмное морёное, III — золото */
 const ARCHER_BOW_COLORS = ['#d6ab6c', '#9a6430', GOLD]
@@ -196,6 +211,40 @@ function drawTwinkle(ctx: Canvas2D, x: number, y: number, size: number) {
   ctx.lineTo(x - size * 0.25, y - size * 0.25)
   ctx.closePath()
   ctx.fill()
+}
+
+/** Колдун: свечение шара на посохе. strength — 0..1, насколько ярко */
+function drawWarlockOrb(ctx: Canvas2D, x: number, y: number, radius: number, strength: number) {
+  ctx.fillStyle = `rgba(${WARLOCK_ORB_RGB},${0.2 + strength * 0.25})`
+  circle(ctx, x, y, radius * 2.1)
+  ctx.fill()
+  ctx.fillStyle = `rgb(${WARLOCK_ORB_RGB})`
+  circle(ctx, x, y, radius)
+  ctx.fill()
+  ctx.fillStyle = '#f3e6ff'
+  circle(ctx, x - radius * 0.3, y - radius * 0.3, radius * 0.38)
+  ctx.fill()
+}
+
+/** Руны вокруг Колдуна III: count штук по кругу radius, медленно плывут */
+function drawFloatingRunes(ctx: Canvas2D, time: number, radius: number, count: number) {
+  const turn = prefersReducedMotion ? 0 : time * 0.6
+  ctx.strokeStyle = `rgba(${WARLOCK_ORB_RGB},.9)`
+  ctx.lineWidth = 0.014
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  for (let i = 0; i < count; i++) {
+    const angle = turn + (i * Math.PI * 2) / count
+    const x = Math.cos(angle) * radius
+    const y = Math.sin(angle) * radius
+    // руна — «стрелка» из трёх палочек
+    ctx.moveTo(x, y - 0.035)
+    ctx.lineTo(x, y + 0.035)
+    ctx.moveTo(x - 0.025, y - 0.01)
+    ctx.lineTo(x, y - 0.035)
+    ctx.lineTo(x + 0.025, y - 0.01)
+  }
+  ctx.stroke()
 }
 
 export const TOWER_ART: Record<string, TowerArt> = {
@@ -394,6 +443,194 @@ export const TOWER_ART: Record<string, TowerArt> = {
           drawBolt(ctx, 0)
         }
       }
+    },
+  },
+
+  cannon: {
+    body(ctx, aimAngle, _time, isReady, tier) {
+      ctx.rotate(aimAngle)
+      // лафет: два деревянных колеса по бокам
+      ctx.fillStyle = '#6b4424'
+      ctx.strokeStyle = '#3e2712'
+      ctx.lineWidth = 0.02
+      for (const side of [-1, 1]) {
+        roundedRect(ctx, -0.16, side * 0.17 - 0.045, 0.2, 0.09, 0.03)
+        ctx.fill()
+        ctx.stroke()
+      }
+      ctx.fillStyle = '#8a5d30'
+      roundedRect(ctx, -0.2, -0.13, 0.26, 0.26, 0.05)
+      ctx.fill()
+      ctx.stroke()
+      // ствол: на II толще и длиннее, на III — бронзовый
+      const length = CANNON_BARREL_LENGTH[tier] ?? CANNON_BARREL_LENGTH[0]
+      const halfWidth = (CANNON_BARREL_WIDTH[tier] ?? CANNON_BARREL_WIDTH[0]) / 2
+      ctx.fillStyle = CANNON_BARREL_COLORS[tier] ?? CANNON_BARREL_COLORS[0]
+      ctx.strokeStyle = '#1d1f2c'
+      ctx.lineWidth = 0.022
+      ctx.beginPath()
+      ctx.moveTo(-0.14, -halfWidth * 1.15)
+      ctx.lineTo(length - 0.14, -halfWidth)
+      ctx.lineTo(length - 0.14, halfWidth)
+      ctx.lineTo(-0.14, halfWidth * 1.15)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      // казённая часть — шар сзади
+      circle(ctx, -0.15, 0, halfWidth * 1.05)
+      ctx.fill()
+      ctx.stroke()
+      // обручи на стволе (II — железные, III — золотые)
+      if (tier >= TIER_II) {
+        ctx.strokeStyle = tier >= TIER_III ? '#ffe08a' : '#a9b4c6'
+        ctx.lineWidth = 0.025
+        ctx.beginPath()
+        for (const ringX of [0.02, length - 0.2]) {
+          ctx.moveTo(ringX, -halfWidth - 0.01)
+          ctx.lineTo(ringX, halfWidth + 0.01)
+        }
+        ctx.stroke()
+      }
+      // жерло: тёмное, а заряженное — с ядром внутри
+      const muzzleX = length - 0.14
+      ctx.fillStyle = '#14151f'
+      ctx.beginPath()
+      ctx.ellipse(muzzleX, 0, 0.025, halfWidth * 0.75, 0, 0, Math.PI * 2)
+      ctx.fill()
+      if (isReady) {
+        ctx.fillStyle = '#2c2f3d'
+        circle(ctx, muzzleX - 0.01, 0, halfWidth * 0.5)
+        ctx.fill()
+      }
+      // блик на стволе
+      ctx.strokeStyle = tier >= TIER_III ? 'rgba(255,240,190,.7)' : 'rgba(255,255,255,.18)'
+      ctx.lineWidth = 0.018
+      ctx.beginPath()
+      ctx.moveTo(-0.08, -halfWidth * 0.55)
+      ctx.lineTo(length - 0.2, -halfWidth * 0.5)
+      ctx.stroke()
+    },
+    onFire(effects, tower) {
+      // облачко дыма у жерла
+      const muzzleDistance = (CANNON_BARREL_LENGTH[tower.tier] ?? CANNON_BARREL_LENGTH[0]) - 0.1
+      effects.add({
+        kind: 'ring',
+        x: tower.x + Math.cos(tower.aimAngle) * muzzleDistance,
+        y: tower.y + Math.sin(tower.aimAngle) * muzzleDistance,
+        startRadius: 0.06,
+        endRadius: 0.24,
+        rgb: '210,205,195',
+        timeLeft: 0.35,
+        duration: 0.35,
+      })
+    },
+  },
+
+  trapper: {
+    body(ctx, aimAngle, _time, isReady, tier) {
+      ctx.rotate(aimAngle)
+      // охотник сверху: плечи в зелёно-буром кафтане и шапка
+      ctx.fillStyle = '#5b6b3a'
+      ctx.strokeStyle = '#2c321b'
+      ctx.lineWidth = 0.02
+      ctx.beginPath()
+      ctx.ellipse(-0.06, 0, 0.13, 0.2, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = '#7a5a34'
+      circle(ctx, -0.04, 0, 0.1)
+      ctx.fill()
+      // меховая опушка шапки
+      ctx.strokeStyle = '#c9b48a'
+      ctx.lineWidth = 0.025
+      circle(ctx, -0.04, 0, 0.1)
+      ctx.stroke()
+      // моток верёвки на плече (II и III)
+      if (tier >= TIER_II) {
+        ctx.strokeStyle = '#a8864a'
+        ctx.lineWidth = 0.02
+        circle(ctx, -0.12, 0.15, 0.05)
+        ctx.stroke()
+        circle(ctx, -0.12, 0.15, 0.028)
+        ctx.stroke()
+      }
+      // сеть в руках, готовая к броску; после броска — пустые руки
+      const netRadius = TRAPPER_NET_RADIUS[tier] ?? TRAPPER_NET_RADIUS[0]
+      if (isReady) {
+        drawNet(ctx, 0.17, 0, netRadius, 0, TRAPPER_WEIGHT_COLORS[tier] ?? '')
+      } else {
+        ctx.fillStyle = '#e0b48a'
+        circle(ctx, 0.08, -0.12, 0.035)
+        ctx.fill()
+        circle(ctx, 0.08, 0.12, 0.035)
+        ctx.fill()
+      }
+    },
+  },
+
+  warlock: {
+    body(ctx, _aimAngle, time, _isReady, tier) {
+      const pulse = prefersReducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(time * 3)
+      // круг рун под колдуном (II и III)
+      if (tier >= TIER_II) {
+        ctx.strokeStyle = `rgba(${WARLOCK_ORB_RGB},${0.35 + pulse * 0.3})`
+        ctx.lineWidth = 0.02
+        circle(ctx, 0, 0, 0.29)
+        ctx.stroke()
+      }
+      if (tier >= TIER_III) drawFloatingRunes(ctx, time, 0.29, 5)
+      // балахон с капюшоном: тёмно-фиолетовый, остроконечный кверху
+      ctx.fillStyle = '#3d2a5c'
+      ctx.strokeStyle = '#1b1230'
+      ctx.lineWidth = 0.022
+      ctx.beginPath()
+      ctx.moveTo(-0.17, 0.2)
+      ctx.quadraticCurveTo(-0.19, -0.02, -0.06, -0.12)
+      ctx.lineTo(0, -0.24)
+      ctx.lineTo(0.06, -0.12)
+      ctx.quadraticCurveTo(0.19, -0.02, 0.17, 0.2)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      // тёмное лицо под капюшоном и два светящихся глаза
+      ctx.fillStyle = '#120c20'
+      ctx.beginPath()
+      ctx.ellipse(0, -0.05, 0.065, 0.075, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = `rgba(${WARLOCK_ORB_RGB},${0.7 + pulse * 0.3})`
+      circle(ctx, -0.025, -0.055, 0.013)
+      ctx.fill()
+      circle(ctx, 0.025, -0.055, 0.013)
+      ctx.fill()
+      // пояс: на III — золотой
+      ctx.strokeStyle = tier >= TIER_III ? GOLD : '#7a5aa8'
+      ctx.lineWidth = 0.025
+      ctx.beginPath()
+      ctx.moveTo(-0.15, 0.08)
+      ctx.lineTo(0.15, 0.08)
+      ctx.stroke()
+      // посох справа: на III — золотой, шар крупнее
+      ctx.strokeStyle = tier >= TIER_III ? GOLD : '#8a5d30'
+      ctx.lineWidth = 0.03
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(0.2, 0.22)
+      ctx.lineTo(0.2, -0.16)
+      ctx.stroke()
+      drawWarlockOrb(ctx, 0.2, -0.2, tier >= TIER_III ? 0.06 : 0.05, pulse)
+    },
+    onFire(effects, tower, stats) {
+      // фиолетовая волна проклятия расходится по радиусу
+      effects.add({
+        kind: 'ring',
+        x: tower.x,
+        y: tower.y,
+        startRadius: 0.25,
+        endRadius: stats.range,
+        rgb: WARLOCK_ORB_RGB,
+        timeLeft: 0.5,
+        duration: 0.5,
+      })
     },
   },
 

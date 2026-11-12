@@ -247,6 +247,26 @@ export const STRATEGIES: Strategy[] = [
     loop: ['upgrade', 'mage', 'upgrade', 'ballista', 'treasury', 'upgrade', 'archer', 'frost'],
   },
   {
+    name: 'Смешанная с Пушкарями',
+    opening: ['archer', 'archer', 'mage', 'frost', 'cannon'],
+    loop: ['upgrade', 'mage', 'upgrade', 'ballista', 'cannon', 'upgrade', 'archer', 'frost'],
+  },
+  {
+    name: 'Смешанная с Ловчими',
+    opening: ['archer', 'archer', 'mage', 'frost', 'trapper'],
+    loop: ['upgrade', 'mage', 'upgrade', 'ballista', 'trapper', 'upgrade', 'archer', 'frost'],
+  },
+  {
+    name: 'Смешанная с Колдунами',
+    opening: ['archer', 'archer', 'mage', 'frost', 'warlock'],
+    loop: ['upgrade', 'mage', 'upgrade', 'ballista', 'warlock', 'upgrade', 'archer', 'frost'],
+  },
+  {
+    name: 'Смешанная со всеми новыми',
+    opening: ['archer', 'archer', 'mage', 'trapper', 'warlock'],
+    loop: ['upgrade', 'mage', 'upgrade', 'ballista', 'cannon', 'upgrade', 'trapper', 'warlock'],
+  },
+  {
     // Если эта стратегия вдруг станет лучшей — какая-то башня слишком сильная
     name: 'Только баллисты',
     opening: ['ballista'],

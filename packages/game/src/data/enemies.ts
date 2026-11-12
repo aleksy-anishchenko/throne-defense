@@ -40,6 +40,7 @@ const ENEMY_LIST: EnemyDef[] = [
     reward: 40,
     throneDamage: 4,
     radius: 0.33,
+    controlResistance: 0.3,
   },
   {
     id: 'healer',
@@ -63,6 +64,7 @@ const ENEMY_LIST: EnemyDef[] = [
     throneDamage: 4,
     radius: 0.36,
     slowResistance: 0.3,
+    controlResistance: 0.5,
     splitInto: { enemyId: 'snakelet', count: 3 },
   },
   {
@@ -86,6 +88,7 @@ const ENEMY_LIST: EnemyDef[] = [
     throneDamage: 20,
     radius: 0.42,
     slowResistance: 0.5,
+    controlResistance: 0.7,
   },
 ]
 
