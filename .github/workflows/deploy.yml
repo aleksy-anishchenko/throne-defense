@@ -1,13 +1,16 @@
 # Автодеплой: пуш в main → проверки → если всё зелёное, сборка уезжает на сервер.
 # Красные проверки = на сервер ничего не попадает.
 #
-# Секрет (Settings → Secrets and variables → Actions):
-#   DEPLOY_SSH_KEY — приватный ключ пользователя deploy (на Mac: ~/.ssh/throne_deploy)
+# Секреты (Settings → Secrets and variables → Actions):
+#   DEPLOY_SSH_KEY     — приватный ключ пользователя deploy (сайт; на Mac: ~/.ssh/throne_deploy)
+#   DEPLOY_API_SSH_KEY — приватный ключ пользователя throne (API; на Mac: ~/.ssh/throne_api_deploy)
 # Публичный ключ самого сервера — в deploy/known_hosts: по нему проверяем, что подключаемся
 # к своему серверу, а не к подменённому. Он не секрет, поэтому лежит в репозитории
 #
 # На сервере пользователь deploy может только rsync в /var/www/throne-defense (rrsync),
 # поэтому путь назначения — «/»: для rrsync это корень папки игры.
+# Ключ API у пользователя throne умеет ровно две вещи (deploy/server/deploy-command.sh):
+# rsync в /srv/throne-defense/app (тоже через rrsync, путь «/») и команду after-upload.
 
 name: Деплой
 
@@ -25,6 +28,7 @@ concurrency:
 env:
   DEPLOY_HOST: 77.91.113.61
   DEPLOY_USER: deploy
+  DEPLOY_API_USER: throne
 
 jobs:
   deploy:
@@ -69,3 +73,33 @@ jobs:
 
       - name: Сайт отвечает
         run: curl --fail --silent --show-error --output /dev/null https://throne-defense.ru/
+
+      # API выкладывается после сайта. Сайт от этого не зависит: если API не поднимется,
+      # игра уже выложена и работает, а деплой станет красным — смотреть журнал этого шага
+      - name: Ключ для API
+        env:
+          DEPLOY_API_SSH_KEY: ${{ secrets.DEPLOY_API_SSH_KEY }}
+        run: |
+          printf '%s\n' "$DEPLOY_API_SSH_KEY" > ~/.ssh/api_deploy_key
+          chmod 600 ~/.ssh/api_deploy_key
+          ssh-keygen -y -f ~/.ssh/api_deploy_key > /dev/null || { echo "Секрет DEPLOY_API_SSH_KEY пустой или испорчен"; exit 1; }
+
+      # Что едет — deploy/server/upload-paths.txt (общий с deploy/scripts/deploy-server.sh).
+      # .env и node_modules на сервере --delete не трогает: они исключены
+      - name: Выложить API
+        run: >
+          rsync -av -r --files-from=deploy/server/upload-paths.txt
+          --delete --delay-updates --no-owner --no-group
+          --exclude=.env --exclude=node_modules/ --exclude=.DS_Store
+          -e "ssh -i ~/.ssh/api_deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=deploy/known_hosts"
+          . "$DEPLOY_API_USER@$DEPLOY_HOST:/"
+
+      # npm ci → pm2 startOrReload → pm2 save → проверка изнутри сервера (deploy/server/after-upload.sh)
+      - name: Перезапустить API
+        run: >
+          ssh -i ~/.ssh/api_deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=deploy/known_hosts
+          "$DEPLOY_API_USER@$DEPLOY_HOST" after-upload
+
+      # А это — снаружи, через интернет и nginx, как его видит игра
+      - name: API отвечает
+        run: curl --fail --silent --show-error https://throne-defense.ru/api/health
