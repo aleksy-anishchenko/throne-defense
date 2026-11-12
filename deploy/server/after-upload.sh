@@ -24,7 +24,8 @@ cd "$APP_DIR"
 
 # npm ci ставит ровно то, что в package-lock.json; --omit=dev — без линтера, тестов и Vite.
 # Сайта (apps/web) на сервере нет, поэтому ставятся только зависимости API
-npm ci --omit=dev --no-audit --no-fund
+# --no-update-notifier: без совета обновить npm — его версия приходит вместе с Node
+npm ci --omit=dev --no-audit --no-fund --no-update-notifier
 
 # startOrReload: в первый раз запускает, дальше перезапускает с новым кодом
 pm2 startOrReload deploy/pm2/ecosystem.config.cjs --update-env
@@ -34,9 +35,10 @@ pm2 save
 port="$(grep -E '^PORT=' "$ENV_FILE" | cut -d= -f2 || true)"
 port="${port:-3000}"
 
-# Node стартует не мгновенно — несколько раз спрашиваем «жив?»
+# Node стартует не мгновенно — несколько раз спрашиваем «жив?».
+# Без -S: «не удалось подключиться» на первых попытках — норма, печатать его незачем
 for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt++)); do
-  if curl -fsS "http://127.0.0.1:$port/api/health"; then
+  if curl -fs "http://127.0.0.1:$port/api/health"; then
     echo
     echo "API отвечает"
     exit 0
