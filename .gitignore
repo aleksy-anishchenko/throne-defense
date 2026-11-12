@@ -6,3 +6,6 @@ dist/
 .DS_Store
 .idea/
 *.log
+
+# База SQLite для npm run dev:server (DATABASE_PATH по умолчанию — apps/server/data/throne.db)
+apps/server/data/

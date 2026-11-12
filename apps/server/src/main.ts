@@ -9,7 +9,22 @@ import { loadConfig } from './config.ts'
 const HOST = '127.0.0.1'
 
 const config = loadConfig()
-const app = buildApp({ logger: true })
+const app = buildApp({ databasePath: config.databasePath, logger: true })
+
+// pm2 при перезапуске (выкладка) и Ctrl+C в npm run dev:server просят процесс завершиться.
+// Закрываемся аккуратно: доотвечаем на начатые запросы и закрываем базу
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.once(signal, () => {
+    app.log.info(`${signal}: останавливаюсь`)
+    app.close().then(
+      () => process.exit(0),
+      (error: unknown) => {
+        app.log.error(error)
+        process.exit(1)
+      },
+    )
+  })
+}
 
 try {
   await app.listen({ host: HOST, port: config.port })

@@ -1,10 +1,11 @@
 import { HEALTH_PATH } from '@throne/contracts'
 import { afterAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../src/app.ts'
+import { IN_MEMORY_DATABASE } from '../src/db/database.ts'
 import { loadConfig } from '../src/config.ts'
 
 describe('GET /api/health', () => {
-  const app = buildApp()
+  const app = buildApp({ databasePath: IN_MEMORY_DATABASE })
   afterAll(async () => {
     await app.close()
   })
