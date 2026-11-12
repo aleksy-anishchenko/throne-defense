@@ -258,7 +258,7 @@ export const useGameStore = defineStore('game', () => {
     selectedTowerCell.value = null
   }
 
-  /** Следующий способ выбрать цель у выбранной башни: первый → сильный → ближний → первый */
+  /** Переключить цель выбранной башни (умение баллисты): первый ↔ сильный */
   function cycleTargetMode() {
     const tower = selectedTower()
     if (!tower || !isPlaying() || !tower.def.canChooseTarget) return
