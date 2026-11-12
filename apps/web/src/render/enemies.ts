@@ -468,16 +468,6 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       circle(ctx, 0, 0, radius)
       ctx.fill()
       ctx.stroke()
-      // раздвоенный язычок: так видно, что это змей, а не просто зелёный шарик
-      ctx.strokeStyle = '#d8394a'
-      ctx.lineWidth = 0.015
-      ctx.beginPath()
-      ctx.moveTo(0, radius * 0.35)
-      ctx.lineTo(0, radius * 0.75)
-      ctx.lineTo(-radius * 0.15, radius * 0.95)
-      ctx.moveTo(0, radius * 0.75)
-      ctx.lineTo(radius * 0.15, radius * 0.95)
-      ctx.stroke()
       // глаза
       ctx.fillStyle = '#ffcf4a'
       circle(ctx, -0.045, -0.03, 0.022)
@@ -609,6 +599,51 @@ function healthBarColor(healthFraction: number): string {
   return '#f0863a'
 }
 
+/** Насколько ледяное свечение выходит за край врага, клеток */
+const FROST_GLOW_MARGIN = 0.08
+/** Где над врагом висят снежинки: [доля радиуса по x, по y] */
+const FROST_FLAKE_SPOTS: readonly (readonly [number, number])[] = [
+  [-0.75, -0.85],
+  [0.1, -1.1],
+  [0.8, -0.7],
+]
+/** Размер снежинки, клеток */
+const FROST_FLAKE_SIZE = 0.045
+
+/** Ледяное свечение под замедленным врагом */
+function drawFrostGlow(ctx: Canvas2D, radius: number) {
+  ctx.fillStyle = 'rgba(170,230,255,.35)'
+  ctx.strokeStyle = 'rgba(170,230,255,.9)'
+  ctx.lineWidth = 0.03
+  circle(ctx, 0, 0, radius + FROST_GLOW_MARGIN)
+  ctx.fill()
+  ctx.stroke()
+}
+
+/** Поверх замедленного врага: голубой оттенок тела и три снежинки над ним */
+function drawFrostOverlay(ctx: Canvas2D, radius: number) {
+  ctx.fillStyle = 'rgba(150,215,255,.25)'
+  circle(ctx, 0, 0, radius)
+  ctx.fill()
+  ctx.strokeStyle = '#eaf8ff'
+  ctx.lineWidth = 0.014
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  for (const [shareX, shareY] of FROST_FLAKE_SPOTS) {
+    const x = shareX * radius
+    const y = shareY * radius
+    // снежинка из трёх палочек через 60°
+    for (let i = 0; i < 3; i++) {
+      const angle = (i * Math.PI) / 3
+      const deltaX = Math.cos(angle) * FROST_FLAKE_SIZE
+      const deltaY = Math.sin(angle) * FROST_FLAKE_SIZE
+      ctx.moveTo(x - deltaX, y - deltaY)
+      ctx.lineTo(x + deltaX, y + deltaY)
+    }
+  }
+  ctx.stroke()
+}
+
 /** Враг целиком: тень, покачивание, сам враг, замедление, вспышка от удара, здоровье */
 export function drawEnemy(
   ctx: Canvas2D,
@@ -630,15 +665,16 @@ export function drawEnemy(
   ctx.ellipse(0, radius * 0.8, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2)
   ctx.fill()
 
+  const isSlowed = enemy.slowTimeLeft > 0
+  // Замедление рисуется в два слоя: ледяное свечение — ПОД врагом (иначе оно перечёркивало бы
+  // то, что торчит за край тела: дубину огра, крылья Горыныча, щит латника), а голубой
+  // оттенок и снежинки — поверх. Так одно правило подходит любому врагу, без отдельного рисунка
+  if (isSlowed) drawFrostGlow(ctx, radius)
+
   ctx.lineWidth = 0.035
   art.body(ctx, radius)
 
-  if (enemy.slowTimeLeft > 0) {
-    ctx.strokeStyle = 'rgba(170,230,255,.9)'
-    ctx.lineWidth = 0.04
-    circle(ctx, 0, 0, radius + 0.04)
-    ctx.stroke()
-  }
+  if (isSlowed) drawFrostOverlay(ctx, radius)
   if (isFlashing) {
     ctx.fillStyle = 'rgba(255,255,255,.55)'
     circle(ctx, 0, 0, radius)
