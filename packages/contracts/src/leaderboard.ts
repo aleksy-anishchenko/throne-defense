@@ -1,13 +1,8 @@
 import Type from 'typebox'
 import type { Static } from 'typebox'
-import { ID_PATTERN } from './runs.ts'
+import { ID_PATTERN } from './paths.ts'
 
-/** GET /api/leaderboard?level=throne-hall&balance=4 — лучшие для уровня и версии баланса */
-export const LEADERBOARD_PATH = '/api/leaderboard'
-
-/** Сколько строк в таблице лучших */
-export const LEADERBOARD_SIZE = 10
-
+/** Запрос GET /api/leaderboard */
 export const LeaderboardQuerySchema = Type.Object(
   {
     level: Type.String({ pattern: ID_PATTERN }),

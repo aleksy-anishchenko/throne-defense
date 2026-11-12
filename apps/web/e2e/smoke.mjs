@@ -1,17 +1,27 @@
 // npm run e2e — проверка собранной игры в настоящем браузере (Chrome без окна).
 //
-// Сам поднимает `vite preview` с папкой dist (её собирает `npm run build`),
-// открывает игру с ?debug и проходит её как игрок: меню, постройка мышью, касанием и
-// с клавиатуры, улучшение, продажа, волна, пауза, поражение, рекорд, победа, телефон.
+// Сам поднимает `vite preview` с папкой dist (её собирает `npm run build`) и настоящий
+// API (apps/server) на временной базе, открывает игру с ?debug и проходит её как игрок:
+// меню, постройка мышью, касанием и с клавиатуры, улучшение, продажа, волна, пауза,
+// поражение, рекорд, общий топ, победа, телефон, игра без сервера.
 // Состояние игры читает через window.__throne (доступен только с ?debug).
 //
 // Нужен установленный Google Chrome. Если его нет: `npx playwright-core install chromium`.
 
+import { spawn } from 'node:child_process'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 import { preview } from 'vite'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
+const serverRoot = fileURLToPath(new URL('../../server', import.meta.url))
+// Не 3000: там может работать npm run dev:server со своей базой
+const API_PORT = 3101
+/** Сколько ждать, пока API поднимется */
+const API_START_TIMEOUT_MS = 15_000
 // Размер поля в клетках (как в уровне «Тронный зал»)
 const COLS = 9
 const ROWS = 13
@@ -39,10 +49,14 @@ async function launchBrowser() {
   }
 }
 
-function watchErrors(page, label) {
+/** ignore — какие ошибки здесь ожидаемы (например, «не удалось загрузить» без сервера) */
+function watchErrors(page, label, ignore = null) {
   page.on(
     'console',
-    (message) => message.type() === 'error' && errors.push(`${label}: ${message.text()}`),
+    (message) =>
+      message.type() === 'error' &&
+      !ignore?.test(message.text()) &&
+      errors.push(`${label}: ${message.text()}`),
   )
   page.on('pageerror', (error) => errors.push(`${label}: ${error.message}`))
 }
@@ -61,6 +75,13 @@ const readGameSnapshot = (page) =>
       towers: state.towers.map((tower) => `${tower.def.id}${tower.tier}@${tower.col},${tower.row}`),
     }
   })
+
+/** Появится ли элемент за timeout мс (true/false, без исключения — проверка не прерывается) */
+const appears = (locator, timeout = 5000) =>
+  locator.waitFor({ timeout }).then(
+    () => true,
+    () => false,
+  )
 
 /** Дождаться, пока Vue обновит экран (пара кадров) */
 const waitForFrames = (page) =>
@@ -384,6 +405,39 @@ async function desktop(browser, url) {
     '«Это ваш новый рекорд»',
     (await page.locator('.sheet .note').textContent()) === 'Это ваш новый рекорд.',
   )
+
+  // Общий топ: имени ещё нет — экран поражения спрашивает его
+  const nameInput = page.locator('#player-name')
+  check('после первой партии спрашивают имя', await nameInput.isVisible())
+  await page.getByRole('button', { name: 'В таблицу' }).click()
+  check('пустое имя не принимается', await appears(page.locator('.name-error'), 2000))
+  // Цифра в имени уходит в поле, а не в игру (клавиши 1–9 выбирают стража)
+  await nameInput.pressSequentially('Страж 1')
+  await nameInput.press('Enter')
+  check(
+    'результат ушёл в общий топ: первое место',
+    await appears(page.locator('.run-place').filter({ hasText: 'Страж 1, вы первым' })),
+  )
+  check(
+    'имя запомнено в браузере',
+    await page.evaluate(() => localStorage.getItem('throne-name') === 'Страж 1'),
+  )
+  await page.getByRole('button', { name: 'Лучшие' }).click()
+  const leaderboardRows = page.locator('.leaderboard li')
+  await appears(leaderboardRows.first())
+  const rowTexts = await leaderboardRows.allTextContents()
+  check(
+    'таблица лучших: строка игрока, выделена',
+    rowTexts.length === 1 &&
+      rowTexts[0].includes('Страж 1') &&
+      (await page.locator('.leaderboard li.is-player').count()) === 1,
+    rowTexts.join(' | '),
+  )
+  await page.keyboard.press('Escape')
+  check(
+    'Esc на «Лучших» возвращает к итогам партии',
+    await appears(page.getByRole('heading', { name: 'Трон пал' }), 2000),
+  )
   await page.getByRole('button', { name: 'Сыграть ещё раз' }).click()
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
@@ -407,6 +461,19 @@ async function desktop(browser, url) {
   check(
     'экран победы',
     (await page.locator('.sheet p').first().textContent()).startsWith('Все 20 волн отбиты.'),
+  )
+  check(
+    'победа: имя уже есть — результат ушёл в топ сам',
+    (await appears(page.locator('.run-place').filter({ hasText: 'Страж 1, вы' }))) &&
+      (await nameInput.count()) === 0,
+  )
+  await page.getByRole('button', { name: 'Сменить имя' }).click()
+  check('«Сменить имя»: в поле прежнее имя', (await nameInput.inputValue()) === 'Страж 1')
+  await nameInput.fill('Страж 2')
+  await nameInput.press('Enter')
+  check(
+    '«Сменить имя»: результат под новым именем, в таблице двое',
+    await appears(page.locator('.run-place').filter({ hasText: 'Страж 2, вы на 1-м месте из 2' })),
   )
   await page.getByRole('button', { name: 'Играть дальше' }).click()
   await waitForFrames(page)
@@ -506,6 +573,40 @@ async function desktop(browser, url) {
   await page.close()
 }
 
+/** Сервер недоступен: игра работает как раньше, просто без топа */
+async function offline(browser, url) {
+  console.log('\nБез сервера')
+  const page = await browser.newPage({ viewport: { width: 1280, height: 860 } })
+  // Браузер сам пишет в консоль о каждом неудавшемся запросе — здесь это и проверяем
+  watchErrors(page, 'без сервера', /Failed to load resource/)
+  await page.route('**/api/**', (route) => route.abort('connectionrefused'))
+  // Имя уже есть: результат сразу пытается уйти на сервер
+  await page.addInitScript(() => localStorage.setItem('throne-name', 'Страж'))
+  await page.goto(url)
+  await page.getByRole('button', { name: 'Играть' }).click()
+  await page.getByRole('button', { name: 'Начать волну' }).click()
+  await page.evaluate(() => {
+    const state = window.__throne.game.state
+    state.score = 100
+    state.lives = 1
+  })
+  await page.getByRole('heading', { name: 'Трон пал' }).waitFor({ timeout: 60_000 })
+  check(
+    'нет сервера: итоги на месте, «таблица лучших недоступна»',
+    await appears(page.locator('.run-place').filter({ hasText: 'недоступна' })),
+  )
+  await page.getByRole('button', { name: 'Лучшие' }).click()
+  check(
+    'нет сервера: «Лучшие» говорят, что не загрузились',
+    await appears(page.locator('.leaderboard-status').filter({ hasText: 'Не удалось' })),
+  )
+  await page.getByRole('button', { name: 'Назад' }).click()
+  await page.getByRole('button', { name: 'Сыграть ещё раз' }).click()
+  await waitForFrames(page)
+  check('нет сервера: новая партия начинается', (await readGameSnapshot(page)).phase === 'build')
+  await page.close()
+}
+
 async function phone(browser, url) {
   console.log('\nТелефон')
   const page = await browser.newPage({
@@ -547,10 +648,46 @@ async function phone(browser, url) {
   await page.close()
 }
 
+/** Настоящий API на временной базе — как на сайте, только у себя */
+async function startApi() {
+  const databaseDirectory = await mkdtemp(join(tmpdir(), 'throne-e2e-'))
+  const api = spawn(process.execPath, ['src/main.ts'], {
+    cwd: serverRoot,
+    env: {
+      ...process.env,
+      PORT: String(API_PORT),
+      DATABASE_PATH: join(databaseDirectory, 'e2e.db'),
+    },
+    // Журнал запросов не нужен, а ошибки запуска — нужны
+    stdio: ['ignore', 'ignore', 'inherit'],
+  })
+  const deadline = Date.now() + API_START_TIMEOUT_MS
+  while (Date.now() < deadline) {
+    const isUp = await fetch(`http://127.0.0.1:${API_PORT}/api/health`).then(
+      (response) => response.ok,
+      () => false,
+    )
+    if (isUp) {
+      return {
+        async stop() {
+          api.kill('SIGTERM')
+          await rm(databaseDirectory, { recursive: true, force: true })
+        },
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  api.kill('SIGTERM')
+  console.error(`API не поднялось за ${API_START_TIMEOUT_MS / 1000} с`)
+  process.exit(1)
+}
+
+const api = await startApi()
 const server = await preview({
   root,
   logLevel: 'silent',
-  preview: { port: 4173 },
+  // /api — в наш API на временной базе (вместо 3000 из vite.config.ts)
+  preview: { port: 4173, proxy: { '/api': `http://127.0.0.1:${API_PORT}` } },
 })
 const url = `${server.resolvedUrls.local[0]}?debug`
 const browser = await launchBrowser()
@@ -559,6 +696,7 @@ console.log(`Проверяю ${url}`)
 try {
   await desktop(browser, url)
   await phone(browser, url)
+  await offline(browser, url)
   console.log('\nКонсоль браузера')
   check('нет ошибок', errors.length === 0, errors.join('\n'))
 } catch (error) {
@@ -567,6 +705,7 @@ try {
 } finally {
   await browser.close()
   await server.close()
+  await api.stop()
 }
 
 console.log(failed ? `\n✗ Не прошло проверок: ${failed}` : '\n✓ Все проверки прошли')

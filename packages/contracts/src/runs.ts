@@ -1,13 +1,9 @@
 import Type from 'typebox'
 import type { Static } from 'typebox'
+import { ID_PATTERN } from './paths.ts'
 import { PLAYER_NAME_MAX_LENGTH } from './player-name.ts'
 
-/** POST /api/runs — результат законченной партии в общий топ */
-export const RUNS_PATH = '/api/runs'
-
-/** id уровня и подобные: латиница, цифры, дефис */
-export const ID_PATTERN = '^[a-z0-9-]{1,40}$'
-
+/** Тело POST /api/runs */
 export const SubmitRunRequestSchema = Type.Object(
   {
     // Длина в схеме — грубая проверка; точная (символы, а не байты, без невидимых) —

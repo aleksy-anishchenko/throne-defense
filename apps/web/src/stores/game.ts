@@ -7,7 +7,9 @@
 // Интерфейсу нужно немного: золото, жизни, номер волны… Эти числа каждый кадр копируются
 // в реактивный объект hud (функция syncHud). Vue перерисует только то, что реально поменялось.
 
+import { isValidPlayerName, normalizePlayerName, type LeaderboardEntry } from '@throne/contracts'
 import {
+  BALANCE_VERSION,
   ENEMIES,
   LEVELS,
   MAX_SPEED,
@@ -23,13 +25,31 @@ import {
 } from '@throne/game'
 import { defineStore } from 'pinia'
 import { computed, markRaw, nextTick, reactive, ref } from 'vue'
+import { fetchLeaderboard, submitRun } from '@/api/leaderboard'
 import { sfx } from '@/audio/sfx'
 import type { BoardView, Cell, OverlayScreen } from '@/types'
 import { plural } from '@/utils/format'
-import { loadBest, saveBest, type BestResult } from '@/utils/storage'
+import {
+  loadBest,
+  loadPlayerName,
+  saveBest,
+  savePlayerName,
+  type BestResult,
+} from '@/utils/storage'
 
 /** Сколько миллисекунд висит всплывающее сообщение (тост) */
 const TOAST_DURATION_MS = 1700
+
+/** Что с результатом последней партии в общем топе */
+type SubmissionStatus =
+  /** Отправлять нечего: партия идёт или кончилась без очков */
+  | 'idle'
+  /** Имени ещё нет — экран итогов спрашивает его */
+  | 'needs-name'
+  | 'sending'
+  | 'sent'
+  /** Нет сети или сервер не ответил — игра идёт как раньше, просто без топа */
+  | 'failed'
 
 const isSameCell = (cell: Cell | null, col: number, row: number) =>
   cell !== null && cell.col === col && cell.row === row
@@ -156,6 +176,98 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  // ---------------------------------------------------------------- Общий топ
+
+  const playerName = ref<string | null>(loadPlayerName())
+  const submission = reactive({ status: 'idle' as SubmissionStatus, rank: 0, playerCount: 0 })
+  const leaderboard = reactive({
+    status: 'idle' as 'idle' | 'loading' | 'loaded' | 'failed',
+    entries: [] as LeaderboardEntry[],
+    playerCount: 0,
+  })
+  /** Итог последней партии. Запоминаем в момент конца: «Играть дальше» продолжит менять счёт */
+  let finishedRun: { score: number; wavesCleared: number } | null = null
+  /**
+   * Номер отправки. Ответ сервера приходит не сразу: если за это время началась новая партия
+   * или результат отправили ещё раз (сменили имя), старый ответ уже не про то — его пропускаем
+   */
+  let submissionNumber = 0
+  /** Откуда открыли таблицу лучших — туда и вернёт «Назад» */
+  let screenBeforeLeaderboard: OverlayScreen = 'menu'
+
+  async function submitFinishedRun() {
+    if (!finishedRun || !playerName.value) return
+    const number = ++submissionNumber
+    submission.status = 'sending'
+    const place = await submitRun({
+      playerName: playerName.value,
+      levelId: game.level.def.id,
+      score: finishedRun.score,
+      wavesCleared: finishedRun.wavesCleared,
+      balanceVersion: BALANCE_VERSION,
+    })
+    if (number !== submissionNumber) return
+    if (place) {
+      submission.status = 'sent'
+      submission.rank = place.rank
+      submission.playerCount = place.playerCount
+    } else {
+      submission.status = 'failed'
+    }
+  }
+
+  /** Партия кончилась (победа или поражение): результат — в общий топ */
+  function finishRunForLeaderboard() {
+    submissionNumber++
+    // Партия без единого очка — не результат, как и для рекорда в браузере
+    finishedRun = state.score > 0 ? { score: state.score, wavesCleared: state.wavesCleared } : null
+    if (!finishedRun) submission.status = 'idle'
+    else if (!playerName.value) submission.status = 'needs-name'
+    else void submitFinishedRun()
+  }
+
+  function forgetFinishedRun() {
+    submissionNumber++
+    finishedRun = null
+    submission.status = 'idle'
+  }
+
+  /**
+   * Игрок ввёл имя (впервые или сменил). Запоминаем и отправляем результат этой партии.
+   * false — имя не годится, ничего не меняем
+   */
+  function setPlayerName(rawName: string): boolean {
+    const name = normalizePlayerName(rawName)
+    if (!isValidPlayerName(name)) return false
+    playerName.value = name
+    savePlayerName(name)
+    void submitFinishedRun()
+    return true
+  }
+
+  /** «Сменить имя» на экране итогов: снова показать поле ввода */
+  function changePlayerName() {
+    if (finishedRun) submission.status = 'needs-name'
+  }
+
+  async function openLeaderboard() {
+    if (screen.value !== 'leaderboard') screenBeforeLeaderboard = screen.value ?? 'menu'
+    screen.value = 'leaderboard'
+    leaderboard.status = 'loading'
+    const result = await fetchLeaderboard({ level: game.level.def.id, balance: BALANCE_VERSION })
+    if (result) {
+      leaderboard.entries = result.entries
+      leaderboard.playerCount = result.playerCount
+      leaderboard.status = 'loaded'
+    } else {
+      leaderboard.status = 'failed'
+    }
+  }
+
+  function closeLeaderboard() {
+    if (screen.value === 'leaderboard') screen.value = screenBeforeLeaderboard
+  }
+
   // ---------------------------------------------------------------- Подписки на события игры
 
   game.on('build', () => sfx.build())
@@ -172,11 +284,13 @@ export const useGameStore = defineStore('game', () => {
   })
   game.on('victory', () => {
     saveResultIfBest()
+    finishRunForLeaderboard()
     sfx.victory()
     screen.value = 'victory'
   })
   game.on('defeat', () => {
     saveResultIfBest()
+    finishRunForLeaderboard()
     sfx.defeat()
     screen.value = 'defeat'
   })
@@ -194,6 +308,7 @@ export const useGameStore = defineStore('game', () => {
   function newGame() {
     game.reset()
     clearSelection()
+    forgetFinishedRun()
     isNewBest.value = false
     screen.value = null
     syncHud()
@@ -358,6 +473,9 @@ export const useGameStore = defineStore('game', () => {
     bumpCounters,
     bestResult,
     isNewBest,
+    playerName,
+    submission,
+    leaderboard,
     hint,
     syncHud,
     boardView,
@@ -377,5 +495,9 @@ export const useGameStore = defineStore('game', () => {
     toggleMute,
     continueEndless,
     clearSelection,
+    setPlayerName,
+    changePlayerName,
+    openLeaderboard,
+    closeLeaderboard,
   }
 })

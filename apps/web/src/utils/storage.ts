@@ -1,6 +1,8 @@
 // Всё, что хранится в браузере игрока. Ключи прежние — рекорды старой версии не потеряются.
 // try/catch: в приватном режиме некоторых браузеров localStorage недоступен — тогда играем без сохранения.
 
+import { isValidPlayerName } from '@throne/contracts'
+
 /** Рекорд. Хранится в localStorage как JSON именно в такой форме */
 export interface BestResult {
   score: number
@@ -10,6 +12,8 @@ export interface BestResult {
 
 const BEST_STORAGE_KEY = 'throne-best'
 const MUTED_STORAGE_KEY = 'throne-muted'
+/** Имя для общего топа — вводится один раз после первой партии */
+const PLAYER_NAME_STORAGE_KEY = 'throne-name'
 
 /**
  * Разобрать сохранённый рекорд. В хранилище может оказаться что угодно: мусор после сбоя,
@@ -59,5 +63,23 @@ export function saveMuted(isMuted: boolean): void {
     localStorage.setItem(MUTED_STORAGE_KEY, isMuted ? '1' : '0')
   } catch {
     /* localStorage недоступен — играем без сохранения */
+  }
+}
+
+/** Имя для общего топа или null, если ещё не вводили (или в хранилище мусор) */
+export function loadPlayerName(): string | null {
+  try {
+    const name = localStorage.getItem(PLAYER_NAME_STORAGE_KEY)
+    return name !== null && isValidPlayerName(name) ? name : null
+  } catch {
+    return null
+  }
+}
+
+export function savePlayerName(name: string): void {
+  try {
+    localStorage.setItem(PLAYER_NAME_STORAGE_KEY, name)
+  } catch {
+    /* localStorage недоступен — имя спросим снова после следующей партии */
   }
 }

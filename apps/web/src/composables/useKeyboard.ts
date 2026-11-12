@@ -1,6 +1,6 @@
 // Управление с клавиатуры: 1–9 выбирают стража, пробел — волна/пауза,
 // стрелки двигают курсор по полю, Enter ставит стража, Esc снимает выбор,
-// T меняет, кого бьёт выбранная башня.
+// T меняет, кого бьёт выбранная башня. На экране «Лучшие» Esc — «Назад».
 
 import { TOWER_LIST } from '@throne/game'
 import { onMounted, onUnmounted } from 'vue'
@@ -22,6 +22,8 @@ export function useKeyboard(): void {
 
   function onKeyDown(event: KeyboardEvent) {
     if (event.ctrlKey || event.metaKey || event.altKey) return
+    // Игрок печатает имя для таблицы лучших: буквы, цифры и пробел — в поле, а не в игру
+    if (event.target instanceof HTMLInputElement) return
     // Зажатая клавиша шлёт повторы. Курсор стрелками удобно водить с удержанием,
     // а остальное — нет: зажатый пробел сначала начал бы волну, потом дёргал паузу
     if (event.repeat && !ARROW_DIRECTIONS[event.key]) return
@@ -35,6 +37,7 @@ export function useKeyboard(): void {
       return
     }
     if (event.key === 'Escape') {
+      if (store.screen === 'leaderboard') store.closeLeaderboard()
       store.clearSelection()
       return
     }

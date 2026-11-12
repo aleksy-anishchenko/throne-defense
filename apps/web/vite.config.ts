@@ -26,6 +26,10 @@ export default defineConfig({
   server: {
     proxy: { '/api': 'http://127.0.0.1:3000' },
   },
+  // То же для npm run preview (собранная игра)
+  preview: {
+    proxy: { '/api': 'http://127.0.0.1:3000' },
+  },
   // Подставляется в код при сборке (как константа). Тип объявлен в src/env.d.ts
   define: {
     __APP_VERSION__: JSON.stringify(`${gitShortHash()} · ${buildDate}`),

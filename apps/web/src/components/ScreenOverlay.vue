@@ -1,9 +1,12 @@
 <script setup lang="ts">
-// Экран поверх поля: заставка, поражение, победа
+// Экран поверх поля: заставка, поражение, победа, таблица лучших
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { BALANCE_VERSION } from '@throne/game'
 import { useGameStore } from '@/stores/game'
 import { formatNumber } from '@/utils/format'
 import { shareResult } from '@/utils/share'
+import LeaderboardTable from './LeaderboardTable.vue'
+import RunSubmission from './RunSubmission.vue'
 
 const store = useGameStore()
 /** Какая версия выложена: «хеш коммита · дата сборки» (видно в меню) */
@@ -45,7 +48,10 @@ const screenContent = computed(() => {
         note: bestResult
           ? `Ваш рекорд: ${formatNumber(bestResult.score)}, отбито волн: ${bestResult.wave}.`
           : 'Выберите стража и нажмите на свободную плиту. Нажмите на поставленного стража, чтобы улучшить его или продать.',
-        buttons: [{ label: 'Играть', action: store.newGame }],
+        buttons: [
+          { label: 'Играть', action: store.newGame },
+          { label: 'Лучшие', action: store.openLeaderboard },
+        ],
       }
     case 'defeat':
       return {
@@ -55,6 +61,7 @@ const screenContent = computed(() => {
         buttons: [
           { label: 'Сыграть ещё раз', action: store.newGame },
           { label: 'Поделиться результатом', action: share },
+          { label: 'Лучшие', action: store.openLeaderboard },
         ],
       }
     case 'victory':
@@ -66,7 +73,16 @@ const screenContent = computed(() => {
           { label: 'Играть дальше', action: store.continueEndless },
           { label: 'Поделиться результатом', action: share },
           { label: 'Начать заново', action: store.newGame },
+          { label: 'Лучшие', action: store.openLeaderboard },
         ],
+      }
+    case 'leaderboard':
+      return {
+        title: 'Лучшие',
+        // Версия баланса — в подписи: после её смены таблица начинается заново, и игрок видит почему
+        text: `${store.game.level.def.name}, правила версии ${BALANCE_VERSION}`,
+        note: '',
+        buttons: [{ label: 'Назад', action: store.closeLeaderboard }],
       }
     default:
       return null
@@ -114,6 +130,8 @@ watch(
       <p v-if="shareNote || screenContent.note" class="note">
         {{ shareNote || screenContent.note }}
       </p>
+      <RunSubmission v-if="store.screen === 'defeat' || store.screen === 'victory'" />
+      <LeaderboardTable v-if="store.screen === 'leaderboard'" />
       <div ref="buttonsRow" class="buttons">
         <button
           v-for="(button, i) in screenContent.buttons"
