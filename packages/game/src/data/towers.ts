@@ -12,6 +12,12 @@ import type { TowerDef } from '../types.ts'
 /** Болт баллисты летит дальше её радиуса обстрела: дальность полёта = range × 1.15 (множитель) */
 const BALLISTA_REACH_FACTOR = 1.15
 
+/**
+ * С какой ступени (с нуля: 2 — «III») баллиста стреляет «двойным болтом». Только картинка:
+ * снаряд всё равно один и бьёт как обычный (рисунок — 'twinBolt' в apps/web/src/render/shots.ts)
+ */
+const BALLISTA_TWIN_BOLT_TIER = 2
+
 const archer: TowerDef = {
   id: 'archer',
   name: 'Лучник',
@@ -93,7 +99,7 @@ const ballista: TowerDef = {
   canChooseTarget: true,
   fire: (world, tower, target, stats) =>
     shootLine(world, tower, target, {
-      look: 'bolt',
+      look: tower.tier >= BALLISTA_TWIN_BOLT_TIER ? 'twinBolt' : 'bolt',
       speed: 18,
       damage: stats.damage,
       damageKind: 'piercing',

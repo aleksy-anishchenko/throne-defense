@@ -15,7 +15,7 @@ const SPLASH_ENEMY_RADIUS_SHARE = 0.5
 
 /** Настройки снаряда, который летит за целью */
 export interface HomingShotOptions {
-  /** Как рисовать снаряд: 'arrow' | 'orb' | 'bolt' */
+  /** Как рисовать снаряд: 'arrow' | 'orb' | 'bolt' | 'twinBolt' (см. SHOT_ART в apps/web) */
   look: string
   /** Скорость полёта, клеток в секунду */
   speed: number
@@ -27,7 +27,7 @@ export interface HomingShotOptions {
 
 /** Настройки снаряда, который летит по прямой */
 export interface LineShotOptions {
-  /** Как рисовать снаряд: 'arrow' | 'orb' | 'bolt' */
+  /** Как рисовать снаряд: 'arrow' | 'orb' | 'bolt' | 'twinBolt' (см. SHOT_ART в apps/web) */
   look: string
   /** Скорость полёта, клеток в секунду */
   speed: number

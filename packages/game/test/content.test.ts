@@ -143,6 +143,20 @@ describe('Звонарь', () => {
   })
 })
 
+describe('баллиста III', () => {
+  it('стреляет «двойным болтом» — это только вид снаряда, снаряд один', () => {
+    const game = newGame()
+    game.state.gold = 1000
+    game.build('ballista', 5, 11)
+    game.upgrade(5, 11)
+    game.upgrade(5, 11)
+    placeEnemy(game, 'rebel', 2)
+    game.step(SIMULATION_STEP)
+    expect(game.state.shots).toHaveLength(1)
+    expect(game.state.shots[0].look).toBe('twinBolt')
+  })
+})
+
 describe('Казна', () => {
   it('приносит золото после отбитой волны и сообщает об этом', () => {
     const game = newGame()

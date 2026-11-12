@@ -12,6 +12,7 @@ import {
   roundedRect,
 } from './shapes'
 import type { Canvas2D } from './shapes'
+import { TWIN_BOLT_OFFSET } from './shots'
 
 export interface TowerArt {
   /**
@@ -387,8 +388,8 @@ export const TOWER_ART: Record<string, TowerArt> = {
       ctx.stroke()
       if (isReady) {
         if (tier >= TIER_III) {
-          drawBolt(ctx, -0.045)
-          drawBolt(ctx, 0.045)
+          drawBolt(ctx, -TWIN_BOLT_OFFSET)
+          drawBolt(ctx, TWIN_BOLT_OFFSET)
         } else {
           drawBolt(ctx, 0)
         }
