@@ -275,7 +275,11 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function startWave() {
-    game.startWave()
+    if (!game.startWave()) return
+    // Башня «в руке» после начала волны — ловушка: в бою нажимаешь на поле, чтобы посмотреть,
+    // а строишь. Панель уже выбранной башни оставляем — она ничего не строит
+    armedTowerId.value = null
+    selectedEmptyCell.value = null
   }
 
   function cycleSpeed() {

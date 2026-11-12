@@ -297,11 +297,16 @@ async function desktop(browser, url) {
   )
   await page.keyboard.press('Escape')
 
-  // Волна: пробел, скорость ×3
+  // Волна: пробел, скорость ×3. Башня «в руке» перед волной — выбор должен сняться
+  await page.keyboard.press('1')
   await blurActiveElement(page)
   await page.keyboard.press('Space')
   await waitForFrames(page)
   check('пробел начал волну', (await readGameSnapshot(page)).phase === 'wave')
+  check(
+    'начало волны сняло выбор в магазине',
+    (await archerCard.getAttribute('aria-pressed')) === 'false',
+  )
   check(
     'кнопка «Идёт бой» неактивна',
     await page.getByRole('button', { name: 'Идёт бой' }).isDisabled(),
