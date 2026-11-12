@@ -1,6 +1,7 @@
 // Волны: кто и когда выходит, что дают за отбитую волну.
 
 import { SCORE, waveBonus } from '../data/balance.ts'
+import { ENEMIES } from '../data/enemies.ts'
 import type { Level, SpawnEntry, WaveGroup, World } from '../types.ts'
 import { spawnEnemy } from './enemies.ts'
 import { payTowerIncome } from './towers.ts'
@@ -52,4 +53,32 @@ export function finishWave(world: World): void {
     state.phase = 'build'
     state.wave++
   }
+}
+
+/** Очки за врага, если убить и его, и всех, на кого он распадается (Горыныч → змеёныши) */
+function maxScoreForEnemy(enemyId: string): number {
+  const def = ENEMIES[enemyId]
+  const own = def.reward * SCORE.perGold
+  if (!def.splitInto) return own
+  return own + def.splitInto.count * maxScoreForEnemy(def.splitInto.enemyId)
+}
+
+/**
+ * Больше этого счёта за партию, где отбито wavesCleared волн, получить нельзя:
+ * убиты все враги этих волн и следующей (на ней партия и кончилась), очки за каждую отбитую
+ * волну и, если пройдены все волны уровня, бонус за все жизни. По нему сервер отбрасывает
+ * явно подделанные результаты (честная проверка — повтор партии на сервере, этап 5).
+ * Точнее «до очка» не нужно: важно, что настоящий счёт никогда не больше
+ */
+export function maxPossibleScore(level: Level, wavesCleared: number): number {
+  let score = 0
+  for (let waveNumber = 1; waveNumber <= wavesCleared + 1; waveNumber++) {
+    for (const [enemyId, count] of getWaveGroups(level, waveNumber)) {
+      score += count * maxScoreForEnemy(enemyId)
+    }
+  }
+  // Очки за волны: 1-я — perWave × 1, 2-я — perWave × 2 и так далее
+  score += (SCORE.perWave * wavesCleared * (wavesCleared + 1)) / 2
+  if (wavesCleared >= level.waveCount) score += level.def.startLives * SCORE.perLife
+  return score
 }

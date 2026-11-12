@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LEVELS, TOWERS } from '@throne/game'
+import { LEVELS, TOWERS, createLevel, maxPossibleScore } from '@throne/game'
 import { STRATEGIES, playBot } from './bot.ts'
 import { STREAMS, damagePerGold } from './towers.ts'
 
@@ -24,6 +24,21 @@ describe('бот', () => {
   it('одни баллисты слабее, чем смешанная стратегия вообще без баллист', () => {
     // В балансе v1 баллисты «в одиночку» доходили так же далеко, как лучшие смеси
     expect(wavesReached('Только баллисты')).toBeLessThan(wavesReached('Смешанная без баллист'))
+  })
+})
+
+describe('потолок счёта (проверка правдоподобия на сервере)', () => {
+  it('ни одна стратегия бота не набирает больше maxPossibleScore', () => {
+    // Сервер отвергает счёт выше потолка: если потолок посчитан неверно,
+    // честные игроки не попадут в таблицу лучших
+    const level = createLevel(throneHall)
+    for (const candidate of STRATEGIES) {
+      const result = playBot(throneHall, candidate)
+      const wavesCleared = result.outcome === 'won' ? result.waves.length : result.waves.length - 1
+      expect(result.score, candidate.name).toBeLessThanOrEqual(
+        maxPossibleScore(level, wavesCleared),
+      )
+    }
   })
 })
 

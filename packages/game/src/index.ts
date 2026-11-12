@@ -27,6 +27,8 @@ export {
   towerStats,
   upgradeCost,
 } from './systems/towers.ts'
+// Для сервера: проверка правдоподобия присланного счёта
+export { maxPossibleScore } from './systems/waves.ts'
 // Для замеров баланса (tools/balance): выпустить врага в обход волн
 export { spawnEnemy } from './systems/enemies.ts'
 

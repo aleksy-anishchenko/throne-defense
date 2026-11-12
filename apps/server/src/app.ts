@@ -4,6 +4,8 @@ import type { FastifyInstance } from 'fastify'
 import type { DatabaseSync } from 'node:sqlite'
 import { openDatabase } from './db/database.ts'
 import { healthRoutes } from './routes/health.ts'
+import { leaderboardRoutes } from './routes/leaderboard.ts'
+import { runsRoutes } from './routes/runs.ts'
 
 // app.db доступна во всех маршрутах (как provide/inject во Vue). Здесь — её тип для TypeScript
 declare module 'fastify' {
@@ -63,5 +65,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   })
 
   app.register(healthRoutes)
+  app.register(runsRoutes)
+  app.register(leaderboardRoutes)
   return app
 }

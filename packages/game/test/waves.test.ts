@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { SIMULATION_STEP, createGame, waveBonus, type GameEvents } from '../src/index.ts'
+import {
+  SIMULATION_STEP,
+  createGame,
+  createLevel,
+  maxPossibleScore,
+  waveBonus,
+  type GameEvents,
+} from '../src/index.ts'
 import { throneHall } from '../src/levels/throne-hall.ts'
 import { newGame, recordEvents, stepUntil } from './helpers.ts'
 
@@ -186,5 +193,25 @@ describe('время', () => {
     const first = play()
     expect(first.towerCount).toBeGreaterThan(2) // хоть один Морозко действительно встал
     expect(play()).toEqual(first)
+  })
+})
+
+describe('maxPossibleScore — потолок счёта для проверки на сервере', () => {
+  const level = createLevel(throneHall)
+
+  it('первая волна: 8 бунтовщиков по 60 очков, а если её отбить — ещё 100', () => {
+    // Проиграть, не отбив ни одной волны: максимум — убить всех в первой
+    expect(maxPossibleScore(level, 0)).toBe(8 * 60)
+    // Настоящий счёт после отбитой первой волны (тест выше) не больше потолка
+    expect(8 * 60 + 100).toBeLessThanOrEqual(maxPossibleScore(level, 1))
+  })
+
+  it('растёт с каждой волной, а за пройденный уровень добавляет бонус за жизни', () => {
+    for (let waves = 1; waves <= level.waveCount + 5; waves++) {
+      expect(maxPossibleScore(level, waves)).toBeGreaterThan(maxPossibleScore(level, waves - 1))
+    }
+    const lastWave = level.waveCount
+    const jump = maxPossibleScore(level, lastWave) - maxPossibleScore(level, lastWave - 1)
+    expect(jump).toBeGreaterThan(throneHall.startLives * 100)
   })
 })
