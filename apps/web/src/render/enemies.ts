@@ -140,10 +140,10 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       ctx.fillStyle = '#d6dde9'
       circle(ctx, -radius * 0.35, -radius * 0.45, radius * 0.22)
       ctx.fill()
-      // смотровая щель и прорези для дыхания
+      // смотровая щель высоко, на уровне глаз, и прорезь для дыхания под ней
       ctx.fillStyle = '#1c2130'
-      ctx.fillRect(-radius * 0.62, -0.05, radius * 1.24, 0.06)
-      ctx.fillRect(-0.02, -0.05, 0.04, radius * 0.75)
+      ctx.fillRect(-radius * 0.6, -radius * 0.42, radius * 1.2, 0.05)
+      ctx.fillRect(-0.018, -radius * 0.42, 0.036, radius * 0.95)
       // заклёпки
       ctx.fillStyle = '#6b7488'
       circle(ctx, -radius * 0.7, radius * 0.25, 0.018)
@@ -158,11 +158,11 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       ctx.lineTo(0.05, -radius)
       ctx.closePath()
       ctx.fill()
-      // щит спереди слева: сразу видно, что этот враг в броне
+      // щит спереди слева — стальной, в цвет доспехов: сразу видно, что этот враг в броне
       ctx.save()
       ctx.translate(-radius * 0.7, radius * 0.45)
-      ctx.fillStyle = '#8f2430'
-      ctx.strokeStyle = GOLD
+      ctx.fillStyle = '#8a95ab'
+      ctx.strokeStyle = '#3d4456'
       ctx.lineWidth = 0.022
       ctx.beginPath()
       ctx.moveTo(-0.09, -0.09)
@@ -173,9 +173,11 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       ctx.closePath()
       ctx.fill()
       ctx.stroke()
-      ctx.fillStyle = GOLD
-      ctx.fillRect(-0.012, -0.07, 0.024, 0.16)
-      ctx.fillRect(-0.06, -0.025, 0.12, 0.024)
+      // умбон — выпуклая бляха посередине
+      ctx.fillStyle = '#c3cbd9'
+      circle(ctx, 0, 0, 0.032)
+      ctx.fill()
+      ctx.stroke()
       ctx.restore()
     },
   },
@@ -303,21 +305,48 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       ctx.fillStyle = '#e0b48a'
       circle(ctx, 0, -radius * 0.2, radius * 0.45)
       ctx.fill()
-      // седая борода: от щёк вниз, ниже лица, на груди — клином.
-      // Верхний край — усы домиком, иначе борода похожа на широкую улыбку
-      ctx.fillStyle = '#f6f2e6'
-      ctx.strokeStyle = '#b9b2a0'
-      ctx.lineWidth = 0.012
+      // седая борода: не сплошной «маской», а прядями — волнистый низ из трёх завитков
+      // и тонкие линии волос. Свисает ниже лица, на рясу
+      ctx.fillStyle = '#f4f1e8'
       ctx.beginPath()
-      ctx.moveTo(-radius * 0.4, -radius * 0.15)
-      ctx.quadraticCurveTo(-radius * 0.35, radius * 0.4, 0, radius * 0.6)
-      ctx.quadraticCurveTo(radius * 0.35, radius * 0.4, radius * 0.4, -radius * 0.15)
-      ctx.lineTo(radius * 0.12, -radius * 0.05)
-      ctx.lineTo(0, -radius * 0.12)
-      ctx.lineTo(-radius * 0.12, -radius * 0.05)
+      ctx.moveTo(-radius * 0.38, -radius * 0.12)
+      ctx.quadraticCurveTo(-radius * 0.42, radius * 0.25, -radius * 0.25, radius * 0.45)
+      ctx.lineTo(radius * 0.25, radius * 0.45)
+      ctx.quadraticCurveTo(radius * 0.42, radius * 0.25, radius * 0.38, -radius * 0.12)
+      ctx.quadraticCurveTo(0, radius * 0.12, -radius * 0.38, -radius * 0.12)
       ctx.closePath()
       ctx.fill()
+      for (const [curlX, curlY] of [
+        [-0.2, 0.47],
+        [0, 0.58],
+        [0.2, 0.47],
+      ]) {
+        circle(ctx, radius * curlX, radius * curlY, radius * 0.16)
+        ctx.fill()
+      }
+      ctx.strokeStyle = '#c9c2ae'
+      ctx.lineWidth = 0.008
+      ctx.beginPath()
+      for (const strandX of [-0.18, 0, 0.18]) {
+        ctx.moveTo(radius * strandX, radius * 0.08)
+        ctx.lineTo(radius * strandX * 1.1, radius * 0.5)
+      }
       ctx.stroke()
+      // усы — двумя завитками, чуть темнее бороды
+      ctx.fillStyle = '#dcd5c3'
+      for (const side of [-1, 1]) {
+        ctx.beginPath()
+        ctx.ellipse(
+          side * radius * 0.13,
+          -radius * 0.06,
+          radius * 0.15,
+          radius * 0.07,
+          side * 0.35,
+          0,
+          Math.PI * 2,
+        )
+        ctx.fill()
+      }
       // глаза
       ctx.fillStyle = '#2a1a0c'
       circle(ctx, -radius * 0.17, -radius * 0.3, 0.018)
@@ -520,15 +549,6 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       circle(ctx, 0, -radius * 0.12, radius * 0.48)
       ctx.fill()
       ctx.stroke()
-      // чёрная борода клином
-      ctx.fillStyle = '#231a24'
-      ctx.beginPath()
-      ctx.moveTo(-radius * 0.42, -radius * 0.05)
-      ctx.quadraticCurveTo(-radius * 0.3, radius * 0.4, 0, radius * 0.55)
-      ctx.quadraticCurveTo(radius * 0.3, radius * 0.4, radius * 0.42, -radius * 0.05)
-      ctx.quadraticCurveTo(0, radius * 0.15, -radius * 0.42, -radius * 0.05)
-      ctx.closePath()
-      ctx.fill()
       // злые брови и горящие красные глаза
       ctx.strokeStyle = '#231a24'
       ctx.lineWidth = 0.035
@@ -543,6 +563,14 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       ctx.fill()
       circle(ctx, radius * 0.18, -radius * 0.14, 0.03)
       ctx.fill()
+      // сердито сжатый рот: уголки вниз
+      ctx.strokeStyle = '#6b2a2a'
+      ctx.lineWidth = 0.025
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(-radius * 0.16, radius * 0.12)
+      ctx.quadraticCurveTo(0, radius * 0.02, radius * 0.16, radius * 0.12)
+      ctx.stroke()
       // корона с камнями
       ctx.fillStyle = GOLD
       ctx.strokeStyle = '#8a6420'
