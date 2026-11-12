@@ -4,7 +4,7 @@ const ENEMY_LIST: EnemyDef[] = [
   {
     id: 'rebel',
     nameForms: ['бунтовщик', 'бунтовщика', 'бунтовщиков'],
-    hp: 30,
+    hp: 37,
     speed: 1,
     armor: 0,
     reward: 6,
@@ -14,7 +14,7 @@ const ENEMY_LIST: EnemyDef[] = [
   {
     id: 'scout',
     nameForms: ['лазутчик', 'лазутчика', 'лазутчиков'],
-    hp: 18,
+    hp: 22,
     speed: 1.9,
     armor: 0,
     reward: 5,
@@ -24,7 +24,7 @@ const ENEMY_LIST: EnemyDef[] = [
   {
     id: 'armor',
     nameForms: ['латник', 'латника', 'латников'],
-    hp: 90,
+    hp: 110,
     speed: 0.65,
     armor: 5,
     reward: 14,
@@ -34,7 +34,7 @@ const ENEMY_LIST: EnemyDef[] = [
   {
     id: 'ogre',
     nameForms: ['огр', 'огра', 'огров'],
-    hp: 320,
+    hp: 390,
     speed: 0.5,
     armor: 0,
     reward: 40,
@@ -45,7 +45,7 @@ const ENEMY_LIST: EnemyDef[] = [
     id: 'boss',
     nameForms: ['узурпатор', 'узурпатора', 'узурпаторов'],
     hp: 1500,
-    speed: 0.4,
+    speed: 0.36,
     armor: 4,
     reward: 200,
     throneDamage: 20,
