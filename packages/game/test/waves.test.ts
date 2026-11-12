@@ -157,6 +157,8 @@ describe('время', () => {
         'fire',
         'hit',
         'splash',
+        'heal',
+        'income',
         'kill',
         'leak',
         'victory',
@@ -172,7 +174,10 @@ describe('время', () => {
         if (game.state.phase !== 'build') break
         game.startWave()
         stepUntil(game, () => game.state.phase !== 'wave')
-        if (game.state.gold >= 70) expect(game.build('frost', col, row)).not.toBeNull()
+        // Трон мог пасть в этой волне — тогда строить уже нельзя
+        if (game.state.phase === 'build' && game.state.gold >= 70) {
+          expect(game.build('frost', col, row)).not.toBeNull()
+        }
       }
       const { gold, lives, score, kills, wave, towers } = game.state
       return { gold, lives, score, kills, wave, towerCount: towers.length, eventLog }

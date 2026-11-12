@@ -14,9 +14,10 @@ const waves: WaveGroup[][] = [
     ['armor', 3, 2, 4],
   ],
   [
-    ['rebel', 12, 0.7, 0],
+    ['rebel', 10, 0.7, 0],
     ['scout', 8, 0.5, 6],
     ['armor', 2, 2, 10],
+    ['healer', 2, 3, 3],
   ],
   [
     ['armor', 6, 1.6, 0],
@@ -27,56 +28,68 @@ const waves: WaveGroup[][] = [
     ['rebel', 14, 0.6, 2],
   ],
   [
-    ['scout', 20, 0.35, 0],
+    ['scout', 18, 0.35, 0],
     ['armor', 4, 1.5, 4],
+    ['healer', 2, 2, 5],
   ],
   [
-    ['ogre', 2, 5, 0],
+    ['ogre', 1, 0, 0],
     ['armor', 8, 1.3, 2],
+    ['gorynych', 1, 0, 8],
   ],
   [
-    ['rebel', 24, 0.4, 0],
+    ['rebel', 20, 0.4, 0],
     ['scout', 10, 0.4, 6],
+    ['healer', 3, 2.5, 2],
   ],
   [
-    ['armor', 12, 1, 0],
+    ['armor', 11, 1, 0],
     ['ogre', 1, 0, 8],
+    ['healer', 2, 4, 3],
   ],
   [
     ['scout', 30, 0.28, 0],
     ['ogre', 2, 4, 3],
   ],
   [
-    ['armor', 10, 0.9, 0],
-    ['rebel', 20, 0.4, 3],
+    ['armor', 8, 0.9, 0],
+    ['rebel', 16, 0.4, 3],
     ['ogre', 2, 5, 10],
+    ['healer', 2, 5, 4],
   ],
   [
-    ['ogre', 5, 2.5, 0],
+    ['ogre', 2, 2.5, 0],
     ['scout', 16, 0.35, 4],
+    ['gorynych', 2, 9, 6],
   ],
   [
-    ['armor', 18, 0.75, 0],
+    ['armor', 15, 0.75, 0],
     ['scout', 20, 0.3, 6],
+    ['healer', 3, 4, 2],
   ],
   [
-    ['ogre', 6, 2.2, 0],
+    ['ogre', 5, 2.2, 0],
     ['armor', 12, 0.8, 3],
+    ['gorynych', 1, 0, 10],
   ],
   [
-    ['rebel', 40, 0.25, 0],
+    ['rebel', 34, 0.25, 0],
     ['scout', 30, 0.25, 5],
     ['ogre', 3, 3, 10],
+    ['healer', 4, 2.5, 3],
   ],
   [
-    ['ogre', 8, 1.8, 0],
-    ['armor', 20, 0.6, 4],
+    ['ogre', 6, 1.8, 0],
+    ['armor', 17, 0.6, 4],
+    ['healer', 4, 3, 3],
+    ['gorynych', 2, 7, 6],
   ],
   [
     ['boss', 1, 0, 0],
-    ['armor', 14, 0.9, 3],
+    ['armor', 12, 0.9, 3],
     ['ogre', 4, 3, 8],
     ['scout', 24, 0.3, 14],
+    ['healer', 3, 3, 4],
   ],
 ]
 
@@ -85,6 +98,9 @@ const ENDLESS_BOSS_EVERY = 5
 
 /** Каждые столько волн бесконечного режима боссов в волне становится на одного больше */
 const ENDLESS_EXTRA_BOSS_EVERY = 10
+
+/** В бесконечном режиме Змей Горыныч выходит на каждой 3-й волне (номер волны кратен 3) */
+const ENDLESS_GORYNYCH_EVERY = 3
 
 export const throneHall: LevelDef = {
   id: 'throne-hall',
@@ -121,7 +137,9 @@ export const throneHall: LevelDef = {
       ['armor', 14 + 2 * wavesPastEnd, 0.6, 0],
       ['ogre', 6 + wavesPastEnd, 1.8, 3],
       ['scout', 24 + 3 * wavesPastEnd, 0.25, 8],
+      ['healer', 3 + Math.floor(wavesPastEnd / 2), 2.5, 4],
     ]
+    if (waveNumber % ENDLESS_GORYNYCH_EVERY === 0) groups.push(['gorynych', 2, 6, 5])
     if (waveNumber % ENDLESS_BOSS_EVERY === 0)
       groups.push(['boss', 1 + Math.floor(wavesPastEnd / ENDLESS_EXTRA_BOSS_EVERY), 6, 0])
     return groups

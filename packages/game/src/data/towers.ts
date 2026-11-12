@@ -1,6 +1,10 @@
 // Башни (стража). Чтобы добавить новую:
 // 1) опиши её здесь и добавь в TOWER_LIST;
 // 2) нарисуй в apps/web/src/render/towers.ts (без рисунка будет простой кружок).
+//
+// У каждой башни своя работа (баланс v4):
+// лучник — дешёвый и частый, огневик — против толпы и лат, Морозко — только замедляет,
+// баллиста — против толстых, Звонарь — ускоряет соседей, Казна — приносит золото.
 
 import { frostPulse, shootHoming, shootLine } from '../systems/combat.ts'
 import type { TowerDef } from '../types.ts'
@@ -11,19 +15,21 @@ const BALLISTA_REACH_FACTOR = 1.15
 const archer: TowerDef = {
   id: 'archer',
   name: 'Лучник',
-  description: 'быстрые стрелы, слаб против лат',
+  description: 'дешёвый, стреляет часто, слаб против лат',
   cost: 50,
-  upgradeCosts: [45, 85],
+  // Баланс v4: было 45/85 — улучшенный лучник давал меньше урона на монету, чем новый
+  upgradeCosts: [40, 70],
   tiers: [
-    { damage: 9, cooldown: 0.55, range: 2.3 },
-    { damage: 15, cooldown: 0.5, range: 2.5 },
-    { damage: 24, cooldown: 0.42, range: 2.8 },
+    { damage: 7, cooldown: 0.4, range: 2.4 },
+    { damage: 12, cooldown: 0.36, range: 2.6 },
+    { damage: 19, cooldown: 0.3, range: 2.9 },
   ],
   displayStats: ['damage', 'range'],
+  canChooseTarget: true,
   fire: (world, tower, target, stats) =>
     shootHoming(world, tower, target, {
       look: 'arrow',
-      speed: 11,
+      speed: 13,
       damage: stats.damage,
       damageKind: 'physical',
     }),
@@ -41,6 +47,7 @@ const mage: TowerDef = {
     { damage: 44, cooldown: 1, range: 2.6, splashRadius: 1.15 },
   ],
   displayStats: ['damage', 'range'],
+  canChooseTarget: true,
   fire: (world, tower, target, stats) =>
     shootHoming(world, tower, target, {
       look: 'orb',
@@ -58,28 +65,32 @@ const frost: TowerDef = {
   cost: 70,
   upgradeCosts: [60, 100],
   tiers: [
-    { damage: 3, cooldown: 1.1, range: 1.7, slowAmount: 0.35, slowDuration: 1.5 },
-    { damage: 5, cooldown: 1.05, range: 1.9, slowAmount: 0.45, slowDuration: 1.8 },
-    { damage: 8, cooldown: 1, range: 2.2, slowAmount: 0.55, slowDuration: 2.2 },
+    // Баланс v4: урон был 3/5/8 — Морозко наносил урона на монету больше всех
+    { damage: 1, cooldown: 1.1, range: 1.7, slowAmount: 0.4, slowDuration: 1.6 },
+    { damage: 2, cooldown: 1.05, range: 1.9, slowAmount: 0.5, slowDuration: 2 },
+    { damage: 3, cooldown: 1, range: 2.2, slowAmount: 0.6, slowDuration: 2.4 },
   ],
   displayStats: ['slowAmount', 'range'],
+  // Волна холода бьёт всех вокруг разом — выбирать цель незачем
+  canChooseTarget: false,
   fire: (world, tower, _target, stats) => frostPulse(world, tower, stats),
 }
 
 const ballista: TowerDef = {
   id: 'ballista',
   name: 'Баллиста',
-  description: 'бьёт далеко, пронзает нескольких',
+  description: 'бьёт далеко и больно, для огров и узурпатора',
   cost: 130,
   upgradeCosts: [110, 180],
   tiers: [
-    // Баланс v2: было 55/95/160 урона и 3,6/4/4,5 дальности — баллиста III была
-    // в 2–2,5 раза выгоднее остальных башен (см. `npm run towers`)
-    { damage: 50, cooldown: 2.2, range: 3.4, pierceCount: 3 },
-    { damage: 80, cooldown: 2, range: 3.6, pierceCount: 4 },
-    { damage: 125, cooldown: 1.8, range: 3.9, pierceCount: 5 },
+    // Баланс v4: было 50/80/125 урона раз в 2,2/2/1,8 с, пробивала 3/4/5 врагов —
+    // и была выгоднее всех почти против всех. Теперь бьёт реже, но сильнее, а пробивает только двоих
+    { damage: 80, cooldown: 3, range: 3.4, pierceCount: 2 },
+    { damage: 135, cooldown: 2.7, range: 3.6, pierceCount: 2 },
+    { damage: 210, cooldown: 2.4, range: 3.9, pierceCount: 2 },
   ],
   displayStats: ['damage', 'range'],
+  canChooseTarget: true,
   fire: (world, tower, target, stats) =>
     shootLine(world, tower, target, {
       look: 'bolt',
@@ -91,8 +102,39 @@ const ballista: TowerDef = {
     }),
 }
 
+const bell: TowerDef = {
+  id: 'bell',
+  name: 'Звонарь',
+  description: 'сам не стреляет, соседи с ним стреляют чаще',
+  cost: 100,
+  upgradeCosts: [80, 120],
+  tiers: [
+    // Дальность 1,5 — восемь соседних клеток (до угловой — 1,41); 2,3 — ещё и через одну
+    { damage: 0, cooldown: 0, range: 1.5, fireRateBonus: 0.15 },
+    { damage: 0, cooldown: 0, range: 1.5, fireRateBonus: 0.25 },
+    { damage: 0, cooldown: 0, range: 2.3, fireRateBonus: 0.35 },
+  ],
+  displayStats: ['fireRateBonus', 'range'],
+  canChooseTarget: false,
+}
+
+const treasury: TowerDef = {
+  id: 'treasury',
+  name: 'Казна',
+  description: 'не стреляет, приносит золото после каждой волны',
+  cost: 80,
+  upgradeCosts: [70, 100],
+  tiers: [
+    { damage: 0, cooldown: 0, range: 0, goldPerWave: 12 },
+    { damage: 0, cooldown: 0, range: 0, goldPerWave: 22 },
+    { damage: 0, cooldown: 0, range: 0, goldPerWave: 35 },
+  ],
+  displayStats: ['goldPerWave'],
+  canChooseTarget: false,
+}
+
 /** Башни в порядке магазина (клавиши 1, 2, 3…) */
-export const TOWER_LIST: readonly TowerDef[] = [archer, mage, frost, ballista]
+export const TOWER_LIST: readonly TowerDef[] = [archer, mage, frost, ballista, bell, treasury]
 
 /** Все башни по id */
 export const TOWERS: Readonly<Record<string, TowerDef>> = Object.fromEntries(

@@ -9,6 +9,7 @@ import {
   type Game,
   type LevelDef,
   type Tower,
+  type TowerDef,
 } from '@throne/game'
 
 /** Шаг стратегии: id башни («поставить такую») или 'upgrade' («улучшить слабейшую») */
@@ -77,6 +78,56 @@ export function findBestCell(game: Game, range: number): { col: number; row: num
   return bestCell
 }
 
+type Cell = { col: number; row: number }
+
+/** Свободная клетка, у которой больше всего стреляющих башен в радиусе range (для Звонаря) */
+function findCellNearTowers(game: Game, range: number): Cell | null {
+  const { cols, rows } = game.level.def
+  let bestCell: Cell | null = null
+  let bestCount = 0
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (!game.isCellFree(col, row)) continue
+      const count = game.state.towers.filter(
+        (tower) =>
+          tower.def.fire && (tower.x - col - 0.5) ** 2 + (tower.y - row - 0.5) ** 2 <= range ** 2,
+      ).length
+      if (count > bestCount) {
+        bestCount = count
+        bestCell = { col, row }
+      }
+    }
+  }
+  return bestCell
+}
+
+/** Свободная клетка, откуда меньше всего видно ковёр: для Казны, чтобы не занимать хорошие места */
+function findCellAwayFromPath(game: Game): Cell | null {
+  const { cols, rows } = game.level.def
+  let bestCell: Cell | null = null
+  let bestCoverage = Infinity
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (!game.isCellFree(col, row)) continue
+      // Насколько клетка хороша для лучника: чем меньше, тем меньше жалко отдать её Казне
+      const coverage = pathCoverage(game, col, row, TOWERS['archer'].tiers[0].range)
+      if (coverage < bestCoverage) {
+        bestCoverage = coverage
+        bestCell = { col, row }
+      }
+    }
+  }
+  return bestCell
+}
+
+/** Куда бот ставит башню: стреляющую — к ковру, Звонаря — к башням, Казну — подальше от ковра */
+function findCellFor(game: Game, def: TowerDef): Cell | null {
+  const stats = def.tiers[0]
+  if (def.fire) return findBestCell(game, stats.range)
+  if (stats.fireRateBonus) return findCellNearTowers(game, stats.range)
+  return findCellAwayFromPath(game)
+}
+
 /** Башня, которую стоит улучшить: с самой низкой ступенью, при равенстве — первая поставленная */
 function weakestTower(game: Game): Tower | null {
   let weakest: Tower | null = null
@@ -110,7 +161,7 @@ function spendGold(game: Game, strategy: Strategy, stepIndex: number): number {
 
     const def = TOWERS[strategyStep]
     if (!def) throw new Error(`Стратегия «${strategy.name}»: неизвестная башня «${strategyStep}»`)
-    const cell = findBestCell(game, def.tiers[0].range)
+    const cell = findCellFor(game, def)
     if (!cell) {
       stepIndex++ // некуда ставить
       continue
@@ -183,6 +234,16 @@ export const STRATEGIES: Strategy[] = [
     name: 'Огонь и баллисты',
     opening: ['mage', 'mage'],
     loop: ['ballista', 'upgrade', 'mage', 'upgrade'],
+  },
+  {
+    name: 'Смешанная со Звонарями',
+    opening: ['archer', 'archer', 'mage', 'frost', 'ballista'],
+    loop: ['upgrade', 'mage', 'bell', 'upgrade', 'ballista', 'upgrade', 'archer', 'frost'],
+  },
+  {
+    name: 'Смешанная с Казной',
+    opening: ['archer', 'archer', 'treasury', 'mage', 'frost'],
+    loop: ['upgrade', 'mage', 'upgrade', 'ballista', 'treasury', 'upgrade', 'archer', 'frost'],
   },
   {
     // Если эта стратегия вдруг станет лучшей — какая-то башня слишком сильная

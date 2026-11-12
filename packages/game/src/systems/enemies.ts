@@ -1,26 +1,31 @@
-// Враги: появление, движение по ковру, прорыв к трону.
+// Враги: появление, движение по ковру, прорыв к трону, лечение и распад на части.
 
 import { hpMultiplier } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
-import type { World } from '../types.ts'
+import type { Enemy, World } from '../types.ts'
 
-export function spawnEnemy(world: World, enemyId: string): void {
+/** Насколько отстают друг от друга по ковру те, на кого распался враг, клеток */
+const SPLIT_SPACING = 0.22
+
+/** Выпустить врага enemyId: от двери или (pathDistance) с указанного места ковра */
+export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): void {
   // Волны проверены при загрузке уровня, так что сюда неизвестный id попадает только по ошибке в коде
   if (!Object.hasOwn(ENEMIES, enemyId)) throw new Error(`Неизвестный враг «${enemyId}»`)
   const def = ENEMIES[enemyId]
   const state = world.state
   const hp = Math.round(def.hp * hpMultiplier(state.wave, world.level.waveCount))
-  const [x, y] = world.level.path.points[0]
+  const [x, y] = world.level.path.positionAt(pathDistance)
   state.enemies.push({
     id: state.nextId++,
     def,
     hp,
     maxHp: hp,
-    pathDistance: 0,
+    pathDistance,
     x,
     y,
     slowTimeLeft: 0,
     slowFactor: 0,
+    healCooldownLeft: def.heal?.cooldown ?? 0,
     isDead: false,
   })
 }
@@ -62,4 +67,56 @@ export function moveEnemies(world: World, dt: number): boolean {
     enemy.y = y
   }
   return true
+}
+
+/** Лечить ли этого соседа: живой, раненый и в радиусе лечения */
+function canHeal(healer: Enemy, other: Enemy, radius: number): boolean {
+  return (
+    other !== healer &&
+    !other.isDead &&
+    other.hp < other.maxHp &&
+    (other.x - healer.x) ** 2 + (other.y - healer.y) ** 2 <= radius * radius
+  )
+}
+
+/** Знахари лечат соседей (себя — нет: поэтому их и выгодно убивать первыми) */
+export function updateHealers(world: World, dt: number): void {
+  const enemies = world.state.enemies
+  for (const healer of enemies) {
+    const heal = healer.def.heal
+    if (!heal || healer.isDead) continue
+    healer.healCooldownLeft -= dt
+    if (healer.healCooldownLeft > 0) continue
+    healer.healCooldownLeft = heal.cooldown
+
+    const amount = healer.maxHp * heal.amount
+    for (const other of enemies) {
+      if (canHeal(healer, other, heal.radius)) other.hp = Math.min(other.maxHp, other.hp + amount)
+    }
+    world.emit('heal', { x: healer.x, y: healer.y, radius: heal.radius })
+  }
+}
+
+/** Погибший враг распадается: его «осколки» встанут в очередь и выйдут в конце шага */
+export function queueSplit(world: World, enemy: Enemy): void {
+  const split = enemy.def.splitInto
+  if (!split) return
+  for (let i = 0; i < split.count; i++) {
+    world.state.splitQueue.push({
+      enemyId: split.enemyId,
+      // Чуть позади друг друга, чтобы не слиплись в одну точку
+      pathDistance: Math.max(0, enemy.pathDistance - i * SPLIT_SPACING),
+    })
+  }
+}
+
+/**
+ * Выпустить тех, кто в очереди распада. Отдельным шагом, а не сразу при гибели:
+ * иначе тот же взрыв или волна холода, что убили Горыныча, задели бы и «осколки»
+ */
+export function spawnSplits(world: World): void {
+  const queue = world.state.splitQueue
+  if (!queue.length) return
+  for (const { enemyId, pathDistance } of queue) spawnEnemy(world, enemyId, pathDistance)
+  world.state.splitQueue = []
 }

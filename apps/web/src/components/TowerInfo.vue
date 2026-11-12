@@ -15,6 +15,8 @@ const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: number) => 
   slowAmount: { label: 'замедление', format: formatPercent },
   splashRadius: { label: 'взрыв', format: formatDecimal },
   pierceCount: { label: 'пронзает', format: String },
+  fireRateBonus: { label: 'ускоряет соседей на', format: formatPercent },
+  goldPerWave: { label: 'доход за волну', format: String },
 }
 
 /** «урон 9 → 15»: текущее значение и (если есть) значение после улучшения */

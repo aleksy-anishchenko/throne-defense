@@ -27,11 +27,28 @@ export interface TowerStats {
   slowDuration?: number
   /** Сколько врагов пробивает снаряд насквозь, штук */
   pierceCount?: number
+  /** Звонарь: насколько быстрее стреляют башни в радиусе (0.2 — на 20% быстрее) */
+  fireRateBonus?: number
+  /** Казна: сколько золота приносит за каждую отбитую волну */
+  goldPerWave?: number
 }
 
 /** Какие характеристики можно показать в панели башни */
 export type StatKey =
-  'damage' | 'range' | 'cooldown' | 'slowAmount' | 'splashRadius' | 'pierceCount'
+  | 'damage'
+  | 'range'
+  | 'cooldown'
+  | 'slowAmount'
+  | 'splashRadius'
+  | 'pierceCount'
+  | 'fireRateBonus'
+  | 'goldPerWave'
+
+/**
+ * Кого башня выбирает целью: first — того, кто ближе всех к трону,
+ * strongest — того, у кого больше всего здоровья, nearest — ближайшего к самой башне
+ */
+export type TargetMode = 'first' | 'strongest' | 'nearest'
 
 /** Описание типа башни. Новая башня = новый объект TowerDef + рисунок в apps/web */
 export interface TowerDef {
@@ -47,8 +64,10 @@ export interface TowerDef {
   tiers: readonly TowerStats[]
   /** Какие характеристики показывать в панели башни */
   displayStats: readonly StatKey[]
-  /** Что делает башня, когда стреляет по цели */
-  fire(world: World, tower: Tower, target: Enemy, stats: TowerStats): void
+  /** Можно ли выбрать, в кого башня целится (у Морозко, Звонаря и Казны выбирать нечего) */
+  canChooseTarget: boolean
+  /** Что делает башня, когда стреляет по цели. Нет — башня не стреляет (Звонарь, Казна) */
+  fire?(world: World, tower: Tower, target: Enemy, stats: TowerStats): void
 }
 
 /** Описание типа врага */
@@ -70,6 +89,31 @@ export interface EnemyDef {
   radius: number
   /** Сопротивление замедлению: 0.5 — замедляется вдвое слабее */
   slowResistance?: number
+  /** Лечит других врагов рядом (знахарь) */
+  heal?: EnemyHeal
+  /** Погибая, распадается на нескольких врагов поменьше (Змей Горыныч) */
+  splitInto?: EnemySplit
+}
+
+/** Как враг лечит соседей */
+export interface EnemyHeal {
+  /** Радиус лечения, клеток */
+  radius: number
+  /**
+   * Сколько здоровья возвращает каждому соседу — в долях здоровья самого лечащего
+   * (0.4 — 40% его здоровья). Так лечение растёт по волнам вместе со здоровьем
+   */
+  amount: number
+  /** Пауза между лечениями, секунд */
+  cooldown: number
+}
+
+/** На кого распадается враг, погибая */
+export interface EnemySplit {
+  /** id врага (EnemyDef) */
+  enemyId: string
+  /** Сколько их, штук */
+  count: number
 }
 
 /** Группа врагов в волне: кто (id), сколько, пауза между ними (с), задержка начала (с) */
@@ -130,6 +174,8 @@ export interface Tower {
   cooldownLeft: number
   /** Куда смотрит башня, радианы */
   aimAngle: number
+  /** Кого выбирает целью */
+  targetMode: TargetMode
 }
 
 /** Враг, идущий по ковру */
@@ -149,6 +195,8 @@ export interface Enemy {
   slowTimeLeft: number
   /** Сила текущего замедления: 0.35 — идёт на 35% медленнее */
   slowFactor: number
+  /** Сколько секунд до следующего лечения соседей (только у тех, кто лечит) */
+  healCooldownLeft: number
   /** Убит: такого врага уберут из списка в конце шага */
   isDead: boolean
 }
@@ -225,6 +273,13 @@ export interface SpawnEntry {
   enemyId: string
 }
 
+/** Враг, который появится в конце шага на месте погибшего (на кого распался Горыныч) */
+export interface SplitSpawn {
+  enemyId: string
+  /** С какого места ковра он пойдёт, клеток от двери */
+  pathDistance: number
+}
+
 export interface GameState {
   phase: Phase
   /** НОМЕР текущей (или следующей) волны, считая с 1 */
@@ -253,6 +308,8 @@ export interface GameState {
   shots: Shot[]
   /** Кто ещё выйдет в этой волне; отсортировано так, что ближайший — в конце */
   spawnQueue: SpawnEntry[]
+  /** Кто появится в конце шага на месте погибших (см. EnemyDef.splitInto) */
+  splitQueue: SplitSpawn[]
   /** Сколько секунд идёт текущая волна */
   waveTime: number
   /** Номер для следующей башни или врага */
@@ -269,10 +326,14 @@ export interface GameEvents {
   sell: { tower: Tower; refund: number }
   waveStart: number
   waveCleared: { wave: number; bonus: number }
+  /** Казна принесла золото за отбитую волну */
+  income: { tower: Tower; gold: number }
   fire: { tower: Tower; stats: TowerStats }
   hit: Enemy
   kill: Enemy
   splash: { x: number; y: number; radius: number }
+  /** Знахарь лечит соседей */
+  heal: { x: number; y: number; radius: number }
   leak: Enemy
   victory: void
   defeat: void

@@ -2,6 +2,7 @@
 
 import { SCORE } from '../data/balance.ts'
 import type { DamageKind, Enemy, HomingShot, LineShot, Tower, TowerStats, World } from '../types.ts'
+import { queueSplit } from './enemies.ts'
 
 /** Какая доля брони врага всё ещё режет пробивающий урон (0.5 = половина брони; физический урон режется всей бронёй, магический — не режется вовсе) */
 const PIERCING_ARMOR_FACTOR = 0.5
@@ -58,6 +59,7 @@ export function damageEnemy(
     state.gold += enemy.def.reward
     state.score += enemy.def.reward * SCORE.perGold
     state.kills++
+    queueSplit(world, enemy)
     world.emit('kill', enemy)
   }
 }

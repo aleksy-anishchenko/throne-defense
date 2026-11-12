@@ -49,17 +49,17 @@ describe('улучшение и продажа', () => {
     expect(game.upgrade(5, 11)).toBe(true)
     expect(game.upgrade(5, 11)).toBe(false) // уже III
     expect(game.towerAt(5, 11)!.tier).toBe(2)
-    expect(game.state.gold).toBe(1000 - 50 - 45 - 85)
+    expect(game.state.gold).toBe(1000 - 50 - 40 - 70)
   })
 
   it('продажа возвращает 60% вложенного, включая улучшения', () => {
     const game = newGame()
     game.build('archer', 5, 11) // 50
-    game.upgrade(5, 11) // +45 → вложено 95
+    game.upgrade(5, 11) // +40 → вложено 90
     const before = game.state.gold
 
-    expect(game.sell(5, 11)).toBe(57) // floor(95 × 0.6)
-    expect(game.state.gold).toBe(before + 57)
+    expect(game.sell(5, 11)).toBe(54) // floor(90 × 0.6)
+    expect(game.state.gold).toBe(before + 54)
     expect(game.isCellFree(5, 11)).toBe(true)
     expect(game.state.towers).toHaveLength(0)
   })

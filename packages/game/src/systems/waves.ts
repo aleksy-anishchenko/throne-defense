@@ -3,6 +3,7 @@
 import { SCORE, waveBonus } from '../data/balance.ts'
 import type { Level, SpawnEntry, WaveGroup, World } from '../types.ts'
 import { spawnEnemy } from './enemies.ts'
+import { payTowerIncome } from './towers.ts'
 
 /** Состав волны waveNumber (после последней — бесконечный режим) */
 export function getWaveGroups(level: Level, waveNumber: number): readonly WaveGroup[] {
@@ -41,6 +42,7 @@ export function finishWave(world: World): void {
   state.score += SCORE.perWave * state.wave
   state.wavesCleared = state.wave
   world.emit('waveCleared', { wave: state.wave, bonus })
+  payTowerIncome(world)
 
   if (state.wave === world.level.waveCount && !state.isEndless) {
     state.score += state.lives * SCORE.perLife

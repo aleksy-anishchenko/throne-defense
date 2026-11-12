@@ -4,11 +4,20 @@
 
 import { MAX_SPEED, MIN_SPEED, SIMULATION_STEP } from '../data/balance.ts'
 import { TOWERS } from '../data/towers.ts'
-import { moveEnemies } from '../systems/enemies.ts'
-import { refundFor, updateTowers, upgradeCost } from '../systems/towers.ts'
+import { moveEnemies, spawnSplits, updateHealers } from '../systems/enemies.ts'
+import { TARGET_MODES, refundFor, updateTowers, upgradeCost } from '../systems/towers.ts'
 import { buildSpawnQueue, finishWave, getWaveGroups, spawnDueEnemies } from '../systems/waves.ts'
 import { updateShots } from '../systems/combat.ts'
-import type { GameEvents, GameState, Level, LevelDef, Tower, WaveGroup, World } from '../types.ts'
+import type {
+  GameEvents,
+  GameState,
+  Level,
+  LevelDef,
+  TargetMode,
+  Tower,
+  WaveGroup,
+  World,
+} from '../types.ts'
 import { createEmitter, type Emitter } from './events.ts'
 import { cellKey, createLevel, isLevelCell } from './level.ts'
 
@@ -34,6 +43,8 @@ export interface Game {
   upgrade(col: number, row: number): boolean
   /** Продать башню. Возвращает, сколько золота вернули, или null */
   sell(col: number, row: number): number | null
+  /** Кого башня на клетке выбирает целью. false — если нельзя (нет башни, ей нечего выбирать) */
+  setTargetMode(col: number, row: number, mode: TargetMode): boolean
   startWave(): boolean
   /** После победы — играть дальше, в бесконечном режиме */
   continueEndless(): void
@@ -79,6 +90,7 @@ function initialState(level: Level): GameState {
     enemies: [],
     shots: [],
     spawnQueue: [],
+    splitQueue: [],
     waveTime: 0,
     nextId: 1,
   }
@@ -112,8 +124,10 @@ export function createGame(levelDef: LevelDef): Game {
       state.enemies = state.enemies.filter((enemy) => !enemy.isDead)
       return
     }
+    updateHealers(world, dt)
     updateTowers(world, dt)
     updateShots(world, dt)
+    spawnSplits(world)
 
     if (state.shots.some((shot) => shot.isDone)) {
       state.shots = state.shots.filter((shot) => !shot.isDone)
@@ -165,6 +179,7 @@ export function createGame(levelDef: LevelDef): Game {
         tier: 0,
         cooldownLeft: 0,
         aimAngle: INITIAL_AIM_ANGLE,
+        targetMode: 'first',
       }
       state.towers.push(tower)
       state.towersByCell.set(cellKey(col, row), tower)
@@ -192,6 +207,16 @@ export function createGame(levelDef: LevelDef): Game {
       state.towersByCell.delete(cellKey(col, row))
       events.emit('sell', { tower, refund })
       return refund
+    },
+
+    setTargetMode(col, row, mode) {
+      const tower = towerAt(col, row)
+      // includes, а не просто «строка»: метод не верит аргументам (может прийти что угодно)
+      if (!tower || !isPlaying() || !tower.def.canChooseTarget || !TARGET_MODES.includes(mode)) {
+        return false
+      }
+      tower.targetMode = mode
+      return true
     },
 
     startWave() {

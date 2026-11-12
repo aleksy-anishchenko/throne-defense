@@ -104,7 +104,8 @@ if (import.meta.main) {
     ]
     console.log([...headerCells, ...STREAMS.map((stream) => padCell(stream.name, 12))].join(''))
 
-    for (const def of TOWER_LIST) {
+    // Звонарь и Казна сами не стреляют — урона на монету у них нет
+    for (const def of TOWER_LIST.filter((towerDef) => towerDef.fire)) {
       for (let tier = 0; tier < def.tiers.length; tier++) {
         const game = createGame(level)
         game.reset()
