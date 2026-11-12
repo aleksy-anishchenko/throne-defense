@@ -79,7 +79,7 @@ const frost: TowerDef = {
 const ballista: TowerDef = {
   id: 'ballista',
   name: 'Баллиста',
-  description: 'бьёт далеко и больно, для огров и узурпатора',
+  description: 'бьёт далеко и мощно, пробивает броню',
   cost: 130,
   upgradeCosts: [110, 180],
   tiers: [

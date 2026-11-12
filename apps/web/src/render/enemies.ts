@@ -100,38 +100,68 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
   },
 
   ogre: {
-    sparkColor: '#86a24e',
+    // Серо-бурый, а не зелёный: зелёные — Горыныч и змеёныши, их не спутать
+    sparkColor: '#a08b6a',
     sparkCount: 10,
     body(ctx, radius) {
-      ctx.fillStyle = '#86a24e'
-      ctx.strokeStyle = '#42541f'
+      // уши
+      ctx.fillStyle = '#8c7856'
+      ctx.strokeStyle = '#4a3c26'
+      ctx.lineWidth = 0.03
+      circle(ctx, -radius * 0.95, -0.04, 0.08)
+      ctx.fill()
+      ctx.stroke()
+      circle(ctx, radius * 0.95, -0.04, 0.08)
+      ctx.fill()
+      ctx.stroke()
+      // голова
+      ctx.fillStyle = '#a08b6a'
       ctx.lineWidth = 0.045
       circle(ctx, 0, 0, radius)
       ctx.fill()
       ctx.stroke()
-      // брови и глаза
-      ctx.fillStyle = '#42541f'
-      ctx.fillRect(-0.17, -0.12, 0.13, 0.04)
-      ctx.fillRect(0.04, -0.12, 0.13, 0.04)
-      ctx.fillStyle = '#1e2a0c'
-      circle(ctx, -0.1, -0.05, 0.035)
-      ctx.fill()
-      circle(ctx, 0.1, -0.05, 0.035)
-      ctx.fill()
-      // клыки
-      ctx.fillStyle = '#f1ead6'
+      // сердитые брови — домиком к переносице
+      ctx.strokeStyle = '#3a2e1c'
+      ctx.lineWidth = 0.045
+      ctx.lineCap = 'round'
       ctx.beginPath()
-      ctx.moveTo(-0.15, 0.1)
-      ctx.lineTo(-0.11, -0.02)
-      ctx.lineTo(-0.06, 0.1)
+      ctx.moveTo(-0.18, -0.15)
+      ctx.lineTo(-0.04, -0.09)
+      ctx.moveTo(0.18, -0.15)
+      ctx.lineTo(0.04, -0.09)
+      ctx.stroke()
+      // маленькие злые глаза
+      ctx.fillStyle = '#ffdf6a'
+      circle(ctx, -0.1, -0.04, 0.035)
+      ctx.fill()
+      circle(ctx, 0.1, -0.04, 0.035)
+      ctx.fill()
+      ctx.fillStyle = '#1e140a'
+      circle(ctx, -0.1, -0.04, 0.017)
+      ctx.fill()
+      circle(ctx, 0.1, -0.04, 0.017)
+      ctx.fill()
+      // широкий рот
+      ctx.fillStyle = '#3a1a12'
+      ctx.beginPath()
+      ctx.moveTo(-0.17, 0.1)
+      ctx.quadraticCurveTo(0, 0.24, 0.17, 0.1)
+      ctx.quadraticCurveTo(0, 0.15, -0.17, 0.1)
       ctx.closePath()
       ctx.fill()
-      ctx.beginPath()
-      ctx.moveTo(0.15, 0.1)
-      ctx.lineTo(0.11, -0.02)
-      ctx.lineTo(0.06, 0.1)
-      ctx.closePath()
-      ctx.fill()
+      // клыки торчат из нижней челюсти вверх, с обводкой — чтобы читались на любом фоне
+      ctx.fillStyle = '#f4eedb'
+      ctx.strokeStyle = '#4a3c26'
+      ctx.lineWidth = 0.02
+      for (const side of [-1, 1]) {
+        ctx.beginPath()
+        ctx.moveTo(side * 0.15, 0.13)
+        ctx.lineTo(side * 0.12, 0.0)
+        ctx.lineTo(side * 0.08, 0.15)
+        ctx.closePath()
+        ctx.fill()
+        ctx.stroke()
+      }
     },
   },
 
@@ -168,6 +198,55 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
     healthBarOffset: 0.28,
     drawOnTop: true,
     body(ctx, radius) {
+      // хвост: изгибается вниз и вбок, на конце — наконечник-стрелка
+      ctx.strokeStyle = '#3f7a32'
+      ctx.lineWidth = 0.08
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(0, radius * 0.6)
+      ctx.quadraticCurveTo(radius * 0.2, radius * 1.45, radius * 0.95, radius * 1.15)
+      ctx.stroke()
+      ctx.fillStyle = '#2f5f26'
+      ctx.beginPath()
+      ctx.moveTo(radius * 1.2, radius * 1.05)
+      ctx.lineTo(radius * 0.85, radius * 0.95)
+      ctx.lineTo(radius * 0.95, radius * 1.35)
+      ctx.closePath()
+      ctx.fill()
+      // крылья-перепонки за спиной: три «пальца» с провисающей кожей между ними
+      ctx.fillStyle = '#2f5f26'
+      ctx.strokeStyle = '#1f3f18'
+      ctx.lineWidth = 0.025
+      for (const side of [-1, 1]) {
+        const rootX = side * radius * 0.55
+        const rootY = -radius * 0.25
+        ctx.beginPath()
+        ctx.moveTo(rootX, rootY)
+        ctx.lineTo(side * radius * 1.55, -radius * 0.95)
+        ctx.quadraticCurveTo(
+          side * radius * 1.4,
+          -radius * 0.45,
+          side * radius * 1.65,
+          -radius * 0.2,
+        )
+        ctx.quadraticCurveTo(
+          side * radius * 1.3,
+          -radius * 0.05,
+          side * radius * 1.45,
+          radius * 0.35,
+        )
+        ctx.quadraticCurveTo(side * radius * 1.0, radius * 0.25, side * radius * 0.7, radius * 0.35)
+        ctx.closePath()
+        ctx.fill()
+        ctx.stroke()
+        // «кости» крыла
+        ctx.beginPath()
+        ctx.moveTo(rootX, rootY)
+        ctx.lineTo(side * radius * 1.65, -radius * 0.2)
+        ctx.moveTo(rootX, rootY)
+        ctx.lineTo(side * radius * 1.45, radius * 0.35)
+        ctx.stroke()
+      }
       // тело
       ctx.fillStyle = '#3f7a32'
       ctx.strokeStyle = '#1f3f18'
@@ -207,6 +286,15 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
     sparkColor: '#6fb04f',
     sparkCount: 4,
     body(ctx, radius) {
+      // хвостик, как у Горыныча: видно, что это его «осколок»
+      ctx.strokeStyle = '#5c9c45'
+      ctx.lineWidth = 0.05
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(0, radius * 0.5)
+      ctx.quadraticCurveTo(radius * 0.3, radius * 1.6, radius * 1.3, radius * 1.1)
+      ctx.stroke()
+      ctx.lineWidth = 0.035
       ctx.fillStyle = '#5c9c45'
       ctx.strokeStyle = '#2a4d1f'
       circle(ctx, 0, 0, radius)
