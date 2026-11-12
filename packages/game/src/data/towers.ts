@@ -115,7 +115,7 @@ const ballista: TowerDef = {
 const bell: TowerDef = {
   id: 'bell',
   name: 'Звонарь',
-  description: 'сам не стреляет, башни рядом стреляют чаще (кроме Морозко)',
+  description: 'сам не стреляет, башни рядом стреляют чаще',
   cost: 100,
   upgradeCosts: [80, 120],
   tiers: [
