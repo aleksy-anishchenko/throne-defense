@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Панель выбранной башни: характеристики, «Улучшить», «Продать»
-import { TOWERS, refundFor, type StatKey, type TowerStats } from '@throne/game'
+import { TOWERS, refundFor, type StatKey, type TargetMode, type TowerStats } from '@throne/game'
 import { computed } from 'vue'
 import { useGameStore } from '@/stores/game'
 import { formatDecimal, formatPercent, toRoman } from '@/utils/format'
@@ -17,6 +17,20 @@ const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: number) => 
   pierceCount: { label: 'пронзает', format: String },
   fireRateBonus: { label: 'ускоряет соседей на', format: formatPercent },
   goldPerWave: { label: 'доход за волну', format: String },
+}
+
+/** Как называть в панели, кого башня выбирает целью */
+const TARGET_MODE_LABELS: Record<TargetMode, string> = {
+  first: 'первый',
+  strongest: 'сильный',
+  nearest: 'ближний',
+}
+
+/** Подсказка для скринридера и всплывающая подсказка мыши: что значит каждый режим */
+const TARGET_MODE_HINTS: Record<TargetMode, string> = {
+  first: 'бьёт того, кто ближе всех к трону',
+  strongest: 'бьёт того, у кого больше всего здоровья',
+  nearest: 'бьёт того, кто ближе всех к башне',
 }
 
 /** «урон 9 → 15»: текущее значение и (если есть) значение после улучшения */
@@ -46,6 +60,7 @@ const selectedTowerInfo = computed(() => {
     upgradeCost,
     canAfford: upgradeCost !== null && store.hud.gold >= upgradeCost,
     refund: refundFor(def, tier),
+    targetMode: def.canChooseTarget ? store.hud.selectedTowerTargetMode : null,
   }
 })
 </script>
@@ -55,6 +70,16 @@ const selectedTowerInfo = computed(() => {
     <div class="tower-stats">
       <b>{{ selectedTowerInfo.title }}</b>
       <span v-for="line in selectedTowerInfo.lines" :key="line">{{ line }}</span>
+      <button
+        v-if="selectedTowerInfo.targetMode"
+        class="target-mode"
+        type="button"
+        :title="`${TARGET_MODE_HINTS[selectedTowerInfo.targetMode]}. Нажмите, чтобы сменить (клавиша T)`"
+        :aria-label="`Цель: ${TARGET_MODE_LABELS[selectedTowerInfo.targetMode]} — ${TARGET_MODE_HINTS[selectedTowerInfo.targetMode]}. Сменить`"
+        @click="store.cycleTargetMode"
+      >
+        цель: {{ TARGET_MODE_LABELS[selectedTowerInfo.targetMode] }}
+      </button>
     </div>
     <button
       class="btn action"

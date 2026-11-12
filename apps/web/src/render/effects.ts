@@ -36,6 +36,8 @@ interface RingEffect {
   startRadius: number
   /** Радиус в конце, клеток */
   endRadius: number
+  /** Цвет без прозрачности: «170,230,255». Нет — ледяной, как у Морозко */
+  rgb?: string
   timeLeft: number
   duration: number
 }
@@ -82,6 +84,16 @@ const POP_DURATION = 0.25
 const HIT_FLASH_DURATION = 0.09
 /** Сколько живёт всплывающая надпись «+6», с */
 const KILL_TEXT_DURATION = 0.8
+/** Сколько расходится зелёное кольцо лечения знахаря, с */
+const HEAL_RING_DURATION = 0.5
+/** С какого радиуса начинается кольцо лечения, клеток */
+const HEAL_RING_START_RADIUS = 0.2
+/** Цвет кольца лечения */
+const HEAL_RING_RGB = '127,209,106'
+/** Цвет кольца по умолчанию — ледяной */
+const DEFAULT_RING_RGB = '170,230,255'
+/** Сколько живёт надпись дохода Казны «+12», с */
+const INCOME_TEXT_DURATION = 1.4
 /** Сколько длится взрыв, с */
 const BOOM_DURATION = 0.3
 /** Тряска экрана при потере жизни, с */
@@ -144,7 +156,7 @@ export function createEffects(game: Game): Effects {
   const startPop = (tower: Tower) => popEndTime.set(tower, gameTime() + POP_DURATION)
 
   function drawRing(ctx: Canvas2D, ring: RingEffect, lifeShare: number) {
-    ctx.strokeStyle = `rgba(170,230,255,${lifeShare * 0.8})`
+    ctx.strokeStyle = `rgba(${ring.rgb ?? DEFAULT_RING_RGB},${lifeShare * 0.8})`
     ctx.lineWidth = 0.05
     circle(
       ctx,
@@ -192,6 +204,28 @@ export function createEffects(game: Game): Effects {
     game.on('fire', ({ tower, stats }) => TOWER_ART[tower.def.id]?.onFire?.({ add }, tower, stats)),
     game.on('splash', ({ x, y, radius }) =>
       add({ kind: 'boom', x, y, radius, timeLeft: BOOM_DURATION, duration: BOOM_DURATION }),
+    ),
+    game.on('heal', ({ x, y, radius }) =>
+      add({
+        kind: 'ring',
+        x,
+        y,
+        startRadius: HEAL_RING_START_RADIUS,
+        endRadius: radius,
+        rgb: HEAL_RING_RGB,
+        timeLeft: HEAL_RING_DURATION,
+        duration: HEAL_RING_DURATION,
+      }),
+    ),
+    game.on('income', ({ tower, gold }) =>
+      add({
+        kind: 'text',
+        x: tower.x,
+        y: tower.y - 0.3,
+        text: '+' + gold,
+        timeLeft: INCOME_TEXT_DURATION,
+        duration: INCOME_TEXT_DURATION,
+      }),
     ),
     game.on('leak', () => {
       shakeTime = LEAK_SHAKE_DURATION

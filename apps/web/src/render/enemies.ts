@@ -135,6 +135,91 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
     },
   },
 
+  healer: {
+    sparkColor: '#8fd17a',
+    sparkCount: 6,
+    body(ctx, radius) {
+      // светлая ряса
+      ctx.fillStyle = '#e8e1cc'
+      ctx.strokeStyle = '#7d765f'
+      circle(ctx, 0, 0, radius)
+      ctx.fill()
+      ctx.stroke()
+      // зелёный крест-оберег
+      ctx.fillStyle = '#4f9a44'
+      ctx.fillRect(-0.025, -radius * 0.65, 0.05, radius * 1.3)
+      ctx.fillRect(-radius * 0.55, -0.025, radius * 1.1, 0.05)
+      // посох с травами
+      ctx.strokeStyle = '#8a5d30'
+      ctx.lineWidth = 0.03
+      ctx.beginPath()
+      ctx.moveTo(-0.2, 0.2)
+      ctx.lineTo(-0.26, -0.26)
+      ctx.stroke()
+      ctx.fillStyle = '#7fd16a'
+      circle(ctx, -0.26, -0.28, 0.05)
+      ctx.fill()
+    },
+  },
+
+  gorynych: {
+    sparkColor: '#4f8f3a',
+    sparkCount: 14,
+    healthBarOffset: 0.28,
+    drawOnTop: true,
+    body(ctx, radius) {
+      // тело
+      ctx.fillStyle = '#3f7a32'
+      ctx.strokeStyle = '#1f3f18'
+      ctx.lineWidth = 0.04
+      circle(ctx, 0, 0.04, radius)
+      ctx.fill()
+      ctx.stroke()
+      // брюхо
+      ctx.fillStyle = '#b9c56a'
+      circle(ctx, 0, 0.1, radius * 0.5)
+      ctx.fill()
+      // три головы на шеях
+      for (const headX of [-0.22, 0, 0.22]) {
+        const headY = headX === 0 ? -radius - 0.12 : -radius
+        ctx.strokeStyle = '#3f7a32'
+        ctx.lineWidth = 0.07
+        ctx.beginPath()
+        ctx.moveTo(headX * 0.5, -radius * 0.4)
+        ctx.lineTo(headX, headY)
+        ctx.stroke()
+        ctx.fillStyle = '#4f9a3e'
+        ctx.strokeStyle = '#1f3f18'
+        ctx.lineWidth = 0.025
+        circle(ctx, headX, headY, 0.1)
+        ctx.fill()
+        ctx.stroke()
+        ctx.fillStyle = '#ffcf4a'
+        circle(ctx, headX - 0.035, headY - 0.015, 0.022)
+        ctx.fill()
+        circle(ctx, headX + 0.035, headY - 0.015, 0.022)
+        ctx.fill()
+      }
+    },
+  },
+
+  snakelet: {
+    sparkColor: '#6fb04f',
+    sparkCount: 4,
+    body(ctx, radius) {
+      ctx.fillStyle = '#5c9c45'
+      ctx.strokeStyle = '#2a4d1f'
+      circle(ctx, 0, 0, radius)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = '#ffcf4a'
+      circle(ctx, -0.045, -0.02, 0.022)
+      ctx.fill()
+      circle(ctx, 0.045, -0.02, 0.022)
+      ctx.fill()
+    },
+  },
+
   boss: {
     sparkColor: '#7a45b8',
     sparkCount: 22,

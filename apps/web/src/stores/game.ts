@@ -11,10 +11,12 @@ import {
   ENEMIES,
   LEVELS,
   MAX_SPEED,
+  TARGET_MODES,
   TOWERS,
   createGame,
   upgradeCost,
   type Phase,
+  type TargetMode,
   type Tower,
 } from '@throne/game'
 import { defineStore } from 'pinia'
@@ -54,6 +56,8 @@ export const useGameStore = defineStore('game', () => {
     /** Тип и ступень улучшения выбранной башни (null — ничего не выбрано) */
     selectedTowerId: null as string | null,
     selectedTowerTier: 0,
+    /** Кого выбранная башня выбирает целью */
+    selectedTowerTargetMode: 'first' as TargetMode,
   })
 
   /** Вызывается каждый кадр. Присваивание того же значения Vue не замечает — это дёшево */
@@ -74,6 +78,7 @@ export const useGameStore = defineStore('game', () => {
     if (selectedTowerCell.value && !tower) selectedTowerCell.value = null
     hud.selectedTowerId = tower ? tower.def.id : null
     hud.selectedTowerTier = tower ? tower.tier : 0
+    hud.selectedTowerTargetMode = tower ? tower.targetMode : 'first'
   }
 
   // ---------------------------------------------------------------- Выбор игрока
@@ -245,6 +250,15 @@ export const useGameStore = defineStore('game', () => {
     selectedTowerCell.value = null
   }
 
+  /** Следующий способ выбрать цель у выбранной башни: первый → сильный → ближний → первый */
+  function cycleTargetMode() {
+    const tower = selectedTower()
+    if (!tower || !isPlaying() || !tower.def.canChooseTarget) return
+    const nextIndex = (TARGET_MODES.indexOf(tower.targetMode) + 1) % TARGET_MODES.length
+    game.setTargetMode(tower.col, tower.row, TARGET_MODES[nextIndex])
+    syncHud()
+  }
+
   function moveCursor(deltaCol: number, deltaRow: number) {
     // Курсор ушёл с выбранной плиты — выбор снимаем: иначе цифра поставила бы стража
     // на старую плиту, а не туда, где курсор
@@ -341,6 +355,7 @@ export const useGameStore = defineStore('game', () => {
     tapCell,
     upgradeSelected,
     sellSelected,
+    cycleTargetMode,
     moveCursor,
     confirmCursor,
     startWave,

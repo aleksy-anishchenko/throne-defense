@@ -148,6 +148,34 @@ async function checkStartButtonVisible(page) {
   )
 }
 
+/** Все шесть карточек магазина на экране, и имя башни в каждой влезло целиком (без «…») */
+async function checkShopCardsVisible(page) {
+  const { width, height } = page.viewportSize()
+  const cards = await page.locator('.shop .card').evaluateAll((elements) =>
+    elements.map((card) => {
+      const bounds = card.getBoundingClientRect()
+      const name = card.querySelector('.card-name')
+      return {
+        name: name.textContent,
+        isNameCut: name.scrollWidth > name.clientWidth,
+        left: bounds.left,
+        top: bounds.top,
+        right: bounds.right,
+        bottom: bounds.bottom,
+      }
+    }),
+  )
+  const badCards = cards.filter(
+    (card) =>
+      card.isNameCut || card.left < 0 || card.top < 0 || card.right > width || card.bottom > height,
+  )
+  check(
+    `${width}×${height}: все карточки магазина (${cards.length}) видны целиком`,
+    cards.length === 6 && badCards.length === 0,
+    JSON.stringify(badCards),
+  )
+}
+
 async function desktop(browser, url) {
   console.log('\nКомпьютер')
   const page = await browser.newPage({ viewport: { width: 1280, height: 860 } })
@@ -227,13 +255,33 @@ async function desktop(browser, url) {
   const statLines = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
     ' | ',
   )
-  check('характеристики в панели', statLines === 'урон 9 → 15 | дальность 2,3 → 2,5', statLines)
+  check('характеристики в панели', statLines === 'урон 7 → 12 | дальность 2,4 → 2,6', statLines)
+
+  // Выбор цели: кнопкой в панели и клавишей T
+  const targetButton = page.locator('.tower-info .target-mode')
+  const towerTargetMode = () => page.evaluate(() => window.__throne.game.towerAt(5, 11).targetMode)
+  check('кнопка цели: «первый»', (await targetButton.textContent()).trim() === 'цель: первый')
+  await targetButton.click()
+  await waitForFrames(page)
+  check(
+    'кнопка цели сменила режим на «сильный»',
+    (await targetButton.textContent()).trim() === 'цель: сильный' &&
+      (await towerTargetMode()) === 'strongest',
+  )
+  await page.keyboard.press('t')
+  await waitForFrames(page)
+  check(
+    'клавиша T: «ближний»',
+    (await targetButton.textContent()).trim() === 'цель: ближний' &&
+      (await towerTargetMode()) === 'nearest',
+  )
+
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
   check(
     'улучшение',
-    snapshot.gold === 5 && snapshot.towers.includes('archer1@5,11'),
+    snapshot.gold === 10 && snapshot.towers.includes('archer1@5,11'),
     JSON.stringify(snapshot),
   )
   await page.getByRole('button', { name: /Улучшить/ }).click()
@@ -246,8 +294,8 @@ async function desktop(browser, url) {
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
   check(
-    'продажа вернула 60% (57 золота)',
-    snapshot.gold === 62 && snapshot.towers.length === 1,
+    'продажа вернула 60% (54 золота)',
+    snapshot.gold === 64 && snapshot.towers.length === 1,
     JSON.stringify(snapshot),
   )
   check('панель башни скрылась', (await page.locator('.tower-info').count()) === 0)
@@ -261,7 +309,7 @@ async function desktop(browser, url) {
   snapshot = await readGameSnapshot(page)
   check(
     'постройка с клавиатуры',
-    snapshot.towers.includes('archer0@5,11') && snapshot.gold === 12,
+    snapshot.towers.includes('archer0@5,11') && snapshot.gold === 14,
     JSON.stringify(snapshot),
   )
   await page.keyboard.press('Escape')
@@ -378,7 +426,7 @@ async function desktop(browser, url) {
   await page.waitForFunction(() => window.__throne.game.state.enemies.length > 0)
   check('21-я волна началась, враги вышли', (await readGameSnapshot(page)).phase === 'wave')
 
-  // Баллиста (баланс v2): начинаем новую партию, чтобы хватило золота
+  // Баллиста (баланс v4): начинаем новую партию, чтобы хватило золота
   await page.evaluate(() => window.__throne.store.newGame())
   await page.getByRole('button', { name: /Баллиста/ }).click()
   await clickCell(page, 5, 11)
@@ -387,7 +435,7 @@ async function desktop(browser, url) {
   const ballista = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
     ' | ',
   )
-  check('баллиста: числа баланса v2', ballista === 'урон 50 → 80 | дальность 3,4 → 3,6', ballista)
+  check('баллиста: числа баланса v4', ballista === 'урон 80 → 135 | дальность 3,4 → 3,6', ballista)
 
   // Зажатый пробел не должен ставить паузу (повторы клавиши игнорируются)
   await page.keyboard.press('Escape')
@@ -437,6 +485,15 @@ async function desktop(browser, url) {
       .getAttribute('aria-pressed')) === 'false',
   )
   await page.evaluate(() => localStorage.removeItem('throne-best'))
+
+  // Раскладка: магазин из шести карточек влезает и на высоком экране, и на ноутбуке
+  await page.getByRole('button', { name: 'Играть' }).click()
+  await waitForFrames(page)
+  await checkShopCardsVisible(page)
+  await page.setViewportSize({ width: 1366, height: 650 })
+  await waitForFrames(page)
+  await checkStartButtonVisible(page)
+  await checkShopCardsVisible(page)
   await page.close()
 }
 
@@ -469,9 +526,15 @@ async function phone(browser, url) {
 
   // Раскладка: кнопки управления не уезжают за край экрана ни в какой ориентации
   await checkStartButtonVisible(page)
+  await checkShopCardsVisible(page)
+  await page.setViewportSize({ width: 320, height: 568 }) // самый узкий телефон
+  await waitForFrames(page)
+  await checkStartButtonVisible(page)
+  await checkShopCardsVisible(page)
   await page.setViewportSize({ width: 932, height: 430 }) // iPhone Plus/Max набок
   await waitForFrames(page)
   await checkStartButtonVisible(page)
+  await checkShopCardsVisible(page)
   await page.close()
 }
 

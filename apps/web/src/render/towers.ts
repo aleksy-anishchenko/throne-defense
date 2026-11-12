@@ -3,7 +3,14 @@
 
 import type { Tower, TowerStats } from '@throne/game'
 import type { EffectSink } from './effects'
-import { GOLD, PARCHMENT, TOWER_IDLE_AIM_ANGLE, circle, roundedRect } from './shapes'
+import {
+  GOLD,
+  PARCHMENT,
+  TOWER_IDLE_AIM_ANGLE,
+  circle,
+  prefersReducedMotion,
+  roundedRect,
+} from './shapes'
 import type { Canvas2D } from './shapes'
 
 export interface TowerArt {
@@ -148,6 +155,70 @@ export const TOWER_ART: Record<string, TowerArt> = {
         ctx.closePath()
         ctx.fill()
       }
+    },
+  },
+
+  bell: {
+    body(ctx, _aimAngle, time) {
+      // Колокол чуть качается — видно, что он «звонит»
+      ctx.rotate(prefersReducedMotion ? 0 : Math.sin(time * 3) * 0.12)
+      // перекладина
+      ctx.strokeStyle = '#8a5d30'
+      ctx.lineWidth = 0.05
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(-0.2, -0.22)
+      ctx.lineTo(0.2, -0.22)
+      ctx.stroke()
+      // колокол
+      ctx.fillStyle = '#c99a3a'
+      ctx.strokeStyle = '#7a5a1e'
+      ctx.lineWidth = 0.025
+      ctx.beginPath()
+      ctx.moveTo(-0.07, -0.19)
+      ctx.quadraticCurveTo(-0.13, -0.1, -0.14, 0.04)
+      ctx.quadraticCurveTo(-0.2, 0.12, -0.21, 0.16)
+      ctx.lineTo(0.21, 0.16)
+      ctx.quadraticCurveTo(0.2, 0.12, 0.14, 0.04)
+      ctx.quadraticCurveTo(0.13, -0.1, 0.07, -0.19)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      // блик и язычок
+      ctx.fillStyle = GOLD
+      ctx.fillRect(-0.08, -0.1, 0.03, 0.18)
+      ctx.fillStyle = '#5a4012'
+      circle(ctx, 0, 0.2, 0.045)
+      ctx.fill()
+    },
+  },
+
+  treasury: {
+    body(ctx) {
+      // сундук
+      ctx.fillStyle = '#7a4f28'
+      ctx.strokeStyle = '#3e2712'
+      ctx.lineWidth = 0.025
+      roundedRect(ctx, -0.22, -0.08, 0.44, 0.26, 0.03)
+      ctx.fill()
+      ctx.stroke()
+      // крышка
+      ctx.fillStyle = '#9a6a38'
+      roundedRect(ctx, -0.23, -0.2, 0.46, 0.13, 0.05)
+      ctx.fill()
+      ctx.stroke()
+      // окованные полосы и замок
+      ctx.fillStyle = GOLD
+      ctx.fillRect(-0.15, -0.2, 0.04, 0.38)
+      ctx.fillRect(0.11, -0.2, 0.04, 0.38)
+      roundedRect(ctx, -0.045, -0.1, 0.09, 0.1, 0.02)
+      ctx.fill()
+      // монеты сверху
+      ctx.fillStyle = '#f2cf6e'
+      circle(ctx, -0.05, -0.24, 0.05)
+      ctx.fill()
+      circle(ctx, 0.06, -0.25, 0.045)
+      ctx.fill()
     },
   },
 }

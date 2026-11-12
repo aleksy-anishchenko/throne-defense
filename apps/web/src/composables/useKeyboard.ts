@@ -1,5 +1,6 @@
 // Управление с клавиатуры: 1–9 выбирают стража, пробел — волна/пауза,
-// стрелки двигают курсор по полю, Enter ставит стража, Esc снимает выбор.
+// стрелки двигают курсор по полю, Enter ставит стража, Esc снимает выбор,
+// T меняет, кого бьёт выбранная башня.
 
 import { TOWER_LIST } from '@throne/game'
 import { onMounted, onUnmounted } from 'vue'
@@ -43,6 +44,11 @@ export function useKeyboard(): void {
       event.preventDefault()
       if (store.game.state.phase === 'build') store.startWave()
       else store.togglePause()
+      return
+    }
+    // По положению клавиши (event.code), а не по букве: на русской раскладке там «Е»
+    if (event.code === 'KeyT') {
+      store.cycleTargetMode()
       return
     }
     const direction = ARROW_DIRECTIONS[event.key]

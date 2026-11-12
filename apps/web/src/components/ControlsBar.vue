@@ -67,7 +67,7 @@ const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
     </button>
     <p class="keys">
       Клавиши: 1–{{ lastHotkeyDigit }} выбирают стража, пробел начинает волну и ставит паузу,
-      стрелки и Enter ставят стража без мыши.
+      стрелки и Enter ставят стража без мыши, T меняет цель выбранного стража.
     </p>
   </div>
 </template>

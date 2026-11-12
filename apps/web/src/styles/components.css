@@ -23,42 +23,74 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* «цель: первый» — кнопка-строчка среди характеристик: нажатие меняет, кого бьёт башня */
+.tower-info .target-mode {
+  display: block;
+  max-width: 100%;
+  margin: 1px 0 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-align: left;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
 
+/* Магазин на телефоне: два ряда по три карточки (башен шесть), значок слева от имени и цены */
 .shop {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
   gap: 6px;
 }
 .card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  grid-template-areas: 'ico nm' 'ico cost';
+  column-gap: 6px;
+  align-content: center;
   align-items: center;
-  justify-content: center;
-  gap: 1px;
-  padding: 3px 4px 5px;
+  justify-items: start;
+  padding: 2px 6px;
   background: var(--slab);
   border: 2px solid var(--edge);
   border-radius: 6px;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   min-width: 0;
+  min-height: 0;
 }
 .card canvas {
-  width: 36px;
-  height: 36px;
+  grid-area: ico;
+  width: 26px;
+  height: 26px;
   display: block;
 }
 .card .card-name {
+  grid-area: nm;
+  max-width: 100%;
   font-weight: 800;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .card .cost {
+  grid-area: cost;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.1;
   color: var(--gold);
   font-variant-numeric: tabular-nums;
 }
