@@ -46,9 +46,9 @@ export type StatKey =
 
 /**
  * Кого башня выбирает целью: first — того, кто ближе всех к трону,
- * strongest — того, у кого больше всего здоровья, nearest — ближайшего к самой башне
+ * strongest — самого крупного (больше всех полного здоровья), среди равных — первого
  */
-export type TargetMode = 'first' | 'strongest' | 'nearest'
+export type TargetMode = 'first' | 'strongest'
 
 /** Описание типа башни. Новая башня = новый объект TowerDef + рисунок в apps/web */
 export interface TowerDef {
@@ -64,7 +64,12 @@ export interface TowerDef {
   tiers: readonly TowerStats[]
   /** Какие характеристики показывать в панели башни */
   displayStats: readonly StatKey[]
-  /** Можно ли выбрать, в кого башня целится (у Морозко, Звонаря и Казны выбирать нечего) */
+  /** Кого башня бьёт сразу после постройки */
+  defaultTargetMode: TargetMode
+  /**
+   * Может ли игрок переключать цель — умение башни. Сейчас только у баллисты:
+   * «первый» (кто ближе к трону) или «сильный» (огры, Горыныч, узурпатор)
+   */
   canChooseTarget: boolean
   /**
    * Ускоряет ли её Звонарь. Да — у тех, кто стреляет (лучник, огневик, баллиста).

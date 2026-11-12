@@ -23,14 +23,12 @@ const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: number) => 
 const TARGET_MODE_LABELS: Record<TargetMode, string> = {
   first: 'первый',
   strongest: 'сильный',
-  nearest: 'ближний',
 }
 
 /** Подсказка для скринридера и всплывающая подсказка мыши: что значит каждый режим */
 const TARGET_MODE_HINTS: Record<TargetMode, string> = {
   first: 'бьёт того, кто ближе всех к трону',
-  strongest: 'бьёт того, у кого больше всего здоровья',
-  nearest: 'бьёт того, кто ближе всех к башне',
+  strongest: 'бьёт самого крупного: огров, Горыныча, узурпатора',
 }
 
 /** «урон 9 → 15»: текущее значение и (если есть) значение после улучшения */

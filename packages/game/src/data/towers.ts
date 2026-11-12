@@ -31,7 +31,8 @@ const archer: TowerDef = {
     { damage: 19, cooldown: 0.3, range: 2.9 },
   ],
   displayStats: ['damage', 'range'],
-  canChooseTarget: true,
+  defaultTargetMode: 'first',
+  canChooseTarget: false,
   takesFireRateBonus: true,
   fire: (world, tower, target, stats) =>
     shootHoming(world, tower, target, {
@@ -54,7 +55,8 @@ const mage: TowerDef = {
     { damage: 44, cooldown: 1, range: 2.6, splashRadius: 1.15 },
   ],
   displayStats: ['damage', 'range'],
-  canChooseTarget: true,
+  defaultTargetMode: 'first',
+  canChooseTarget: false,
   takesFireRateBonus: true,
   fire: (world, tower, target, stats) =>
     shootHoming(world, tower, target, {
@@ -79,7 +81,7 @@ const frost: TowerDef = {
     { damage: 3, cooldown: 1, range: 2.2, slowAmount: 0.6, slowDuration: 2.4 },
   ],
   displayStats: ['slowAmount', 'range'],
-  // Волна холода бьёт всех вокруг разом — выбирать цель незачем
+  defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: false,
   fire: (world, tower, _target, stats) => frostPulse(world, tower, stats),
@@ -99,6 +101,10 @@ const ballista: TowerDef = {
     { damage: 210, cooldown: 2.4, range: 3.9, pierceCount: 2 },
   ],
   displayStats: ['damage', 'range'],
+  // Умение баллисты: игрок переключает «первый» ↔ «сильный». «Сильный» бьёт самого крупного
+  // в радиусе (огров, Горыныча, узурпатора). По умолчанию «первый»: боты с «сильным» с самого
+  // начала падали на 1–2 волны раньше — на смешанных волнах латники проходили мимо
+  defaultTargetMode: 'first',
   canChooseTarget: true,
   takesFireRateBonus: true,
   fire: (world, tower, target, stats) =>
@@ -125,6 +131,7 @@ const bell: TowerDef = {
     { damage: 0, cooldown: 0, range: 2.3, fireRateBonus: 0.35 },
   ],
   displayStats: ['fireRateBonus', 'range'],
+  defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: false,
 }
@@ -141,6 +148,7 @@ const treasury: TowerDef = {
     { damage: 0, cooldown: 0, range: 0, goldPerWave: 35 },
   ],
   displayStats: ['goldPerWave'],
+  defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: false,
 }

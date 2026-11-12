@@ -257,24 +257,7 @@ async function desktop(browser, url) {
   )
   check('характеристики в панели', statLines === 'урон 7 → 12 | дальность 2,4 → 2,6', statLines)
 
-  // Выбор цели: кнопкой в панели и клавишей T
-  const targetButton = page.locator('.tower-info .target-mode')
-  const towerTargetMode = () => page.evaluate(() => window.__throne.game.towerAt(5, 11).targetMode)
-  check('кнопка цели: «первый»', (await targetButton.textContent()).trim() === 'цель: первый')
-  await targetButton.click()
-  await waitForFrames(page)
-  check(
-    'кнопка цели сменила режим на «сильный»',
-    (await targetButton.textContent()).trim() === 'цель: сильный' &&
-      (await towerTargetMode()) === 'strongest',
-  )
-  await page.keyboard.press('t')
-  await waitForFrames(page)
-  check(
-    'клавиша T: «ближний»',
-    (await targetButton.textContent()).trim() === 'цель: ближний' &&
-      (await towerTargetMode()) === 'nearest',
-  )
+  check('у лучника выбора цели нет', (await page.locator('.tower-info .target-mode').count()) === 0)
 
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
@@ -436,6 +419,26 @@ async function desktop(browser, url) {
     ' | ',
   )
   check('баллиста: числа баланса v4', ballista === 'урон 80 → 135 | дальность 3,4 → 3,6', ballista)
+
+  // Выбор цели — умение баллисты: кнопкой в панели и клавишей T
+  const targetButton = page.locator('.tower-info .target-mode')
+  const ballistaTargetMode = () =>
+    page.evaluate(() => window.__throne.game.towerAt(5, 11).targetMode)
+  check('баллиста: цель «первый»', (await targetButton.textContent()).trim() === 'цель: первый')
+  await targetButton.click()
+  await waitForFrames(page)
+  check(
+    'кнопка цели сменила режим на «сильный»',
+    (await targetButton.textContent()).trim() === 'цель: сильный' &&
+      (await ballistaTargetMode()) === 'strongest',
+  )
+  await page.keyboard.press('t')
+  await waitForFrames(page)
+  check(
+    'клавиша T вернула «первый»',
+    (await targetButton.textContent()).trim() === 'цель: первый' &&
+      (await ballistaTargetMode()) === 'first',
+  )
 
   // Зажатый пробел не должен ставить паузу (повторы клавиши игнорируются)
   await page.keyboard.press('Escape')

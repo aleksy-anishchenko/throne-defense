@@ -5,46 +5,59 @@ import { newGame, placeEnemy, worldOf } from './helpers.ts'
 
 // Выбор цели, знахарь, Змей Горыныч, Звонарь и Казна (баланс v4)
 
-describe('выбор цели', () => {
+describe('выбор цели — умение баллисты', () => {
   /**
-   * Лучник у двери (клетка 5,11) и трое в его радиусе:
-   * бунтовщик дальше всех прошёл по ковру, огр живучее всех, второй бунтовщик ближе всех к башне
+   * Баллиста у двери (клетка 5,11) и двое в её радиусе:
+   * бунтовщик дальше прошёл по ковру, огр крупнее
    */
-  function setUp(mode: TargetMode) {
+  function setUp(mode: TargetMode | null) {
     const game = newGame()
-    game.build('archer', 5, 11)
-    expect(game.setTargetMode(5, 11, mode)).toBe(true)
+    game.build('ballista', 5, 11)
+    if (mode) expect(game.setTargetMode(5, 11, mode)).toBe(true)
     const first = placeEnemy(game, 'rebel', 4)
     const strongest = placeEnemy(game, 'ogre', 1.5)
-    const nearest = placeEnemy(game, 'rebel', 2)
+    // огр ранен, у него здоровья меньше, чем было, но он всё равно крупнее бунтовщика
+    strongest.hp = strongest.maxHp / 2
     game.step(SIMULATION_STEP)
     const shot = game.state.shots[0]
-    if (shot?.kind !== 'homing') throw new Error('лучник не выстрелил')
-    return { target: shot.target, first, strongest, nearest }
+    if (shot?.kind !== 'line') throw new Error('баллиста не выстрелила')
+    return { game, shot, first, strongest }
+  }
+
+  /** Куда летит болт: к кому из двоих направление ближе */
+  function aimedAt(
+    shot: { directionX: number; directionY: number },
+    game: ReturnType<typeof newGame>,
+    enemy: { x: number; y: number },
+  ) {
+    const tower = game.towerAt(5, 11)!
+    const distance = Math.hypot(enemy.x - tower.x, enemy.y - tower.y)
+    return (
+      Math.hypot(
+        (enemy.x - tower.x) / distance - shot.directionX,
+        (enemy.y - tower.y) / distance - shot.directionY,
+      ) < 0.01
+    )
   }
 
   it('по умолчанию — тот, кто ближе всех к трону', () => {
-    const { target, first } = setUp('first')
-    expect(target).toBe(first)
+    const { game, shot, first } = setUp(null)
+    expect(game.towerAt(5, 11)!.targetMode).toBe('first')
+    expect(aimedAt(shot, game, first)).toBe(true)
   })
 
-  it('«сильного» — тот, у кого больше здоровья', () => {
-    const { target, strongest } = setUp('strongest')
-    expect(target).toBe(strongest)
+  it('«сильный» — самый крупный враг, даже раненый', () => {
+    const { game, shot, strongest } = setUp('strongest')
+    expect(aimedAt(shot, game, strongest)).toBe(true)
   })
 
-  it('«ближнего» — тот, кто ближе всех к башне', () => {
-    const { target, nearest } = setUp('nearest')
-    expect(target).toBe(nearest)
-  })
-
-  it('у Морозко, Звонаря и Казны цель не выбирается; чужие значения не принимаются', () => {
+  it('у остальных башен цель не выбирается; чужие значения не принимаются', () => {
     const game = newGame()
     game.state.gold = 1000
-    game.build('frost', 5, 11)
-    game.build('archer', 2, 9)
+    game.build('archer', 5, 11)
+    game.build('ballista', 2, 9)
     expect(game.setTargetMode(5, 11, 'strongest')).toBe(false)
-    expect(game.setTargetMode(2, 9, 'random' as TargetMode)).toBe(false)
+    expect(game.setTargetMode(2, 9, 'nearest' as TargetMode)).toBe(false)
     expect(game.setTargetMode(0, 0, 'strongest')).toBe(false) // пустая клетка
     expect(game.towerAt(2, 9)!.targetMode).toBe('first')
   })

@@ -6,7 +6,7 @@ import type { Enemy, TargetMode, Tower, TowerDef, TowerStats, World } from '../t
 export const towerStats = (tower: Tower): TowerStats => tower.def.tiers[tower.tier]
 
 /** Все способы выбрать цель, в том порядке, в каком их перебирает кнопка в панели башни */
-export const TARGET_MODES: readonly TargetMode[] = ['first', 'strongest', 'nearest']
+export const TARGET_MODES: readonly TargetMode[] = ['first', 'strongest']
 
 /** Цена следующего улучшения или null, если ступень максимальная */
 export function upgradeCost(tower: Tower): number | null {
@@ -30,15 +30,12 @@ const distanceSquared = (tower: Tower, enemy: Enemy) =>
 
 /**
  * Лучше ли враг candidate, чем best, как цель для режима mode.
- * При равенстве (одинаковое здоровье, одинаковое расстояние) выигрывает тот, кто ближе к трону
+ * «Сильный» — по ПОЛНОМУ здоровью (maxHp), а не по текущему: иначе баллиста в толпе
+ * бунтовщиков стреляла бы по свежему в хвосте, а не по раненому у трона.
+ * Так она выбирает самого крупного врага (огр, Горыныч, узурпатор), а среди равных — первого
  */
-function isBetterTarget(tower: Tower, mode: TargetMode, candidate: Enemy, best: Enemy): boolean {
-  if (mode === 'strongest' && candidate.hp !== best.hp) return candidate.hp > best.hp
-  if (mode === 'nearest') {
-    const candidateDistance = distanceSquared(tower, candidate)
-    const bestDistance = distanceSquared(tower, best)
-    if (candidateDistance !== bestDistance) return candidateDistance < bestDistance
-  }
+function isBetterTarget(mode: TargetMode, candidate: Enemy, best: Enemy): boolean {
+  if (mode === 'strongest' && candidate.maxHp !== best.maxHp) return candidate.maxHp > best.maxHp
   return candidate.pathDistance > best.pathDistance
 }
 
@@ -48,7 +45,7 @@ function findTarget(world: World, tower: Tower, stats: TowerStats): Enemy | null
   let best: Enemy | null = null
   for (const enemy of world.state.enemies) {
     if (enemy.isDead || distanceSquared(tower, enemy) > rangeSquared) continue
-    if (!best || isBetterTarget(tower, tower.targetMode, enemy, best)) best = enemy
+    if (!best || isBetterTarget(tower.targetMode, enemy, best)) best = enemy
   }
   return best
 }

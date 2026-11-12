@@ -179,7 +179,7 @@ export function createGame(levelDef: LevelDef): Game {
         tier: 0,
         cooldownLeft: 0,
         aimAngle: INITIAL_AIM_ANGLE,
-        targetMode: 'first',
+        targetMode: def.defaultTargetMode,
       }
       state.towers.push(tower)
       state.towersByCell.set(cellKey(col, row), tower)
