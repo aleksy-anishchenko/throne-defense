@@ -7,12 +7,17 @@ import { queueSplit } from './enemies.ts'
 /** Какая доля брони врага всё ещё режет пробивающий урон (0.5 = половина брони; физический урон режется всей бронёй, магический — не режется вовсе) */
 const PIERCING_ARMOR_FACTOR = 0.5
 
+// Огонь и лёд мешают друг другу в любом порядке — их выгодно разводить по ковру.
+// Зато по отдельности огневик и Морозко сильные (см. data/towers.ts)
+
 /**
- * «Пар»: волна холода тушит горящего врага, и весь оставшийся запас огня он получает сразу,
- * умноженным на это число. Сейчас 1 — без прибавки: выгода пара в том, что урон приходит
- * сразу, а не за 3 секунды. Уже с прибавкой 10% две стратегии ботов доходили на 2 волны дальше
+ * «Пар»: волна холода тушит горящего врага, и оставшийся запас огня он получает сразу,
+ * но не весь — огонь не догорел: 0.75 = три четверти
  */
-export const STEAM_DAMAGE_MULTIPLIER = 1
+export const STEAM_DAMAGE_MULTIPLIER = 0.75
+
+/** «Мокрый» враг (под замедлением Морозко) загорается хуже: поджог даёт эту долю огня */
+export const WET_BURN_MULTIPLIER = 0.5
 
 /** Запас на попадание для снаряда, летящего по прямой (болт баллисты), в клетках: чуть щедрее радиуса врага */
 const LINE_SHOT_HIT_MARGIN = 0.1
@@ -153,7 +158,7 @@ export function frostPulse(world: World, tower: Tower, stats: TowerStats): void 
   }
 }
 
-/** «Пар»: потушить горящего врага — весь запас огня сразу (× STEAM_DAMAGE_MULTIPLIER) */
+/** «Пар»: потушить горящего врага — запас огня сразу, но меньше (× STEAM_DAMAGE_MULTIPLIER) */
 function extinguishWithSteam(world: World, enemy: Enemy): void {
   const damage = enemy.burnDamageLeft * STEAM_DAMAGE_MULTIPLIER
   enemy.burnDamageLeft = 0
@@ -252,11 +257,12 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
 
 /**
  * Поджечь врага: добавить burnDamage в запас огня. Догорает весь запас за burnDuration
- * (если враг уже горит дольше — за оставшееся время)
+ * (если враг уже горит дольше — за оставшееся время). Замедленный — «мокрый» — горит хуже
  */
 function igniteEnemy(enemy: Enemy, burnDamage: number, burnDuration: number): void {
   if (enemy.isDead || burnDamage <= 0 || burnDuration <= 0) return
-  enemy.burnDamageLeft += burnDamage
+  const isWet = enemy.slowTimeLeft > 0
+  enemy.burnDamageLeft += isWet ? burnDamage * WET_BURN_MULTIPLIER : burnDamage
   enemy.burnTimeLeft = Math.max(enemy.burnTimeLeft, burnDuration)
 }
 

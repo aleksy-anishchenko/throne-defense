@@ -56,7 +56,7 @@ describe('Морозко', () => {
     game.build('frost', 5, 11)
     const enemy = placeEnemy(game, 'rebel', 1.5) // у двери, рядом с башней
     game.step(SIMULATION_STEP)
-    expect(enemy.slowFactor).toBeCloseTo(0.4)
+    expect(enemy.slowFactor).toBeCloseTo(0.45)
     expect(enemy.slowTimeLeft).toBeGreaterThan(0)
   })
 
@@ -65,6 +65,6 @@ describe('Морозко', () => {
     game.build('frost', 5, 11)
     const boss = placeEnemy(game, 'boss', 1.5)
     game.step(SIMULATION_STEP)
-    expect(boss.slowFactor).toBeCloseTo(0.2)
+    expect(boss.slowFactor).toBeCloseTo(0.225)
   })
 })

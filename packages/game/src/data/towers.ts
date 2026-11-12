@@ -52,9 +52,9 @@ const mage: TowerDef = {
   tiers: [
     // Баланс v4: был взрыв на 16/27/44 сразу. Теперь ~20% урона — взрывом,
     // ~80% — горением за 3 с (запас огня: повторный поджог добавляет, а не перезапускает)
-    { damage: 4, cooldown: 1.2, range: 2.2, splashRadius: 0.9, burnDamage: 15, burnDuration: 3 },
-    { damage: 7, cooldown: 1.1, range: 2.4, splashRadius: 1, burnDamage: 26, burnDuration: 3 },
-    { damage: 11, cooldown: 1, range: 2.6, splashRadius: 1.15, burnDamage: 42, burnDuration: 3 },
+    { damage: 5, cooldown: 1.2, range: 2.2, splashRadius: 0.9, burnDamage: 19, burnDuration: 3 },
+    { damage: 9, cooldown: 1.1, range: 2.4, splashRadius: 1, burnDamage: 33, burnDuration: 3 },
+    { damage: 14, cooldown: 1, range: 2.6, splashRadius: 1.15, burnDamage: 53, burnDuration: 3 },
   ],
   displayStats: ['damage', 'burnDamage', 'range'],
   defaultTargetMode: 'first',
@@ -80,9 +80,9 @@ const frost: TowerDef = {
   upgradeCosts: [60, 100],
   tiers: [
     // Баланс v4: урон был 3/5/8 — Морозко наносил урона на монету больше всех
-    { damage: 1, cooldown: 1.1, range: 1.7, slowAmount: 0.4, slowDuration: 1.6 },
-    { damage: 2, cooldown: 1.05, range: 1.9, slowAmount: 0.5, slowDuration: 2 },
-    { damage: 3, cooldown: 1, range: 2.2, slowAmount: 0.6, slowDuration: 2.4 },
+    { damage: 1, cooldown: 1.1, range: 1.7, slowAmount: 0.45, slowDuration: 1.6 },
+    { damage: 2, cooldown: 1.05, range: 1.9, slowAmount: 0.55, slowDuration: 2 },
+    { damage: 3, cooldown: 1, range: 2.2, slowAmount: 0.65, slowDuration: 2.4 },
   ],
   displayStats: ['slowAmount', 'range'],
   defaultTargetMode: 'first',

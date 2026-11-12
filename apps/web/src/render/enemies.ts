@@ -661,14 +661,23 @@ const BURN_FLAME_SPOTS: readonly (readonly [number, number, number])[] = [
   [0.5, 0.25, 0.5],
 ]
 
-/** Горящий враг: оранжевый отсвет и три пляшущих язычка пламени поверх (огневик) */
-function drawBurning(ctx: Canvas2D, radius: number, time: number) {
-  ctx.fillStyle = 'rgba(255,120,40,.22)'
-  circle(ctx, 0, 0, radius)
-  ctx.fill()
+/** Во сколько раз меньше язычки пламени на «мокром» (замедленном) враге: он горит хуже */
+const WET_FLAME_SCALE = 0.6
+
+/**
+ * Горящий враг: оранжевый отсвет и три пляшущих язычка пламени поверх (огневик).
+ * isWet — враг под замедлением, горит хуже: пламя меньше и бледнее, отсвета нет
+ */
+function drawBurning(ctx: Canvas2D, radius: number, time: number, isWet: boolean) {
+  if (!isWet) {
+    ctx.fillStyle = 'rgba(255,120,40,.22)'
+    circle(ctx, 0, 0, radius)
+    ctx.fill()
+  }
+  ctx.globalAlpha = isWet ? 0.75 : 1
   BURN_FLAME_SPOTS.forEach(([shareX, shareY, sizeShare], i) => {
     const flicker = prefersReducedMotion ? 1 : 0.8 + 0.2 * Math.sin(time * 14 + i * 2)
-    const size = radius * sizeShare * flicker
+    const size = radius * sizeShare * flicker * (isWet ? WET_FLAME_SCALE : 1)
     const x = shareX * radius
     const y = shareY * radius
     ctx.fillStyle = '#f0863a'
@@ -686,6 +695,7 @@ function drawBurning(ctx: Canvas2D, radius: number, time: number) {
     ctx.closePath()
     ctx.fill()
   })
+  ctx.globalAlpha = 1
 }
 
 /** Враг целиком: тень, покачивание, сам враг, замедление, вспышка от удара, здоровье */
@@ -719,7 +729,7 @@ export function drawEnemy(
   art.body(ctx, radius)
 
   if (isSlowed) drawFrostOverlay(ctx, radius)
-  if (enemy.burnTimeLeft > 0) drawBurning(ctx, radius, time + bobPhase)
+  if (enemy.burnTimeLeft > 0) drawBurning(ctx, radius, time + bobPhase, isSlowed)
   if (isFlashing) {
     ctx.fillStyle = 'rgba(255,255,255,.55)'
     circle(ctx, 0, 0, radius)
