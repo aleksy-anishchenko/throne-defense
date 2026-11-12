@@ -11,7 +11,7 @@
 - **Игра в интернете: https://throne-defense.ru.** HTTPS (Let's Encrypt) продлевается сам, `http://` и `www` перенаправляют на основной адрес.
 - **Выкладка автоматическая:** пуш в `main` → GitHub Actions прогоняет проверки и, если всё зелёное, через 2–3 минуты новая версия на сайте. С красными проверками ничего не выкладывается. Какая версия на сайте — видно в меню игры («Версия хеш · дата»).
 - **Код:** логика игры в `packages/game` (без Vue и DOM), интерфейс в `apps/web` (Vite + TypeScript + Vue), бот и замеры баланса в `tools/balance`. 109 тестов и 58 проверок в настоящем браузере, всё зелёное. Код-ревью отработано полностью.
-- **Бэкенд в работе (ветка `backend`):** шаги 3.1–3.3 готовы — `apps/server` отвечает на `/api/health` у себя на Mac (`npm run dev:server`), схемы и типы API — в `packages/contracts`, на VPS стоят Node 24 и pm2, есть пользователь `throne` и папки. На сайте его пока нет: `https://throne-defense.ru/api/…` отвечает 502 — это нормально до шага 3.4. Следующий — шаг 3.4 (первая выкладка API вручную).
+- **Бэкенд в работе (ветка `backend`):** шаги 3.1–3.4 готовы — **`https://throne-defense.ru/api/health` отвечает `{"ok":true}`** и поднимается само после перезагрузки VPS. Пока API выкладывается только вручную, с Mac: `deploy/scripts/deploy-server.sh --apply` (из ветки `backend`; пуш в `main` выкладывает только сайт). Следующий — шаг 3.5 (автодеплой сервера).
 
 ## Начать отсюда
 
@@ -21,7 +21,7 @@
 
 Параллельно подумать над [открытым вопросом](#открытый-вопрос-площадка): где живёт игра — Telegram, VK или просто сайт. Ответ нужен до этапа 4 (вход и рейтинг друзей). Таблицу `runs` (шаг 3.6) и общий топ (3.8) можно сделать до ответа: настоящий игрок из этапа 4 потом просто заменит имя, введённое руками.
 
-Как начать диалог с Claude: «прочитай PLAN.md и делай этап 3, шаг 3.4» (работаем в ветке `backend`).
+Как начать диалог с Claude: «прочитай PLAN.md и делай этап 3, шаг 3.5» (работаем в ветке `backend`).
 
 ---
 
@@ -106,11 +106,11 @@
 - [x] Конфиг pm2 в репозитории: `deploy/pm2/ecosystem.config.cjs`. `pm2 startup` — чтобы pm2 поднимался после перезагрузки VPS (служба `pm2-throne`)
 - [x] `.env` на сервере положить руками один раз (`/srv/throne-defense/app/apps/server/.env`, права `600`)
 
-**3.4. Первая выкладка вручную**
-- [ ] Скрипт `deploy/scripts/deploy-server.sh` по образцу `deploy-web.sh`: `rsync` кода сервера и `packages/game`, `packages/contracts`, `deploy/pm2`, `package.json`, `package-lock.json` → на сервере `npm ci --omit=dev` → `pm2 reload`. ⚠️ `.env` на сервере лежит внутри папки кода: `rsync --delete` должен его не трогать (`--exclude=.env`), иначе выкладка сотрёт настройки. То же — `node_modules` (их ставит `npm ci` на сервере)
-- [ ] Первый запуск от `throne`: `pm2 start /srv/throne-defense/app/deploy/pm2/ecosystem.config.cjs`, потом `pm2 save` — без `save` после перезагрузки поднимать нечего
-- [ ] nginx уже пересылает `/api/` в `127.0.0.1:3000` (`deploy/nginx/throne-defense.conf`) — проверить: `curl https://throne-defense.ru/api/health`
-- [ ] Перезагрузить VPS (`reboot`) и убедиться, что API поднялось само. ⚠️ Перезагрузка на минуту оборвёт и VPN
+**3.4. Первая выкладка вручную** — ✅ сделано 12 ноября 2026
+- [x] Скрипт `deploy/scripts/deploy-server.sh` по образцу `deploy-web.sh`: `rsync` кода сервера и `packages/game`, `packages/contracts`, `deploy/pm2`, `package.json`, `package-lock.json` → на сервере `npm ci --omit=dev` → `pm2 reload`. ⚠️ `.env` на сервере лежит внутри папки кода: `rsync --delete` должен его не трогать (`--exclude=.env`), иначе выкладка сотрёт настройки. То же — `node_modules` (их ставит `npm ci` на сервере)
+- [x] Первый запуск от `throne` и `pm2 save` — без `save` после перезагрузки поднимать нечего. Делает `deploy/server/after-upload.sh` (`pm2 startOrReload` + `pm2 save` + проверка `/api/health`); его же вызовет автодеплой в 3.5
+- [x] nginx уже пересылает `/api/` в `127.0.0.1:3000` (`deploy/nginx/throne-defense.conf`) — проверить: `curl https://throne-defense.ru/api/health`
+- [x] Перезагрузить VPS (`reboot`) и убедиться, что API поднялось само. ⚠️ Перезагрузка на минуту оборвёт и VPN
 
 **3.5. Автодеплой сервера**
 - [ ] ⚠️ Нынешний ключ `deploy` умеет только `rsync` в папку игры (`rrsync`) — запускать команды он не может, и это правильно. Для сервера: второй ключ с «принудительной командой» в `authorized_keys` пользователя `throne`: `command="/srv/throne-defense/bin/deploy-server",restrict …`. Этот скрипт на сервере сам делает `npm ci --omit=dev` и `pm2 reload`, а ключ ничего другого не умеет. Код при этом заливать через `rrsync` в `/srv/throne-defense/app`
@@ -258,7 +258,9 @@ throne-defense/
     bot.test.ts (тесты-сторожа баланса). Пакет игры берут только через @throne/game
 
   deploy/               ← всё про сервер: nginx/ (конфиги сайта), pm2/ecosystem.config.cjs (как
-                          запускать API), scripts/deploy-web.sh (ручная выкладка), known_hosts
+                          запускать API), scripts/deploy-web.sh и deploy-server.sh (ручная
+                          выкладка сайта и API, запускаются на Mac), server/after-upload.sh
+                          (выполняется на сервере после заливки API), known_hosts
                           (публичный ключ сервера для автодеплоя)
   .github/workflows/    ← check.yml (проверка веток и pull request), deploy.yml (автодеплой из main)
 ```
@@ -390,6 +392,10 @@ npm run format       # Prettier: оформить код (format:check — то�
 | VPN | Amnezia в Docker: `amnezia-awg2` (UDP 36548) и `amnezia-wireguard` (UDP 43365) — не трогать. Docker не перезапускать без нужды — оборвётся VPN |
 
 **Поменять конфиг nginx:** правим `deploy/nginx/…` → на Mac `scp deploy/nginx/throne-defense.conf root@77.91.113.61:/etc/nginx/sites-available/throne-defense` → на сервере `nginx -t && systemctl reload nginx`. Если `nginx -t` ругается, `reload` не выполнится и работающий сайт не пострадает.
+
+**Выложить API вручную** (до шага 3.5 — единственный способ): из корня репозитория `deploy/scripts/deploy-server.sh` — проверки и список файлов, которые уедут; `--apply` — залить от `root` в `/srv/throne-defense/app` и запустить там от `throne` `deploy/server/after-upload.sh` (`npm ci`, pm2, проверка `/api/health`). `.env` и `node_modules` на сервере выкладка не трогает.
+
+**Посмотреть на API на сервере:** `su - throne -c "pm2 status"`, журнал — `su - throne -c "pm2 logs throne-api --lines 50"`.
 
 **Выложить игру вручную** (обычно не нужно — это делает автодеплой): из корня репозитория `deploy/scripts/deploy-web.sh` — показать, что изменится; `--apply` — выложить. ⚠️ На Mac нужен настоящий rsync (`brew install rsync`): системный openrsync от Apple `rrsync` не понимает, скрипт сам об этом предупредит.
 
