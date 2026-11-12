@@ -1,0 +1,21 @@
+# Ротация журналов pm2 (API пишет строчку на каждый запрос — без ротации они растут без конца).
+# На сервере: /etc/logrotate.d/throne-api (владелец root, права 644). Его запускает системный
+# logrotate раз в сутки, отдельный процесс (как pm2-logrotate) не нужен.
+# Скопировать: scp deploy/logrotate/throne-api root@77.91.113.61:/etc/logrotate.d/throne-api
+# Проверить без изменений: logrotate --debug /etc/logrotate.d/throne-api
+
+/home/throne/.pm2/logs/*.log /home/throne/.pm2/pm2.log {
+    # Папка принадлежит throne — работать с ней от его имени
+    su throne throne
+    weekly
+    # Хранить 4 недели, старые сжимать (кроме самой свежей — её ещё удобно читать)
+    rotate 4
+    compress
+    delaycompress
+    # Если за неделю журнал вырос больше 50 МБ — ротировать раньше
+    maxsize 50M
+    missingok
+    notifempty
+    # pm2 держит файл открытым: копируем и обнуляем его, а не переименовываем
+    copytruncate
+}

@@ -1,0 +1,7 @@
+# Расписание задач «Защиты трона». На сервере: /etc/cron.d/throne-defense (владелец root, права 644).
+# Скопировать: scp deploy/cron/throne-defense root@77.91.113.61:/etc/cron.d/throne-defense
+# Формат строки: минута час день месяц день-недели пользователь команда. Время сервера — UTC.
+#
+# Бэкап базы раз в неделю: понедельник 00:00 UTC = 03:00 по Москве, ночь на понедельник.
+# Вывод — в системный журнал: journalctl -t throne-backup
+0 0 * * 1 throne /srv/throne-defense/bin/backup-database 2>&1 | logger -t throne-backup
