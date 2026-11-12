@@ -1,3 +1,4 @@
+import { HEALTH_PATH } from '@throne/contracts'
 import { afterAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../src/app.ts'
 import { loadConfig } from '../src/config.ts'
@@ -10,7 +11,7 @@ describe('GET /api/health', () => {
 
   it('отвечает { ok: true }', async () => {
     // inject() вызывает маршрут напрямую, без порта и сети
-    const response = await app.inject({ method: 'GET', url: '/api/health' })
+    const response = await app.inject({ method: 'GET', url: HEALTH_PATH })
     expect(response.statusCode).toBe(200)
     expect(response.json()).toEqual({ ok: true })
   })

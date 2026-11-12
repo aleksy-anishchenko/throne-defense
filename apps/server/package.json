@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@throne/contracts": "^0.1.0",
     "fastify": "^5.12.8"
   }
 }

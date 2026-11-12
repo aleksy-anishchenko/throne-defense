@@ -10,8 +10,8 @@
 
 - **Игра в интернете: https://throne-defense.ru.** HTTPS (Let's Encrypt) продлевается сам, `http://` и `www` перенаправляют на основной адрес.
 - **Выкладка автоматическая:** пуш в `main` → GitHub Actions прогоняет проверки и, если всё зелёное, через 2–3 минуты новая версия на сайте. С красными проверками ничего не выкладывается. Какая версия на сайте — видно в меню игры («Версия хеш · дата»).
-- **Код:** логика игры в `packages/game` (без Vue и DOM), интерфейс в `apps/web` (Vite + TypeScript + Vue), бот и замеры баланса в `tools/balance`. 107 тестов и 58 проверок в настоящем браузере, всё зелёное. Код-ревью отработано полностью.
-- **Бэкенд в работе (ветка `backend`):** шаг 3.1 готов — `apps/server` отвечает на `/api/health` у себя на Mac (`npm run dev:server`). На сайте его пока нет: `https://throne-defense.ru/api/…` отвечает 502 — это нормально до шага 3.4. Следующий — шаг 3.2.
+- **Код:** логика игры в `packages/game` (без Vue и DOM), интерфейс в `apps/web` (Vite + TypeScript + Vue), бот и замеры баланса в `tools/balance`. 109 тестов и 58 проверок в настоящем браузере, всё зелёное. Код-ревью отработано полностью.
+- **Бэкенд в работе (ветка `backend`):** шаги 3.1 и 3.2 готовы — `apps/server` отвечает на `/api/health` у себя на Mac (`npm run dev:server`), схемы и типы API — в `packages/contracts`. На сайте его пока нет: `https://throne-defense.ru/api/…` отвечает 502 — это нормально до шага 3.4. Следующий — шаг 3.3 (подготовка VPS, команды выполняет владелец).
 
 ## Начать отсюда
 
@@ -21,7 +21,7 @@
 
 Параллельно подумать над [открытым вопросом](#открытый-вопрос-площадка): где живёт игра — Telegram, VK или просто сайт. Ответ нужен до этапа 4 (вход и рейтинг друзей). Таблицу `runs` (шаг 3.6) и общий топ (3.8) можно сделать до ответа: настоящий игрок из этапа 4 потом просто заменит имя, введённое руками.
 
-Как начать диалог с Claude: «прочитай PLAN.md и делай этап 3, шаг 3.2» (работаем в ветке `backend`).
+Как начать диалог с Claude: «прочитай PLAN.md и делай этап 3, шаг 3.3» (работаем в ветке `backend`).
 
 ---
 
@@ -97,8 +97,8 @@
 - [x] Тест маршрута через `app.inject()` (Fastify умеет вызывать маршрут без настоящей сети); `npm run dev:server`; добавить сервер в `typecheck`, ESLint (globals Node) и `vitest.config.ts`
 - [x] В `vite.config.ts` — прокси `/api` → `http://127.0.0.1:3000`, чтобы `npm run dev` видел API так же, как сайт на сервере
 
-**3.2. Пакет `packages/contracts`** (`@throne/contracts`)
-- [ ] Типы и схемы запросов и ответов API, общие для сайта и сервера — иначе они разойдутся. Начать с ответа `/api/health`. Схемы — JSON Schema (Fastify проверяет по ним запросы сам)
+**3.2. Пакет `packages/contracts`** (`@throne/contracts`) — ✅ сделано в ветке `backend`
+- [x] Типы и схемы запросов и ответов API, общие для сайта и сервера — иначе они разойдутся. Начать с ответа `/api/health`. Схемы — JSON Schema (Fastify проверяет по ним запросы сам). Пишем через TypeBox: одно описание даёт и JSON Schema, и тип (`Static<typeof …Schema>`), так что разойтись им нельзя. Для `POST /api/runs` (3.8) подключить `@fastify/type-provider-typebox` — тогда `request.body` получит тип из схемы сам
 
 **3.3. Подготовить VPS** (команды выполняет владелец, Claude даёт их по порциям)
 - [ ] Установить Node 24 (из NodeSource, не из стандартного `apt` — там старая версия) и pm2 (`npm install -g pm2`)
@@ -221,6 +221,11 @@ throne-defense/
     src/index.ts          всё, что пакет показывает наружу
     test/                 тесты логики (Vitest)
 
+  packages/contracts/   ← договор API, общий для сайта и сервера: адреса, схемы (TypeBox → JSON
+                          Schema) и типы запросов и ответов. Как и game — без DOM и Node
+    src/health.ts         HEALTH_PATH, HealthResponseSchema, HealthResponse
+    src/index.ts          всё, что пакет показывает наружу
+
   apps/web/             ← всё, что в браузере (Vite + Vue)
     src/main.ts, App.vue  точка входа (шрифты, ?debug) и корневой компонент
     src/components/       GameBoard (canvas поля), HudBar, SidePanel, ShopPanel,
@@ -266,7 +271,6 @@ throne-defense/
 
 ```
 apps/server/                 (этап 3)  + src/db, src/services (src/routes уже есть)
-packages/contracts/          (этап 3)  типы запросов и ответов API для сайта и сервера
 deploy/pm2/                  (этап 3)  настройки процесса сервера
 packages/game/src/core/      (этап 5)  + commands.ts и replay.ts: действия как данные
 apps/web/src/stores/         (этап 6)  + selection.ts — выбор игрока, из game.ts
