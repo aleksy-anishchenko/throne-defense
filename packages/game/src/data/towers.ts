@@ -21,7 +21,7 @@ const BALLISTA_TWIN_BOLT_TIER = 2
 const archer: TowerDef = {
   id: 'archer',
   name: 'Лучник',
-  description: 'дешёвый, стреляет часто, слаб против лат',
+  description: 'стреляет часто, слаб против лат',
   cost: 50,
   // Баланс v4: было 45/85 — улучшенный лучник давал меньше урона на монету, чем новый
   upgradeCosts: [40, 70],
