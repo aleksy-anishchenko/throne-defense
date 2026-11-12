@@ -158,6 +158,7 @@ describe('время', () => {
         'hit',
         'splash',
         'heal',
+        'steam',
         'income',
         'kill',
         'leak',

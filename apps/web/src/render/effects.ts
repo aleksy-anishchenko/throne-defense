@@ -11,6 +11,8 @@ interface TextEffect {
   x: number
   y: number
   text: string
+  /** Цвет надписи. Нет — золотой, как у награды за убийство */
+  color?: string
   /** Сколько эффекту осталось жить, с */
   timeLeft: number
   /** Сколько он живёт всего, с */
@@ -52,7 +54,16 @@ interface BoomEffect {
   duration: number
 }
 
-export type Effect = TextEffect | SparkEffect | RingEffect | BoomEffect
+/** Облачко пара: Морозко потушил горящего врага */
+interface SteamEffect {
+  kind: 'steam'
+  x: number
+  y: number
+  timeLeft: number
+  duration: number
+}
+
+export type Effect = TextEffect | SparkEffect | RingEffect | BoomEffect | SteamEffect
 
 export interface EffectSink {
   add(effect: Effect): void
@@ -94,6 +105,18 @@ const HEAL_RING_RGB = '127,209,106'
 const DEFAULT_RING_RGB = '170,230,255'
 /** Сколько живёт надпись дохода Казны «+12», с */
 const INCOME_TEXT_DURATION = 1.4
+/** Сколько тает облачко пара, с */
+const STEAM_DURATION = 0.7
+/** Как высоко поднимается пар за всё время, клеток */
+const STEAM_RISE = 0.35
+/** Клубы пара: [сдвиг по x, по y, радиус] в клетках */
+const STEAM_PUFFS: readonly (readonly [number, number, number])[] = [
+  [-0.12, 0, 0.11],
+  [0.1, -0.03, 0.13],
+  [0, -0.12, 0.12],
+]
+/** Цвет числа урона от пара: холодный белый, не путать с золотой наградой */
+const STEAM_TEXT_COLOR = '#e4f6ff'
 /** Сколько длится взрыв, с */
 const BOOM_DURATION = 0.3
 /** Тряска экрана при потере жизни, с */
@@ -173,6 +196,17 @@ export function createEffects(game: Game): Effects {
     ctx.fill()
   }
 
+  function drawSteam(ctx: Canvas2D, steam: SteamEffect, lifeShare: number) {
+    // клубы растут и поднимаются, пока тают
+    const grow = 1 + (1 - lifeShare) * 0.8
+    const rise = (1 - lifeShare) * STEAM_RISE
+    ctx.fillStyle = `rgba(235,245,255,${lifeShare * 0.75})`
+    for (const [offsetX, offsetY, radius] of STEAM_PUFFS) {
+      circle(ctx, steam.x + offsetX * grow, steam.y + offsetY - rise, radius * grow)
+      ctx.fill()
+    }
+  }
+
   function drawSpark(ctx: Canvas2D, spark: SparkEffect, lifeShare: number) {
     ctx.globalAlpha = lifeShare
     ctx.fillStyle = spark.color
@@ -227,6 +261,19 @@ export function createEffects(game: Game): Effects {
         duration: INCOME_TEXT_DURATION,
       }),
     ),
+    game.on('steam', ({ x, y, damage }) => {
+      add({ kind: 'steam', x, y, timeLeft: STEAM_DURATION, duration: STEAM_DURATION })
+      add({
+        kind: 'text',
+        x,
+        // выше, чем «+награда» за убийство: пар часто добивает, и надписи не должны слипаться
+        y: y - 0.65,
+        text: String(Math.round(damage)),
+        color: STEAM_TEXT_COLOR,
+        timeLeft: KILL_TEXT_DURATION,
+        duration: KILL_TEXT_DURATION,
+      })
+    }),
     game.on('leak', () => {
       shakeTime = LEAK_SHAKE_DURATION
       throneHurtTime = THRONE_HURT_DURATION
@@ -285,6 +332,8 @@ export function createEffects(game: Game): Effects {
           drawBoom(ctx, effect, lifeShare)
         } else if (effect.kind === 'spark') {
           drawSpark(ctx, effect, lifeShare)
+        } else if (effect.kind === 'steam') {
+          drawSteam(ctx, effect, lifeShare)
         }
       }
     },
@@ -302,7 +351,7 @@ export function createEffects(game: Game): Effects {
           effect.x * cellCssPx + TEXT_SHADOW_OFFSET_PX,
           effect.y * cellCssPx + TEXT_SHADOW_OFFSET_PX,
         )
-        ctx.fillStyle = GOLD
+        ctx.fillStyle = effect.color ?? GOLD
         ctx.fillText(effect.text, effect.x * cellCssPx, effect.y * cellCssPx)
       }
       ctx.globalAlpha = 1

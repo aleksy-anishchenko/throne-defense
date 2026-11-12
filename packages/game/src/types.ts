@@ -359,6 +359,8 @@ export interface GameEvents {
   hit: Enemy
   kill: Enemy
   splash: { x: number; y: number; radius: number }
+  /** Волна холода потушила горящего врага: весь запас огня — сразу (см. STEAM_DAMAGE_MULTIPLIER) */
+  steam: { x: number; y: number; damage: number }
   /** Знахарь лечит соседей */
   heal: { x: number; y: number; radius: number }
   leak: Enemy

@@ -7,6 +7,13 @@ import { queueSplit } from './enemies.ts'
 /** Какая доля брони врага всё ещё режет пробивающий урон (0.5 = половина брони; физический урон режется всей бронёй, магический — не режется вовсе) */
 const PIERCING_ARMOR_FACTOR = 0.5
 
+/**
+ * «Пар»: волна холода тушит горящего врага, и весь оставшийся запас огня он получает сразу,
+ * умноженным на это число. Сейчас 1 — без прибавки: выгода пара в том, что урон приходит
+ * сразу, а не за 3 секунды. Уже с прибавкой 10% две стратегии ботов доходили на 2 волны дальше
+ */
+export const STEAM_DAMAGE_MULTIPLIER = 1
+
 /** Запас на попадание для снаряда, летящего по прямой (болт баллисты), в клетках: чуть щедрее радиуса врага */
 const LINE_SHOT_HIT_MARGIN = 0.1
 
@@ -128,7 +135,7 @@ export function shootLine(
   })
 }
 
-/** Волна холода: замедляет и ранит всех в радиусе башни */
+/** Волна холода: замедляет и ранит всех в радиусе башни, а горящих — тушит паром */
 export function frostPulse(world: World, tower: Tower, stats: TowerStats): void {
   const slowAmount = stats.slowAmount ?? 0
   const slowDuration = stats.slowDuration ?? 0
@@ -142,7 +149,17 @@ export function frostPulse(world: World, tower: Tower, stats: TowerStats): void 
     enemy.slowFactor = enemy.slowTimeLeft > 0 ? Math.max(enemy.slowFactor, slowFactor) : slowFactor
     enemy.slowTimeLeft = Math.max(enemy.slowTimeLeft, slowDuration)
     damageEnemy(world, enemy, stats.damage, 'magic')
+    if (enemy.burnDamageLeft > 0 && !enemy.isDead) extinguishWithSteam(world, enemy)
   }
+}
+
+/** «Пар»: потушить горящего врага — весь запас огня сразу (× STEAM_DAMAGE_MULTIPLIER) */
+function extinguishWithSteam(world: World, enemy: Enemy): void {
+  const damage = enemy.burnDamageLeft * STEAM_DAMAGE_MULTIPLIER
+  enemy.burnDamageLeft = 0
+  enemy.burnTimeLeft = 0
+  world.emit('steam', { x: enemy.x, y: enemy.y, damage })
+  loseHp(world, enemy, damage)
 }
 
 /**
