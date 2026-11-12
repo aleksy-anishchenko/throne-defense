@@ -23,6 +23,10 @@ export interface HomingShotOptions {
   damageKind: DamageKind
   /** Радиус взрыва в клетках; без него снаряд бьёт только цель */
   splashRadius?: number
+  /** Сколько урона добавить горением каждому, кого задел; без него не поджигает */
+  burnDamage?: number
+  /** За сколько секунд догорает поджог */
+  burnDuration?: number
 }
 
 /** Настройки снаряда, который летит по прямой */
@@ -51,8 +55,16 @@ export function damageEnemy(
   if (damageKind === 'physical') effectiveDamage = Math.max(1, damage - enemy.def.armor)
   else if (damageKind === 'piercing')
     effectiveDamage = Math.max(1, damage - enemy.def.armor * PIERCING_ARMOR_FACTOR)
-  enemy.hp -= effectiveDamage
   world.emit('hit', enemy)
+  loseHp(world, enemy, effectiveDamage)
+}
+
+/**
+ * Отнять здоровье без брони и без события hit (его слушает белая вспышка: горение
+ * мигало бы врагом каждый кадр). Если враг погиб — награда, распад и событие kill
+ */
+function loseHp(world: World, enemy: Enemy, amount: number): void {
+  enemy.hp -= amount
   if (enemy.hp <= 0) {
     const state = world.state
     enemy.isDead = true
@@ -84,6 +96,8 @@ export function shootHoming(
     damage: options.damage,
     damageKind: options.damageKind,
     splashRadius: options.splashRadius ?? 0,
+    burnDamage: options.burnDamage ?? 0,
+    burnDuration: options.burnDuration ?? 0,
     isDone: false,
   })
 }
@@ -209,10 +223,39 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
           shot.splashRadius + enemy.def.radius * SPLASH_ENEMY_RADIUS_SHARE
       ) {
         damageEnemy(world, enemy, shot.damage, shot.damageKind)
+        igniteEnemy(enemy, shot.burnDamage, shot.burnDuration)
       }
     }
     world.emit('splash', { x: shot.targetX, y: shot.targetY, radius: shot.splashRadius })
   } else if (!shot.target.isDead) {
     damageEnemy(world, shot.target, shot.damage, shot.damageKind)
+    igniteEnemy(shot.target, shot.burnDamage, shot.burnDuration)
+  }
+}
+
+/**
+ * Поджечь врага: добавить burnDamage в запас огня. Догорает весь запас за burnDuration
+ * (если враг уже горит дольше — за оставшееся время)
+ */
+function igniteEnemy(enemy: Enemy, burnDamage: number, burnDuration: number): void {
+  if (enemy.isDead || burnDamage <= 0 || burnDuration <= 0) return
+  enemy.burnDamageLeft += burnDamage
+  enemy.burnTimeLeft = Math.max(enemy.burnTimeLeft, burnDuration)
+}
+
+/** Горящие враги теряют здоровье: равными долями, так что запас огня догорает ровно к сроку */
+export function updateBurning(world: World, dt: number): void {
+  for (const enemy of world.state.enemies) {
+    if (enemy.isDead || enemy.burnTimeLeft <= 0) continue
+    const share = Math.min(1, dt / enemy.burnTimeLeft)
+    const burnDamage = enemy.burnDamageLeft * share
+    enemy.burnDamageLeft -= burnDamage
+    enemy.burnTimeLeft -= dt
+    if (enemy.burnTimeLeft <= 0) {
+      enemy.burnTimeLeft = 0
+      enemy.burnDamageLeft = 0
+    }
+    // Огонь — магия: броня его не режет
+    loseHp(world, enemy, burnDamage)
   }
 }

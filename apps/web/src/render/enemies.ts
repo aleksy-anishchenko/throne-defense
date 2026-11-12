@@ -654,6 +654,40 @@ function drawFrostOverlay(ctx: Canvas2D, radius: number) {
   ctx.stroke()
 }
 
+/** Где на враге пляшут язычки огня: [доля радиуса по x, по y, размер в долях радиуса] */
+const BURN_FLAME_SPOTS: readonly (readonly [number, number, number])[] = [
+  [-0.45, 0.1, 0.55],
+  [0.1, -0.35, 0.7],
+  [0.5, 0.25, 0.5],
+]
+
+/** Горящий враг: оранжевый отсвет и три пляшущих язычка пламени поверх (огневик) */
+function drawBurning(ctx: Canvas2D, radius: number, time: number) {
+  ctx.fillStyle = 'rgba(255,120,40,.22)'
+  circle(ctx, 0, 0, radius)
+  ctx.fill()
+  BURN_FLAME_SPOTS.forEach(([shareX, shareY, sizeShare], i) => {
+    const flicker = prefersReducedMotion ? 1 : 0.8 + 0.2 * Math.sin(time * 14 + i * 2)
+    const size = radius * sizeShare * flicker
+    const x = shareX * radius
+    const y = shareY * radius
+    ctx.fillStyle = '#f0863a'
+    ctx.beginPath()
+    ctx.moveTo(x - size * 0.45, y)
+    ctx.quadraticCurveTo(x - size * 0.4, y - size * 0.6, x, y - size)
+    ctx.quadraticCurveTo(x + size * 0.4, y - size * 0.6, x + size * 0.45, y)
+    ctx.quadraticCurveTo(x, y + size * 0.3, x - size * 0.45, y)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#ffd36a'
+    ctx.beginPath()
+    ctx.moveTo(x - size * 0.2, y)
+    ctx.quadraticCurveTo(x, y - size * 0.75, x + size * 0.2, y)
+    ctx.closePath()
+    ctx.fill()
+  })
+}
+
 /** Враг целиком: тень, покачивание, сам враг, замедление, вспышка от удара, здоровье */
 export function drawEnemy(
   ctx: Canvas2D,
@@ -685,6 +719,7 @@ export function drawEnemy(
   art.body(ctx, radius)
 
   if (isSlowed) drawFrostOverlay(ctx, radius)
+  if (enemy.burnTimeLeft > 0) drawBurning(ctx, radius, time + bobPhase)
   if (isFlashing) {
     ctx.fillStyle = 'rgba(255,255,255,.55)'
     circle(ctx, 0, 0, radius)

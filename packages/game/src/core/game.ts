@@ -7,7 +7,7 @@ import { TOWERS } from '../data/towers.ts'
 import { moveEnemies, spawnSplits, updateHealers } from '../systems/enemies.ts'
 import { TARGET_MODES, refundFor, updateTowers, upgradeCost } from '../systems/towers.ts'
 import { buildSpawnQueue, finishWave, getWaveGroups, spawnDueEnemies } from '../systems/waves.ts'
-import { updateShots } from '../systems/combat.ts'
+import { updateBurning, updateShots } from '../systems/combat.ts'
 import type {
   GameEvents,
   GameState,
@@ -125,6 +125,7 @@ export function createGame(levelDef: LevelDef): Game {
       return
     }
     updateHealers(world, dt)
+    updateBurning(world, dt)
     updateTowers(world, dt)
     updateShots(world, dt)
     spawnSplits(world)

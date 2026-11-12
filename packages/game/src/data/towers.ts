@@ -46,15 +46,17 @@ const archer: TowerDef = {
 const mage: TowerDef = {
   id: 'mage',
   name: 'Огневик',
-  description: 'взрыв по площади, прожигает латы',
+  description: 'поджигает толпу, огонь прожигает латы',
   cost: 90,
   upgradeCosts: [80, 130],
   tiers: [
-    { damage: 16, cooldown: 1.2, range: 2.2, splashRadius: 0.9 },
-    { damage: 27, cooldown: 1.1, range: 2.4, splashRadius: 1 },
-    { damage: 44, cooldown: 1, range: 2.6, splashRadius: 1.15 },
+    // Баланс v4: был взрыв на 16/27/44 сразу. Теперь ~20% урона — взрывом,
+    // ~80% — горением за 3 с (запас огня: повторный поджог добавляет, а не перезапускает)
+    { damage: 4, cooldown: 1.2, range: 2.2, splashRadius: 0.9, burnDamage: 15, burnDuration: 3 },
+    { damage: 7, cooldown: 1.1, range: 2.4, splashRadius: 1, burnDamage: 26, burnDuration: 3 },
+    { damage: 11, cooldown: 1, range: 2.6, splashRadius: 1.15, burnDamage: 42, burnDuration: 3 },
   ],
-  displayStats: ['damage', 'range'],
+  displayStats: ['damage', 'burnDamage', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: true,
@@ -65,6 +67,8 @@ const mage: TowerDef = {
       damage: stats.damage,
       damageKind: 'magic',
       splashRadius: stats.splashRadius,
+      burnDamage: stats.burnDamage,
+      burnDuration: stats.burnDuration,
     }),
 }
 

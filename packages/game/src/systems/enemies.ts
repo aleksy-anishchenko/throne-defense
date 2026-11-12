@@ -26,6 +26,8 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
     slowTimeLeft: 0,
     slowFactor: 0,
     healCooldownLeft: def.heal?.cooldown ?? 0,
+    burnDamageLeft: 0,
+    burnTimeLeft: 0,
     isDead: false,
   })
 }

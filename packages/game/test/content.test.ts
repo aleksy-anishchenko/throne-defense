@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ENEMIES, SIMULATION_STEP, TOWERS, waveBonus, type TargetMode } from '../src/index.ts'
 import { damageEnemy } from '../src/systems/combat.ts'
-import { newGame, placeEnemy, worldOf } from './helpers.ts'
+import { newGame, placeEnemy, stepUntil, worldOf } from './helpers.ts'
 
 // Выбор цели, знахарь, Змей Горыныч, Звонарь и Казна (баланс v4)
 
@@ -177,6 +177,43 @@ describe('баллиста III', () => {
     game.step(SIMULATION_STEP)
     expect(game.state.shots).toHaveLength(1)
     expect(game.state.shots[0].look).toBe('twinBolt')
+  })
+})
+
+describe('огневик: горение', () => {
+  it('поджигает: сразу малая часть урона, остальное — горением', () => {
+    const game = newGame()
+    game.build('mage', 5, 11)
+    const rebel = placeEnemy(game, 'rebel', 2)
+    const stats = TOWERS['mage'].tiers[0]
+    // шагаем, пока огненный шар не долетит
+    stepUntil(game, () => rebel.burnTimeLeft > 0, 5)
+    expect(rebel.burnDamageLeft).toBeGreaterThan(0)
+    expect(rebel.burnTimeLeft).toBeCloseTo(stats.burnDuration!, 1)
+  })
+
+  it('весь запас огня догорает к сроку — урон не теряется и не удваивается', () => {
+    const game = newGame()
+    const ogre = placeEnemy(game, 'ogre', 1)
+    ogre.burnDamageLeft = 30
+    ogre.burnTimeLeft = 3
+    stepUntil(game, () => ogre.burnTimeLeft === 0, 4)
+    expect(ogre.maxHp - ogre.hp).toBeCloseTo(30)
+    expect(ogre.burnDamageLeft).toBe(0)
+  })
+
+  it('горение может добить врага: награда и событие kill', () => {
+    const game = newGame()
+    const kills: string[] = []
+    game.on('kill', (enemy) => kills.push(enemy.def.id))
+    const rebel = placeEnemy(game, 'rebel', 1)
+    rebel.hp = 1
+    rebel.burnDamageLeft = 10
+    rebel.burnTimeLeft = 0.1
+    const gold = game.state.gold
+    stepUntil(game, () => rebel.isDead, 1)
+    expect(kills).toEqual(['rebel'])
+    expect(game.state.gold).toBe(gold + ENEMIES['rebel'].reward)
   })
 })
 

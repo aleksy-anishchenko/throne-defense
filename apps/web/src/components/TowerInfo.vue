@@ -15,6 +15,7 @@ const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: number) => 
   slowAmount: { label: 'замедление', format: formatPercent },
   splashRadius: { label: 'взрыв', format: formatDecimal },
   pierceCount: { label: 'пронзает', format: String },
+  burnDamage: { label: 'горение', format: String },
   fireRateBonus: { label: 'ускоряет соседей на', format: formatPercent },
   goldPerWave: { label: 'доход за волну', format: String },
 }

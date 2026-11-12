@@ -27,6 +27,10 @@ export interface TowerStats {
   slowDuration?: number
   /** Сколько врагов пробивает снаряд насквозь, штук */
   pierceCount?: number
+  /** Огневик: сколько урона враг получит горением после попадания (сверх damage), единиц здоровья */
+  burnDamage?: number
+  /** За сколько секунд догорает этот урон */
+  burnDuration?: number
   /** Звонарь: насколько быстрее стреляют башни в радиусе (0.2 — на 20% быстрее) */
   fireRateBonus?: number
   /** Казна: сколько золота приносит за каждую отбитую волну */
@@ -41,6 +45,7 @@ export type StatKey =
   | 'slowAmount'
   | 'splashRadius'
   | 'pierceCount'
+  | 'burnDamage'
   | 'fireRateBonus'
   | 'goldPerWave'
 
@@ -208,6 +213,13 @@ export interface Enemy {
   slowFactor: number
   /** Сколько секунд до следующего лечения соседей (только у тех, кто лечит) */
   healCooldownLeft: number
+  /**
+   * Запас огня: сколько урона враг ещё получит горением. Каждый поджог добавляет в запас,
+   * а не перезапускает горение — так урон огневика не теряется и не удваивается
+   */
+  burnDamageLeft: number
+  /** За сколько секунд догорит весь запас огня */
+  burnTimeLeft: number
   /** Убит: такого врага уберут из списка в конце шага */
   isDead: boolean
 }
@@ -234,6 +246,10 @@ export interface HomingShot {
   damageKind: DamageKind
   /** Радиус взрыва, клеток; 0 — бьёт только цель */
   splashRadius: number
+  /** Сколько урона добавит горением каждому, кого задел; 0 — не поджигает */
+  burnDamage: number
+  /** За сколько секунд догорает поджог, секунд */
+  burnDuration: number
   /** Снаряд долетел или потерял смысл: его уберут в конце шага */
   isDone: boolean
 }
