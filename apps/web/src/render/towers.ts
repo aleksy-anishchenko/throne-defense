@@ -59,25 +59,52 @@ export const TOWER_ART: Record<string, TowerArt> = {
 
   mage: {
     body(ctx, _aimAngle, time) {
-      ctx.fillStyle = '#a34a1e'
+      // Каменная чаша-жаровня, в ней пляшет пламя
+      const flicker = prefersReducedMotion ? 0 : Math.sin(time * 9) * 0.02
+      const sway = prefersReducedMotion ? 0 : Math.sin(time * 6) * 0.025
+      // отсвет огня
+      const pulse = prefersReducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(time * 5)
+      ctx.fillStyle = `rgba(255,150,60,${0.15 + pulse * 0.15})`
+      circle(ctx, 0, -0.04, 0.27)
+      ctx.fill()
+      // большой язык пламени: снизу широкий, кверху острый и чуть качается
+      ctx.fillStyle = '#e0561f'
       ctx.beginPath()
-      for (let i = 0; i < 10; i++) {
-        const angle = (i * Math.PI) / 5 - Math.PI / 2
-        const radius = i % 2 ? 0.12 : 0.25
-        ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius)
-      }
+      ctx.moveTo(-0.17, 0.08)
+      ctx.quadraticCurveTo(-0.2, -0.1, -0.06, -0.18)
+      ctx.quadraticCurveTo(-0.04, -0.08, sway, -0.3 - flicker)
+      ctx.quadraticCurveTo(0.08, -0.12, 0.12, -0.16)
+      ctx.quadraticCurveTo(0.2, -0.04, 0.17, 0.08)
       ctx.closePath()
       ctx.fill()
-      ctx.fillStyle = '#d9702e'
-      circle(ctx, 0, 0, 0.14)
+      // средний — оранжевый
+      ctx.fillStyle = '#f59a33'
+      ctx.beginPath()
+      ctx.moveTo(-0.11, 0.08)
+      ctx.quadraticCurveTo(-0.12, -0.06, sway * 0.6, -0.2 - flicker)
+      ctx.quadraticCurveTo(0.12, -0.06, 0.11, 0.08)
+      ctx.closePath()
       ctx.fill()
-      const pulse = 0.5 + 0.5 * Math.sin(time * 5)
-      ctx.fillStyle = `rgba(255,190,90,${0.25 + pulse * 0.25})`
-      circle(ctx, 0, 0, 0.12 + pulse * 0.03)
+      // сердцевина — жёлтая
+      ctx.fillStyle = '#ffe08a'
+      ctx.beginPath()
+      ctx.moveTo(-0.05, 0.08)
+      ctx.quadraticCurveTo(-0.06, -0.02, sway * 0.3, -0.1 - flicker)
+      ctx.quadraticCurveTo(0.06, -0.02, 0.05, 0.08)
+      ctx.closePath()
       ctx.fill()
-      ctx.fillStyle = '#ffd98a'
-      circle(ctx, 0, 0, 0.07)
+      // чаша
+      ctx.fillStyle = '#6b6f86'
+      ctx.strokeStyle = '#2f3248'
+      ctx.lineWidth = 0.025
+      ctx.beginPath()
+      ctx.moveTo(-0.22, 0.06)
+      ctx.lineTo(0.22, 0.06)
+      ctx.quadraticCurveTo(0.2, 0.22, 0, 0.22)
+      ctx.quadraticCurveTo(-0.2, 0.22, -0.22, 0.06)
+      ctx.closePath()
       ctx.fill()
+      ctx.stroke()
     },
   },
 

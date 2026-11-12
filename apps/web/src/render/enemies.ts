@@ -54,24 +54,60 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
     sparkColor: '#3a8a83',
     sparkCount: 5,
     body(ctx, radius) {
+      // полоски скорости позади: лазутчик — самый быстрый враг
+      ctx.strokeStyle = 'rgba(243,233,210,.45)'
+      ctx.lineWidth = 0.022
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      for (const [offsetY, length] of [
+        [-0.06, 0.16],
+        [0.03, 0.22],
+        [0.11, 0.14],
+      ]) {
+        ctx.moveTo(radius * 1.15, offsetY)
+        ctx.lineTo(radius * 1.15 + length, offsetY)
+      }
+      ctx.stroke()
+      // кинжал в руке, слева
+      ctx.strokeStyle = '#dfe5f2'
+      ctx.lineWidth = 0.03
+      ctx.beginPath()
+      ctx.moveTo(-radius * 0.7, radius * 0.45)
+      ctx.lineTo(-radius * 1.35, radius * 0.05)
+      ctx.stroke()
+      ctx.strokeStyle = '#5a3b1f'
+      ctx.lineWidth = 0.025
+      ctx.beginPath()
+      ctx.moveTo(-radius * 0.85, radius * 0.25)
+      ctx.lineTo(-radius * 0.6, radius * 0.7)
+      ctx.stroke()
+      // плащ
       ctx.fillStyle = '#2c6f69'
       ctx.strokeStyle = '#163d3a'
+      ctx.lineWidth = 0.03
       circle(ctx, 0, 0, radius)
       ctx.fill()
       ctx.stroke()
-      // капюшон
-      ctx.fillStyle = '#163d3a'
+      // острый капюшон
+      ctx.fillStyle = '#1f504c'
       ctx.beginPath()
-      ctx.moveTo(-radius, -0.02)
-      ctx.lineTo(0, -radius * 1.5)
-      ctx.lineTo(radius, -0.02)
+      ctx.moveTo(-radius * 0.95, 0)
+      ctx.quadraticCurveTo(-radius * 0.6, -radius * 1.1, 0, -radius * 1.6)
+      ctx.quadraticCurveTo(radius * 0.6, -radius * 1.1, radius * 0.95, 0)
       ctx.closePath()
       ctx.fill()
+      ctx.stroke()
+      // лицо в тени капюшона и повязка-маска
+      ctx.fillStyle = '#0e2422'
+      circle(ctx, 0, 0.0, radius * 0.6)
+      ctx.fill()
       ctx.fillStyle = '#ffe07a'
-      circle(ctx, -0.05, 0.03, 0.028)
+      circle(ctx, -0.04, -0.01, 0.022)
       ctx.fill()
-      circle(ctx, 0.05, 0.03, 0.028)
+      circle(ctx, 0.04, -0.01, 0.022)
       ctx.fill()
+      ctx.fillStyle = '#163d3a'
+      ctx.fillRect(-radius * 0.55, radius * 0.18, radius * 1.1, radius * 0.25)
     },
   },
 
@@ -149,6 +185,31 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
     sparkColor: '#a08b6a',
     sparkCount: 10,
     body(ctx, radius) {
+      // дубина на плече справа: рукоять тоньше, набалдашник толще, с шипами-сучками
+      ctx.save()
+      ctx.translate(radius * 0.8, radius * 0.3)
+      ctx.rotate(0.6)
+      ctx.fillStyle = '#7a4f28'
+      ctx.strokeStyle = '#3e2712'
+      ctx.lineWidth = 0.025
+      ctx.beginPath()
+      ctx.moveTo(-0.03, 0.06)
+      ctx.lineTo(-0.075, -0.42)
+      ctx.quadraticCurveTo(0, -0.52, 0.075, -0.42)
+      ctx.lineTo(0.03, 0.06)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = '#5a3a1c'
+      for (const [knotX, knotY] of [
+        [-0.07, -0.33],
+        [0.07, -0.27],
+        [-0.05, -0.2],
+      ]) {
+        circle(ctx, knotX, knotY, 0.022)
+        ctx.fill()
+      }
+      ctx.restore()
       // уши
       ctx.fillStyle = '#8c7856'
       ctx.strokeStyle = '#4a3c26'
@@ -374,7 +435,7 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
     sparkColor: '#6fb04f',
     sparkCount: 4,
     body(ctx, radius) {
-      // хвостик, как у Горыныча: видно, что это его «осколок»
+      // хвостик с наконечником, как у Горыныча: видно, что это его «осколок»
       ctx.strokeStyle = '#5c9c45'
       ctx.lineWidth = 0.05
       ctx.lineCap = 'round'
@@ -382,16 +443,40 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       ctx.moveTo(0, radius * 0.5)
       ctx.quadraticCurveTo(radius * 0.3, radius * 1.6, radius * 1.3, radius * 1.1)
       ctx.stroke()
-      ctx.lineWidth = 0.035
+      ctx.fillStyle = '#3f7a32'
+      ctx.beginPath()
+      ctx.moveTo(radius * 1.6, radius * 0.95)
+      ctx.lineTo(radius * 1.15, radius * 0.85)
+      ctx.lineTo(radius * 1.3, radius * 1.4)
+      ctx.closePath()
+      ctx.fill()
+      // ушки-рожки, как у голов Горыныча
       ctx.fillStyle = '#5c9c45'
       ctx.strokeStyle = '#2a4d1f'
+      ctx.lineWidth = 0.02
+      for (const side of [-1, 1]) {
+        ctx.beginPath()
+        ctx.moveTo(side * radius * 0.25, -radius * 0.75)
+        ctx.lineTo(side * radius * 0.8, -radius * 1.35)
+        ctx.lineTo(side * radius * 0.8, -radius * 0.45)
+        ctx.closePath()
+        ctx.fill()
+        ctx.stroke()
+      }
+      // тело
+      ctx.lineWidth = 0.035
       circle(ctx, 0, 0, radius)
       ctx.fill()
       ctx.stroke()
-      ctx.fillStyle = '#ffcf4a'
-      circle(ctx, -0.045, -0.02, 0.022)
+      // светлое пузико
+      ctx.fillStyle = '#b9c56a'
+      circle(ctx, 0, radius * 0.35, radius * 0.5)
       ctx.fill()
-      circle(ctx, 0.045, -0.02, 0.022)
+      // глаза
+      ctx.fillStyle = '#ffcf4a'
+      circle(ctx, -0.045, -0.03, 0.022)
+      ctx.fill()
+      circle(ctx, 0.045, -0.03, 0.022)
       ctx.fill()
     },
   },
