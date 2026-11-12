@@ -305,42 +305,24 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       ctx.fillStyle = '#e0b48a'
       circle(ctx, 0, -radius * 0.2, radius * 0.45)
       ctx.fill()
-      // седая борода: не сплошной «маской», а прядями — волнистый низ из трёх завитков
-      // и тонкие линии волос. Свисает ниже лица, на рясу
+      // небольшая седая борода клинышком — только подбородок, не ниже лица
       ctx.fillStyle = '#f4f1e8'
       ctx.beginPath()
-      ctx.moveTo(-radius * 0.38, -radius * 0.12)
-      ctx.quadraticCurveTo(-radius * 0.42, radius * 0.25, -radius * 0.25, radius * 0.45)
-      ctx.lineTo(radius * 0.25, radius * 0.45)
-      ctx.quadraticCurveTo(radius * 0.42, radius * 0.25, radius * 0.38, -radius * 0.12)
-      ctx.quadraticCurveTo(0, radius * 0.12, -radius * 0.38, -radius * 0.12)
+      ctx.moveTo(-radius * 0.3, -radius * 0.1)
+      ctx.quadraticCurveTo(-radius * 0.28, radius * 0.15, 0, radius * 0.3)
+      ctx.quadraticCurveTo(radius * 0.28, radius * 0.15, radius * 0.3, -radius * 0.1)
+      ctx.quadraticCurveTo(0, radius * 0.05, -radius * 0.3, -radius * 0.1)
       ctx.closePath()
       ctx.fill()
-      for (const [curlX, curlY] of [
-        [-0.2, 0.47],
-        [0, 0.58],
-        [0.2, 0.47],
-      ]) {
-        circle(ctx, radius * curlX, radius * curlY, radius * 0.16)
-        ctx.fill()
-      }
-      ctx.strokeStyle = '#c9c2ae'
-      ctx.lineWidth = 0.008
-      ctx.beginPath()
-      for (const strandX of [-0.18, 0, 0.18]) {
-        ctx.moveTo(radius * strandX, radius * 0.08)
-        ctx.lineTo(radius * strandX * 1.1, radius * 0.5)
-      }
-      ctx.stroke()
-      // усы — двумя завитками, чуть темнее бороды
+      // усы — двумя маленькими завитками, чуть темнее бороды
       ctx.fillStyle = '#dcd5c3'
       for (const side of [-1, 1]) {
         ctx.beginPath()
         ctx.ellipse(
-          side * radius * 0.13,
+          side * radius * 0.1,
           -radius * 0.06,
-          radius * 0.15,
-          radius * 0.07,
+          radius * 0.11,
+          radius * 0.045,
           side * 0.35,
           0,
           Math.PI * 2,
