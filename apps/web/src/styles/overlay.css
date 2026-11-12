@@ -5,6 +5,9 @@
   inset: 0;
   z-index: 10;
   display: grid;
+  /* Колонка не шире экрана. Без этого поле имени (браузер даёт ему ширину ≈ 20 букв) вместе
+     с кнопкой «Сохранить» раздвигали экран итогов шире телефона 320 px */
+  grid-template-columns: minmax(0, 1fr);
   /* На очень низком экране содержимое не влезает — тогда его можно прокрутить */
   overflow-y: auto;
   /* 24px от краёв, но не меньше выреза и скруглений экрана телефона */
@@ -24,6 +27,8 @@
      верх не уходит за край, куда прокрутка не достаёт */
   margin: auto;
   display: grid;
+  /* Колонка не шире самого экрана — см. .overlay */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   justify-items: center;
   text-align: center;
@@ -36,7 +41,8 @@
   margin: 0;
   font-family: var(--display);
   font-weight: 400;
-  font-size: clamp(2.7rem, 12vw, 4.4rem);
+  /* На узком телефоне (320 px) длинное слово вроде «РЕЗУЛЬТАТЫ» должно влезть в строку */
+  font-size: clamp(2rem, 11vw, 4.4rem);
   line-height: 1.02;
   color: var(--gold);
   text-shadow: 0 0.07em 0 var(--crimson-deep);
@@ -57,11 +63,11 @@
   font-size: 0.8rem;
   opacity: 0.7;
 }
+/* Кнопки — столбиком одной ширины: главная сверху, глаз идёт по ним сверху вниз */
 .sheet .buttons {
-  display: flex;
-  flex-wrap: wrap;
+  width: min(100%, 300px);
+  display: grid;
   gap: 8px;
-  justify-content: center;
   margin-top: 4px;
 }
 .sheet .btn {
@@ -70,7 +76,6 @@
   font-size: 1.05rem;
 }
 .sheet .btn.primary {
-  min-width: 190px;
   font-size: 1.15rem;
 }
 
@@ -78,6 +83,7 @@
 .name-form {
   width: 100%;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   justify-items: center;
 }
@@ -168,4 +174,73 @@
 }
 .sheet .leaderboard-status {
   color: var(--parch-dim);
+}
+
+/* Настройки: звуки и музыка — выключатель, ползунок громкости, проценты */
+.audio-settings {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+}
+.audio-row {
+  display: grid;
+  grid-template-columns: 7.5em minmax(0, 1fr) 3.2em;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--slab);
+  border-radius: 6px;
+}
+.audio-switch {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+.audio-switch input,
+.audio-row input[type='range'] {
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.audio-switch input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+.audio-row input[type='range'] {
+  width: 100%;
+  /* Палец на телефоне должен попадать в ползунок */
+  min-height: 32px;
+  margin: 0;
+}
+.audio-row input[type='range']:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.audio-value {
+  color: var(--parch-dim);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+/* Узкий телефон: ползунок рядом с названием вышел бы с ноготь — переносим его на свою строку */
+@media (max-width: 420px) {
+  .audio-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'switch value'
+      'slider slider';
+    row-gap: 4px;
+  }
+  .audio-switch {
+    grid-area: switch;
+  }
+  .audio-row input[type='range'] {
+    grid-area: slider;
+  }
+  .audio-value {
+    grid-area: value;
+  }
 }

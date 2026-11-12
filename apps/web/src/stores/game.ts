@@ -24,8 +24,11 @@ import {
   type Tower,
 } from '@throne/game'
 import { defineStore } from 'pinia'
-import { computed, markRaw, nextTick, reactive, ref } from 'vue'
+import { computed, markRaw, nextTick, reactive, ref, watch } from 'vue'
 import { fetchLeaderboard, submitRun } from '@/api/leaderboard'
+import { audioEngine } from '@/audio/engine'
+import { connectGameSounds, musicMoodFor } from '@/audio/gameSounds'
+import { music } from '@/audio/music'
 import { sfx } from '@/audio/sfx'
 import type { BoardView, Cell, OverlayScreen } from '@/types'
 import { plural } from '@/utils/format'
@@ -34,6 +37,7 @@ import {
   loadPlayerName,
   saveBest,
   savePlayerName,
+  type AudioSettings,
   type BestResult,
 } from '@/utils/storage'
 
@@ -135,7 +139,8 @@ export const useGameStore = defineStore('game', () => {
 
   // ---------------------------------------------------------------- Звук, тосты, рекорд
 
-  const isMuted = ref(sfx.isMuted)
+  /** Копия настроек звука для экрана «Настройки»; сами настройки живут в audio/engine.ts */
+  const audioSettings = ref<AudioSettings>(audioEngine.settings)
   const toast = reactive({ text: '', isVisible: false })
   /** Счётчики «подпрыгиваний» жизней и золота в шапке */
   const bumpCounters = reactive({ lives: 0, gold: 0 })
@@ -270,13 +275,8 @@ export const useGameStore = defineStore('game', () => {
 
   // ---------------------------------------------------------------- Подписки на события игры
 
-  game.on('build', () => sfx.build())
-  game.on('upgrade', () => sfx.upgrade())
-  game.on('sell', () => sfx.sell())
-  game.on('waveStart', () => sfx.waveStart())
-  game.on('kill', () => sfx.kill())
+  connectGameSounds(game)
   game.on('leak', () => {
-    sfx.leak()
     bumpCounters.lives++
   })
   game.on('waveCleared', () => {
@@ -285,15 +285,26 @@ export const useGameStore = defineStore('game', () => {
   game.on('victory', () => {
     saveResultIfBest()
     finishRunForLeaderboard()
-    sfx.victory()
     screen.value = 'victory'
   })
   game.on('defeat', () => {
     saveResultIfBest()
     finishRunForLeaderboard()
-    sfx.defeat()
     screen.value = 'defeat'
   })
+
+  // Музыка следует за снимком hud: он обновляется каждый кадр, а watch срабатывает,
+  // только когда фаза, волна или пауза действительно поменялись
+  watch(
+    () => [hud.phase, hud.wave],
+    () => music.setMood(musicMoodFor(game)),
+    { immediate: true },
+  )
+  // В настройках музыку не глушим, хоть игра и на паузе: игрок подбирает её громкость
+  watch(
+    () => hud.isPaused && screen.value !== 'settings',
+    (isMuffled) => music.setMuffled(isMuffled),
+  )
 
   // ---------------------------------------------------------------- Действия
 
@@ -418,9 +429,36 @@ export const useGameStore = defineStore('game', () => {
     if (state.phase === 'wave') game.setPaused(true)
   }
 
-  function toggleMute() {
-    sfx.toggleMute()
-    isMuted.value = sfx.isMuted
+  /** Изменить настройки звука (выключатели, громкость) — сразу слышно и сохраняется */
+  function updateAudioSettings(changes: Partial<AudioSettings>) {
+    audioEngine.update(changes)
+    audioSettings.value = audioEngine.settings
+  }
+
+  /** Короткий звук — услышать, как звучат звуки на выбранной громкости */
+  const previewSfx = () => sfx.build()
+
+  /** Откуда открыли настройки — туда и вернёт «Готово» (посреди партии — обратно в игру) */
+  let screenBeforeSettings: OverlayScreen = null
+  /** Паузу поставили сами настройки — значит, и снимут её при закрытии */
+  let isPausedBySettings = false
+
+  function openSettings() {
+    if (screen.value === 'settings') return
+    // Настройки закрывают поле — бой не должен идти вслепую
+    isPausedBySettings = state.phase === 'wave' && !state.isPaused
+    pauseIfFighting()
+    screenBeforeSettings = screen.value
+    screen.value = 'settings'
+  }
+
+  function closeSettings() {
+    if (screen.value !== 'settings') return
+    screen.value = screenBeforeSettings
+    // Закрыли настройки — бой идёт дальше сам (без этого казалось, что игра зависла).
+    // Паузу, которую игрок поставил ещё до настроек, не трогаем
+    if (isPausedBySettings && state.phase === 'wave') game.setPaused(false)
+    isPausedBySettings = false
   }
 
   function continueEndless() {
@@ -468,7 +506,7 @@ export const useGameStore = defineStore('game', () => {
     selectedEmptyCell,
     cursorCell,
     hoverCell,
-    isMuted,
+    audioSettings,
     toast,
     bumpCounters,
     bestResult,
@@ -492,7 +530,10 @@ export const useGameStore = defineStore('game', () => {
     cycleSpeed,
     togglePause,
     pauseIfFighting,
-    toggleMute,
+    updateAudioSettings,
+    previewSfx,
+    openSettings,
+    closeSettings,
     continueEndless,
     clearSelection,
     setPlayerName,

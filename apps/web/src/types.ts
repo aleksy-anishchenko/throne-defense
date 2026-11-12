@@ -19,4 +19,4 @@ export interface BoardView {
 }
 
 /** Какой экран поверх поля: меню, поражение, победа, таблица лучших или никакого */
-export type OverlayScreen = 'menu' | 'defeat' | 'victory' | 'leaderboard' | null
+export type OverlayScreen = 'menu' | 'defeat' | 'victory' | 'leaderboard' | 'settings' | null

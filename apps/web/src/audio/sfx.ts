@@ -1,8 +1,7 @@
 // Звуки синтезируются на лету через WebAudio — аудиофайлов нет.
+// Общий контекст и настройки звука — в engine.ts, музыка — в music.ts.
 
-import { loadMuted, saveMuted } from '@/utils/storage'
-
-type AudioContextClass = typeof AudioContext
+import { audioEngine } from './engine'
 
 /** Не пищим о гибели врагов чаще, чем раз в столько миллисекунд */
 const KILL_SOUND_MIN_GAP_MS = 70
@@ -20,24 +19,7 @@ const VICTORY_NOTES = [392, 494, 587, 784]
 const DEFEAT_NOTES = [330, 262, 196, 131]
 
 function createSfx() {
-  let audioContext: AudioContext | null = null
-  let isMuted = loadMuted()
   let lastKillSoundTime = 0
-
-  /** Звук в браузере можно включить только после действия игрока — поэтому создаём лениво */
-  function getAudioContext(): AudioContext | null {
-    try {
-      const AudioContextClass: AudioContextClass | undefined =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext?: AudioContextClass }).webkitAudioContext
-      if (!AudioContextClass) return null
-      audioContext ??= new AudioContextClass()
-      if (audioContext.state === 'suspended') void audioContext.resume()
-      return audioContext
-    } catch {
-      return null
-    }
-  }
 
   /**
    * Один «писк»: частота плавно идёт от startFrequency к endFrequency (Гц)
@@ -51,9 +33,10 @@ function createSfx() {
     volume: number,
     delay = 0,
   ) {
-    if (isMuted) return
-    const context = getAudioContext()
-    if (!context) return
+    if (!audioEngine.isSfxAudible()) return
+    const outputs = audioEngine.wake()
+    if (!outputs) return
+    const { context, sfxOutput } = outputs
     try {
       const startTime = context.currentTime + delay
       const oscillator = context.createOscillator()
@@ -67,7 +50,7 @@ function createSfx() {
       gain.gain.setValueAtTime(volume, startTime)
       gain.gain.exponentialRampToValueAtTime(NEAR_SILENCE, startTime + duration)
       oscillator.connect(gain)
-      gain.connect(context.destination)
+      gain.connect(sfxOutput)
       oscillator.start(startTime)
       oscillator.stop(startTime + duration + STOP_MARGIN)
     } catch {
@@ -75,21 +58,8 @@ function createSfx() {
     }
   }
 
-  const build = () => playTone(380, 620, 0.09, 'triangle', 0.13)
-
   return {
-    get isMuted() {
-      return isMuted
-    },
-    unlock() {
-      if (!isMuted) getAudioContext()
-    },
-    toggleMute() {
-      isMuted = !isMuted
-      saveMuted(isMuted)
-      if (!isMuted) build()
-    },
-    build,
+    build: () => playTone(380, 620, 0.09, 'triangle', 0.13),
     upgrade() {
       playTone(440, 660, 0.09, 'triangle', 0.13)
       playTone(660, 990, 0.12, 'triangle', 0.11, 0.08)

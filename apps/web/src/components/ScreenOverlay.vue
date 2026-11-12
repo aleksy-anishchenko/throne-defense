@@ -1,10 +1,11 @@
 <script setup lang="ts">
-// Экран поверх поля: заставка, поражение, победа, таблица лучших
+// Экран поверх поля: заставка, поражение, победа, таблица лучших, настройки
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { BALANCE_VERSION } from '@throne/game'
 import { useGameStore } from '@/stores/game'
 import { formatNumber } from '@/utils/format'
 import { shareResult } from '@/utils/share'
+import AudioSettings from './AudioSettings.vue'
 import LeaderboardTable from './LeaderboardTable.vue'
 import RunSubmission from './RunSubmission.vue'
 
@@ -50,7 +51,8 @@ const screenContent = computed(() => {
           : 'Выберите стража и нажмите на свободную плиту. Нажмите на поставленного стража, чтобы улучшить его или продать.',
         buttons: [
           { label: 'Играть', action: store.newGame },
-          { label: 'Лучшие', action: store.openLeaderboard },
+          { label: 'Лучшие результаты', action: store.openLeaderboard },
+          { label: 'Настройки', action: store.openSettings },
         ],
       }
     case 'defeat':
@@ -61,7 +63,7 @@ const screenContent = computed(() => {
         buttons: [
           { label: 'Сыграть ещё раз', action: store.newGame },
           { label: 'Поделиться результатом', action: share },
-          { label: 'Лучшие', action: store.openLeaderboard },
+          { label: 'Лучшие результаты', action: store.openLeaderboard },
         ],
       }
     case 'victory':
@@ -73,16 +75,23 @@ const screenContent = computed(() => {
           { label: 'Играть дальше', action: store.continueEndless },
           { label: 'Поделиться результатом', action: share },
           { label: 'Начать заново', action: store.newGame },
-          { label: 'Лучшие', action: store.openLeaderboard },
+          { label: 'Лучшие результаты', action: store.openLeaderboard },
         ],
       }
     case 'leaderboard':
       return {
-        title: 'Лучшие',
+        title: 'Лучшие результаты',
         // Версия баланса — в подписи: после её смены таблица начинается заново, и игрок видит почему
         text: `${store.game.level.def.name}, правила версии ${BALANCE_VERSION}`,
         note: '',
         buttons: [{ label: 'Назад', action: store.closeLeaderboard }],
+      }
+    case 'settings':
+      return {
+        title: 'Настройки',
+        text: '',
+        note: '',
+        buttons: [{ label: 'Готово', action: store.closeSettings }],
       }
     default:
       return null
@@ -126,12 +135,13 @@ watch(
       tabindex="-1"
     >
       <h1 id="screen-title">{{ screenContent.title }}</h1>
-      <p>{{ screenContent.text }}</p>
+      <p v-if="screenContent.text">{{ screenContent.text }}</p>
       <p v-if="shareNote || screenContent.note" class="note">
         {{ shareNote || screenContent.note }}
       </p>
       <RunSubmission v-if="store.screen === 'defeat' || store.screen === 'victory'" />
       <LeaderboardTable v-if="store.screen === 'leaderboard'" />
+      <AudioSettings v-if="store.screen === 'settings'" />
       <div ref="buttonsRow" class="buttons">
         <button
           v-for="(button, i) in screenContent.buttons"

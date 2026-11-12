@@ -31,7 +31,7 @@ function placeText(): string {
     novalidate
     @submit.prevent="submitName"
   >
-    <label for="player-name">Ваше имя для таблицы лучших</label>
+    <label for="player-name">Ваше имя</label>
     <div class="name-row">
       <input
         id="player-name"
@@ -44,7 +44,7 @@ function placeText(): string {
         :aria-invalid="nameError ? 'true' : undefined"
         :aria-describedby="nameError ? 'player-name-error' : undefined"
       />
-      <button class="btn" type="submit">В таблицу</button>
+      <button class="btn" type="submit">Сохранить</button>
     </div>
     <p v-if="nameError" id="player-name-error" class="name-error" role="alert">
       {{ nameError }}

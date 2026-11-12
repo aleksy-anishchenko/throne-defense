@@ -11,7 +11,13 @@ export interface BestResult {
 }
 
 const BEST_STORAGE_KEY = 'throne-best'
-const MUTED_STORAGE_KEY = 'throne-muted'
+/** Настройки звука и музыки (AudioSettings) */
+const AUDIO_STORAGE_KEY = 'throne-audio'
+/**
+ * Выключатель звука из версий без музыки ('1' — выключен). Больше не пишем, только читаем,
+ * пока нет throne-audio: у кого звук был выключен, тот и после обновления играет в тишине
+ */
+const LEGACY_MUTED_STORAGE_KEY = 'throne-muted'
 /** Имя для общего топа — вводится один раз после первой партии */
 const PLAYER_NAME_STORAGE_KEY = 'throne-name'
 
@@ -50,17 +56,66 @@ export function saveBest(best: BestResult): void {
   }
 }
 
-export function loadMuted(): boolean {
+/** Настройки звука. Громкости — в процентах, 0–100 (100% — самая громкая, что задумана) */
+export interface AudioSettings {
+  isSfxOn: boolean
+  isMusicOn: boolean
+  sfxVolume: number
+  musicVolume: number
+}
+
+export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
+  isSfxOn: true,
+  isMusicOn: true,
+  sfxVolume: 100,
+  musicVolume: 50,
+}
+
+/** Громкость из хранилища: число 0–100, иначе — значение по умолчанию */
+const parseVolume = (value: unknown, fallback: number): number =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(100, Math.max(0, Math.round(value)))
+    : fallback
+
+/**
+ * Разобрать настройки звука. Нет новых настроек — смотрим старый выключатель throne-muted
+ * (до появления музыки он выключал все звуки): выключен — выключаем и звуки, и музыку.
+ * Мусор и неизвестные поля не роняют игру — берём значения по умолчанию
+ */
+export function parseAudioSettings(raw: string | null, legacyMuted: string | null): AudioSettings {
+  if (!raw) {
+    const isOn = legacyMuted !== '1'
+    return { ...DEFAULT_AUDIO_SETTINGS, isSfxOn: isOn, isMusicOn: isOn }
+  }
   try {
-    return localStorage.getItem(MUTED_STORAGE_KEY) === '1'
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null) return { ...DEFAULT_AUDIO_SETTINGS }
+    const { isSfxOn, isMusicOn, sfxVolume, musicVolume } = parsed as Record<string, unknown>
+    return {
+      isSfxOn: typeof isSfxOn === 'boolean' ? isSfxOn : DEFAULT_AUDIO_SETTINGS.isSfxOn,
+      isMusicOn: typeof isMusicOn === 'boolean' ? isMusicOn : DEFAULT_AUDIO_SETTINGS.isMusicOn,
+      sfxVolume: parseVolume(sfxVolume, DEFAULT_AUDIO_SETTINGS.sfxVolume),
+      musicVolume: parseVolume(musicVolume, DEFAULT_AUDIO_SETTINGS.musicVolume),
+    }
   } catch {
-    return false
+    return { ...DEFAULT_AUDIO_SETTINGS }
   }
 }
 
-export function saveMuted(isMuted: boolean): void {
+export function loadAudioSettings(): AudioSettings {
   try {
-    localStorage.setItem(MUTED_STORAGE_KEY, isMuted ? '1' : '0')
+    return parseAudioSettings(
+      localStorage.getItem(AUDIO_STORAGE_KEY),
+      localStorage.getItem(LEGACY_MUTED_STORAGE_KEY),
+    )
+  } catch {
+    return { ...DEFAULT_AUDIO_SETTINGS }
+  }
+}
+
+export function saveAudioSettings(settings: AudioSettings): void {
+  try {
+    localStorage.setItem(AUDIO_STORAGE_KEY, JSON.stringify(settings))
   } catch {
     /* localStorage недоступен — играем без сохранения */
   }

@@ -3,7 +3,7 @@
 // Сам поднимает `vite preview` с папкой dist (её собирает `npm run build`) и настоящий
 // API (apps/server) на временной базе, открывает игру с ?debug и проходит её как игрок:
 // меню, постройка мышью, касанием и с клавиатуры, улучшение, продажа, волна, пауза,
-// поражение, рекорд, общий топ, победа, телефон, игра без сервера.
+// музыка, настройки звука, поражение, рекорд, общий топ, победа, телефон, игра без сервера.
 // Состояние игры читает через window.__throne (доступен только с ?debug).
 //
 // Нужен установленный Google Chrome. Если его нет: `npx playwright-core install chromium`.
@@ -75,6 +75,9 @@ const readGameSnapshot = (page) =>
       towers: state.towers.map((tower) => `${tower.def.id}${tower.tier}@${tower.col},${tower.row}`),
     }
   })
+
+/** Что играет музыка: { isPlaying, mood, isMuffled } */
+const readMusic = (page) => page.evaluate(() => window.__throne.music.debugState())
 
 /** Появится ли элемент за timeout мс (true/false, без исключения — проверка не прерывается) */
 const appears = (locator, timeout = 5000) =>
@@ -239,9 +242,19 @@ async function desktop(browser, url) {
     versionText,
   )
 
+  check(
+    'музыка молчит до первого действия игрока (браузер иначе не разрешит звук)',
+    !(await readMusic(page)).isPlaying,
+  )
   await playButton.click()
   await waitForFrames(page)
   check('меню закрылось', (await page.locator('.overlay').count()) === 0)
+  let music = await readMusic(page)
+  check(
+    'после клика играет спокойная музыка',
+    music.isPlaying && music.mood === 'calm',
+    JSON.stringify(music),
+  )
   check(
     'поле и панель снова доступны',
     await page.evaluate(() => !document.querySelector('.panel').inert),
@@ -381,7 +394,15 @@ async function desktop(browser, url) {
     timeBefore === timeAfter && (await readGameSnapshot(page)).paused,
   )
   check('подсказка паузы', (await page.locator('#hint').textContent()).startsWith('Пауза'))
+  music = await readMusic(page)
+  check(
+    'в волне музыка боевая, на паузе — приглушённая',
+    music.isPlaying && music.mood === 'battle' && music.isMuffled,
+    JSON.stringify(music),
+  )
   await page.getByRole('button', { name: 'Продолжить' }).click()
+  await waitForFrames(page)
+  check('после паузы музыка снова не приглушена', !(await readMusic(page)).isMuffled)
 
   // Поражение
   await page.evaluate(() => {
@@ -393,6 +414,7 @@ async function desktop(browser, url) {
     'экран поражения',
     (await page.locator('.sheet p').first().textContent()).startsWith('Отбито волн: 1.'),
   )
+  check('после поражения музыка затихла', !(await readMusic(page)).isPlaying)
   check(
     'после поражения фокус на экране, а не на кнопке (Enter не перезапустит партию)',
     await page.evaluate(() => document.activeElement?.getAttribute('role') === 'dialog'),
@@ -409,7 +431,7 @@ async function desktop(browser, url) {
   // Общий топ: имени ещё нет — экран поражения спрашивает его
   const nameInput = page.locator('#player-name')
   check('после первой партии спрашивают имя', await nameInput.isVisible())
-  await page.getByRole('button', { name: 'В таблицу' }).click()
+  await page.getByRole('button', { name: 'Сохранить' }).click()
   check('пустое имя не принимается', await appears(page.locator('.name-error'), 2000))
   // Цифра в имени уходит в поле, а не в игру (клавиши 1–9 выбирают стража)
   await nameInput.pressSequentially('Страж 1')
@@ -422,7 +444,7 @@ async function desktop(browser, url) {
     'имя запомнено в браузере',
     await page.evaluate(() => localStorage.getItem('throne-name') === 'Страж 1'),
   )
-  await page.getByRole('button', { name: 'Лучшие' }).click()
+  await page.getByRole('button', { name: 'Лучшие результаты' }).click()
   const leaderboardRows = page.locator('.leaderboard li')
   await appears(leaderboardRows.first())
   const rowTexts = await leaderboardRows.allTextContents()
@@ -448,6 +470,12 @@ async function desktop(browser, url) {
       snapshot.lives === 20 &&
       !snapshot.towers.length,
     JSON.stringify(snapshot),
+  )
+  music = await readMusic(page)
+  check(
+    'новая партия — снова спокойная музыка',
+    music.isPlaying && music.mood === 'calm',
+    JSON.stringify(music),
   )
 
   // Победа: перескакиваем сразу на 20-ю волну
@@ -548,18 +576,59 @@ async function desktop(browser, url) {
     JSON.stringify(snapshot.towers),
   )
 
-  // Выключенный звук и испорченный рекорд переживают перезагрузку
-  await page.getByRole('button', { name: 'Звук' }).click()
+  // Настройки посреди боя: игра встаёт на паузу, клавиши не управляют игрой под экраном
+  await page.getByRole('button', { name: 'Начать волну' }).click()
+  await page.getByRole('button', { name: 'Настройки' }).click()
+  const settingsDialog = page.getByRole('dialog', { name: 'Настройки' })
+  snapshot = await readGameSnapshot(page)
+  check(
+    'настройки открылись, бой на паузе',
+    (await appears(settingsDialog)) && snapshot.phase === 'wave' && snapshot.paused,
+    JSON.stringify(snapshot),
+  )
+  check('в настройках музыку не глушим', !(await readMusic(page)).isMuffled)
+  await blurActiveElement(page)
+  await page.keyboard.press('Space')
+  check('пробел в настройках не снимает паузу', (await readGameSnapshot(page)).paused)
+  await page.getByRole('checkbox', { name: 'Музыка' }).uncheck()
+  check('выключатель «Музыка» выключил музыку', !(await readMusic(page)).isPlaying)
+  check(
+    'без музыки ползунок её громкости неактивен',
+    await page.getByRole('slider', { name: 'Громкость музыки' }).isDisabled(),
+  )
+  await page.getByRole('slider', { name: 'Громкость звуков' }).fill('30')
+  await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  check(
+    'Escape закрыл настройки, бой продолжился сам',
+    (await settingsDialog.count()) === 0 && !(await readGameSnapshot(page)).paused,
+  )
+
+  // Пауза, поставленная игроком до настроек, после них остаётся
+  await page.getByRole('button', { name: 'Пауза' }).click()
+  await page.getByRole('button', { name: 'Настройки' }).click()
+  await page.getByRole('button', { name: 'Готово' }).click()
+  await waitForFrames(page)
+  check('своя пауза игрока после настроек осталась', (await readGameSnapshot(page)).paused)
+
+  // Настройки и испорченный рекорд переживают перезагрузку
   await page.evaluate(() => localStorage.setItem('throne-best', '123'))
   await page.reload()
   await page.waitForFunction(() => document.querySelector('#app')?.children.length > 0)
   check('испорченный рекорд: меню на месте', await playButton.isVisible())
+  // Шестерёнка под меню тоже есть в разметке (выключена inert) — берём кнопку самого меню
+  await page.getByRole('dialog').getByRole('button', { name: 'Настройки' }).click()
   check(
-    'выключенный звук пережил перезагрузку',
-    (await page
-      .getByRole('button', { name: 'Звук', includeHidden: true })
-      .getAttribute('aria-pressed')) === 'false',
+    'настройки звука пережили перезагрузку',
+    !(await page.getByRole('checkbox', { name: 'Музыка' }).isChecked()) &&
+      (await page.getByRole('checkbox', { name: 'Звуки' }).isChecked()) &&
+      (await page.getByRole('slider', { name: 'Громкость звуков' }).inputValue()) === '30',
   )
+  check('без музыки она молчит и после клика', !(await readMusic(page)).isPlaying)
+  await page.getByRole('checkbox', { name: 'Музыка' }).check()
+  check('музыку можно включить обратно', (await readMusic(page)).isPlaying)
+  await page.getByRole('button', { name: 'Готово' }).click()
+  check('«Готово» вернуло в меню', await playButton.isVisible())
   await page.evaluate(() => localStorage.removeItem('throne-best'))
 
   // Раскладка: магазин из шести карточек влезает и на высоком экране, и на ноутбуке
@@ -595,9 +664,9 @@ async function offline(browser, url) {
     'нет сервера: итоги на месте, «таблица лучших недоступна»',
     await appears(page.locator('.run-place').filter({ hasText: 'недоступна' })),
   )
-  await page.getByRole('button', { name: 'Лучшие' }).click()
+  await page.getByRole('button', { name: 'Лучшие результаты' }).click()
   check(
-    'нет сервера: «Лучшие» говорят, что не загрузились',
+    'нет сервера: «Лучшие результаты» говорят, что не загрузились',
     await appears(page.locator('.leaderboard-status').filter({ hasText: 'Не удалось' })),
   )
   await page.getByRole('button', { name: 'Назад' }).click()

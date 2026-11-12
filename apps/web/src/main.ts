@@ -14,6 +14,7 @@ import './styles/index.css'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
+import { music } from './audio/music'
 import { useGameStore } from './stores/game'
 
 createApp(App).use(createPinia()).mount('#app')
@@ -21,5 +22,5 @@ createApp(App).use(createPinia()).mount('#app')
 // ?debug в адресе — игра доступна из консоли как window.__throne
 if (new URLSearchParams(location.search).has('debug')) {
   const store = useGameStore()
-  Object.assign(window, { __throne: { game: store.game, store } })
+  Object.assign(window, { __throne: { game: store.game, store, music } })
 }

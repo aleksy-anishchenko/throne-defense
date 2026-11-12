@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import { sfx } from '@/audio/sfx'
+import { audioEngine } from '@/audio/engine'
+import { music } from '@/audio/music'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { useGameStore } from '@/stores/game'
 import GameBoard from './components/GameBoard.vue'
@@ -13,11 +14,12 @@ useKeyboard()
 
 // Браузер разрешает звук только после действия игрока
 const UNLOCK_EVENTS = ['pointerup', 'click', 'keydown'] as const
-const unlockAudio = () => sfx.unlock()
+const unlockAudio = () => audioEngine.unlock()
 
-// Свернули вкладку посреди боя — ставим на паузу
+// Свернули вкладку посреди боя — ставим на паузу. Музыка в свёрнутой вкладке молчит
 function onVisibilityChange() {
   if (document.hidden) store.pauseIfFighting()
+  music.setHidden(document.hidden)
 }
 
 onMounted(() => {
