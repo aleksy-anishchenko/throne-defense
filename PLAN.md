@@ -10,8 +10,8 @@
 
 - **Игра в интернете: https://throne-defense.ru.** HTTPS (Let's Encrypt) продлевается сам, `http://` и `www` перенаправляют на основной адрес.
 - **Выкладка автоматическая:** пуш в `main` → GitHub Actions прогоняет проверки и, если всё зелёное, через 2–3 минуты новая версия на сайте. С красными проверками ничего не выкладывается. Какая версия на сайте — видно в меню игры («Версия хеш · дата»).
-- **Код:** логика игры в `packages/game` (без Vue и DOM), интерфейс в `apps/web` (Vite + TypeScript + Vue), бот и замеры баланса в `tools/balance`. 102 теста и 58 проверок в настоящем браузере, всё зелёное. Код-ревью отработано полностью.
-- **Бэкенда пока нет:** `https://throne-defense.ru/api/…` отвечает 502 — это нормально, его делает этап 3.
+- **Код:** логика игры в `packages/game` (без Vue и DOM), интерфейс в `apps/web` (Vite + TypeScript + Vue), бот и замеры баланса в `tools/balance`. 107 тестов и 58 проверок в настоящем браузере, всё зелёное. Код-ревью отработано полностью.
+- **Бэкенд в работе (ветка `backend`):** шаг 3.1 готов — `apps/server` отвечает на `/api/health` у себя на Mac (`npm run dev:server`). На сайте его пока нет: `https://throne-defense.ru/api/…` отвечает 502 — это нормально до шага 3.4. Следующий — шаг 3.2.
 
 ## Начать отсюда
 
@@ -21,7 +21,7 @@
 
 Параллельно подумать над [открытым вопросом](#открытый-вопрос-площадка): где живёт игра — Telegram, VK или просто сайт. Ответ нужен до этапа 4 (вход и рейтинг друзей). Таблицу `runs` (шаг 3.6) и общий топ (3.8) можно сделать до ответа: настоящий игрок из этапа 4 потом просто заменит имя, введённое руками.
 
-Как начать диалог с Claude: «прочитай PLAN.md и делай этап 3, шаг 3.1».
+Как начать диалог с Claude: «прочитай PLAN.md и делай этап 3, шаг 3.2» (работаем в ветке `backend`).
 
 ---
 
@@ -90,12 +90,12 @@
 
 Делаем в отдельной ветке `backend`, по шагам; после каждого шага всё зелёное.
 
-**3.1. Сервер у себя на Mac** (только код, сервер не трогаем)
-- [ ] Пакет `apps/server` (`@throne/server`): Fastify + TypeScript. Node 24 выполняет `.ts` напрямую, как уже делают `npm run balance`/`towers`, поэтому сборка не нужна: те же правила, что в `packages/game` (импорты с `.ts`, без `enum`)
-- [ ] `GET /api/health` → `{ ok: true }`; слушает только `127.0.0.1:3000` — снаружи к нему попасть можно только через nginx
-- [ ] Настройки из `.env` (порт, путь к базе); пример без секретов — `apps/server/.env.example`. `.env` уже в `.gitignore`
-- [ ] Тест маршрута через `app.inject()` (Fastify умеет вызывать маршрут без настоящей сети); `npm run dev:server`; добавить сервер в `typecheck`, ESLint (globals Node) и `vitest.config.ts`
-- [ ] В `vite.config.ts` — прокси `/api` → `http://127.0.0.1:3000`, чтобы `npm run dev` видел API так же, как сайт на сервере
+**3.1. Сервер у себя на Mac** (только код, сервер не трогаем) — ✅ сделано в ветке `backend`
+- [x] Пакет `apps/server` (`@throne/server`): Fastify + TypeScript. Node 24 выполняет `.ts` напрямую, как уже делают `npm run balance`/`towers`, поэтому сборка не нужна: те же правила, что в `packages/game` (импорты с `.ts`, без `enum`)
+- [x] `GET /api/health` → `{ ok: true }`; слушает только `127.0.0.1:3000` — снаружи к нему попасть можно только через nginx
+- [x] Настройки из `.env` (порт, путь к базе); пример без секретов — `apps/server/.env.example`. `.env` уже в `.gitignore`
+- [x] Тест маршрута через `app.inject()` (Fastify умеет вызывать маршрут без настоящей сети); `npm run dev:server`; добавить сервер в `typecheck`, ESLint (globals Node) и `vitest.config.ts`
+- [x] В `vite.config.ts` — прокси `/api` → `http://127.0.0.1:3000`, чтобы `npm run dev` видел API так же, как сайт на сервере
 
 **3.2. Пакет `packages/contracts`** (`@throne/contracts`)
 - [ ] Типы и схемы запросов и ответов API, общие для сайта и сервера — иначе они разойдутся. Начать с ответа `/api/health`. Схемы — JSON Schema (Fastify проверяет по ним запросы сам)
@@ -239,6 +239,13 @@ throne-defense/
     public/               favicon.svg, apple-touch-icon.png (значок iOS), og-image.png (превью ссылки)
     e2e/smoke.mjs         проверка в настоящем браузере (npm run e2e)
 
+  apps/server/          ← API (Fastify), Node выполняет .ts напрямую, без сборки
+    src/main.ts           запуск: слушает только 127.0.0.1 (порт из .env, по умолчанию 3000)
+    src/app.ts            buildApp() — приложение без порта; его же берут тесты (app.inject())
+    src/config.ts         настройки из .env с проверкой; пример — .env.example
+    src/routes/           маршруты: health.ts (GET /api/health → { ok: true })
+    test/                 тесты маршрутов и настроек (Vitest)
+
   tools/balance/        ← бот и замеры баланса (скрипты разработчика, на сервер не едут)
     bot.ts (бот), balance.ts (npm run balance), towers.ts (npm run towers),
     bot.test.ts (тесты-сторожа баланса). Пакет игры берут только через @throne/game
@@ -258,7 +265,7 @@ throne-defense/
 Границы проведены правильно: правила игры отдельно от интерфейса, рисование отдельно от Vue, наружу пакет смотрит через один `index.ts`. Меняем только то, что мешает ближайшим этапам, и только когда этап до этого дошёл. Что появится:
 
 ```
-apps/server/                 (этап 3)  src/routes, src/db, src/services
+apps/server/                 (этап 3)  + src/db, src/services (src/routes уже есть)
 packages/contracts/          (этап 3)  типы запросов и ответов API для сайта и сервера
 deploy/pm2/                  (этап 3)  настройки процесса сервера
 packages/game/src/core/      (этап 5)  + commands.ts и replay.ts: действия как данные
@@ -285,6 +292,7 @@ apps/web/src/audio/          (этап 6)  + gameSounds.ts — подписки 
 
 ```bash
 npm run dev          # игра на http://localhost:5173 (добавь ?debug — в консоли window.__throne.game и .store)
+npm run dev:server   # API на http://127.0.0.1:3000, перезапускается при правках; npm run dev пересылает туда /api
 npm run check        # всё разом: format:check + lint + typecheck + test + build
 npm run e2e          # сборка + проверка в настоящем браузере (нужен Google Chrome)
 npm test             # тесты (npm run test:watch — в режиме наблюдения)

@@ -21,7 +21,7 @@ export default defineConfig([
     languageOptions: { globals: { ...globals.browser, __APP_VERSION__: 'readonly' } },
   },
   {
-    files: ['tools/**/*.ts', '**/*.config.{js,ts}'],
+    files: ['tools/**/*.ts', 'apps/server/**/*.ts', '**/*.config.{js,ts}'],
     languageOptions: { globals: globals.node },
   },
   {

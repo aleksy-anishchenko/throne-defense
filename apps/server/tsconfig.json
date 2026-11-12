@@ -1,0 +1,9 @@
+{
+  // Сервер запускается в Node напрямую, без сборки — поэтому настройки те же,
+  // что у логики игры (импорты с .ts, без enum), плюс API Node (process, fs…).
+  "extends": "../../packages/game/tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src", "test"]
+}
