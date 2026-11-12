@@ -1,10 +1,12 @@
 // Управление с клавиатуры: 1–9 выбирают стража, пробел — волна/пауза,
-// стрелки двигают курсор по полю, Enter ставит стража, Esc снимает выбор,
+// стрелки двигают курсор по полю, Enter ставит стража (Shift — и оставляет его «в руке»),
+// Esc снимает выбор,
 // T меняет, кого бьёт выбранная башня. На экранах «Лучшие результаты» и «Настройки» Esc — «Назад».
 
 import { TOWER_LIST } from '@throne/game'
 import { onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '@/stores/game'
+import { useSelectionStore } from '@/stores/selection'
 
 /** Самая большая цифра-горячая клавиша: клавиши 1–9 выбирают стража */
 export const MAX_HOTKEY_DIGIT = 9
@@ -19,6 +21,7 @@ const ARROW_DIRECTIONS: Record<string, { deltaCol: number; deltaRow: number }> =
 
 export function useKeyboard(): void {
   const store = useGameStore()
+  const selection = useSelectionStore()
 
   function onKeyDown(event: KeyboardEvent) {
     if (event.ctrlKey || event.metaKey || event.altKey) return
@@ -34,10 +37,12 @@ export function useKeyboard(): void {
     // Открыты настройки посреди партии: клавиши не должны управлять игрой под ними
     if (store.screen === 'settings' && event.key !== 'Escape') return
 
-    // Цифры 1–9, см. MAX_HOTKEY_DIGIT
-    if (/^[1-9]$/.test(event.key)) {
-      const towerDef = TOWER_LIST[Number(event.key) - 1]
-      if (towerDef) store.chooseShopTower(towerDef.id)
+    // Цифры 1–9, см. MAX_HOTKEY_DIGIT. По положению клавиши (event.code), а не по символу:
+    // с зажатым Shift (режим «ставить подряд») клавиша «2» даёт «@», а не «2»
+    const digit = /^(?:Digit|Numpad)([1-9])$/.exec(event.code)?.[1] ?? null
+    if (digit) {
+      const towerDef = TOWER_LIST[Number(digit) - 1]
+      if (towerDef) selection.chooseShopTower(towerDef.id)
       return
     }
     if (event.key === 'Escape') {
@@ -50,9 +55,16 @@ export function useKeyboard(): void {
         store.closeSettings()
         return
       }
-      store.clearSelection()
+      // Открыто меню (стражей или башни) — Escape закрывает только его, выбор остаётся
+      if (selection.openMenu) {
+        selection.closeMenu()
+        return
+      }
+      selection.clearSelection()
       return
     }
+    // Меню закрывает поле: пробел и стрелки под ним ничего не делают
+    if (selection.openMenu) return
     if (!store.isPlaying()) return
 
     if ((event.key === ' ' || event.code === 'Space') && !isButtonFocused) {
@@ -63,18 +75,19 @@ export function useKeyboard(): void {
     }
     // По положению клавиши (event.code), а не по букве: на русской раскладке там «Е»
     if (event.code === 'KeyT') {
-      store.cycleTargetMode()
+      selection.cycleTargetMode()
       return
     }
     const direction = ARROW_DIRECTIONS[event.key]
     if (direction) {
       event.preventDefault()
-      store.moveCursor(direction.deltaCol, direction.deltaRow)
+      selection.moveCursor(direction.deltaCol, direction.deltaRow)
       return
     }
-    if (event.key === 'Enter' && store.cursorCell && !isButtonFocused) {
+    if (event.key === 'Enter' && selection.cursorCell && !isButtonFocused) {
       event.preventDefault()
-      store.confirmCursor()
+      // Shift — оставить стража «в руке» и ставить подряд
+      selection.confirmCursor(event.shiftKey)
     }
   }
 

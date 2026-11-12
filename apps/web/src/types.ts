@@ -10,8 +10,6 @@ export interface BoardView {
   armedTowerId: string | null
   /** Клетка выбранной поставленной башни */
   selectedTowerCell: Cell | null
-  /** Выбранная пустая плита («что сюда поставить?») */
-  selectedEmptyCell: Cell | null
   /** Клетка под мышью */
   hoverCell: Cell | null
   /** Клавиатурный курсор (стрелки) */

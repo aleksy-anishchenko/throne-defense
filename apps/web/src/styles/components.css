@@ -1,6 +1,8 @@
 /* Части панели: карточка башни, магазин, кнопки */
+/* Панель башни — только с боковой панелью (responsive.css). На телефоне то же самое
+   лежит в меню TowerSheet */
 .tower-info {
-  display: flex;
+  display: none;
   align-items: stretch;
   gap: 6px;
 }
@@ -43,9 +45,10 @@
   cursor: pointer;
 }
 
-/* Магазин на телефоне: три ряда по три карточки (башен девять), значок слева от имени и цены */
+/* Магазин (карточки) — только с боковой панелью, там его показывает responsive.css.
+   На телефоне вместо него кнопка «Выбрать стража» и меню (ниже) */
 .shop {
-  display: grid;
+  display: none;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-auto-rows: minmax(0, 1fr);
   gap: 6px;
@@ -118,6 +121,8 @@
 .controls {
   display: flex;
   gap: 6px;
+  /* Ширину строки спрашивают container-запросы кнопки слева (ниже) */
+  container: controls / inline-size;
 }
 .btn {
   min-height: 46px;
@@ -175,4 +180,242 @@
 }
 .keys {
   display: none;
+}
+
+/* Кнопка слева в нижней строке (телефон): «Стражи» или «Действие» (ActionToggle.vue).
+   Размер у обеих один и тот же и не зависит от значка и подписи — строка не прыгает */
+.shop-toggle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 118px;
+  height: 46px;
+  padding: 0 8px;
+  background: var(--slab);
+  border: 2px solid var(--edge);
+  border-radius: 6px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.shop-toggle.armed {
+  border-color: var(--gold);
+  background: var(--slab-hi);
+}
+.shop-toggle-icon {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  color: var(--parch-dim);
+}
+/* Телефон уже 480 px: в строку должны влезть кнопка слева (она крупная), «Начать волну» и три
+   кнопки-значка. Поэтому «Начать волну» и значки поменьше */
+@media (max-width: 479px) {
+  .controls .btn.icon {
+    width: 40px;
+  }
+  .controls .btn.primary {
+    padding: 0 6px;
+    font-size: 0.9rem;
+  }
+}
+/* Совсем узкий ряд (меряется ширина самой строки, а не экрана): подпись кнопки слева уже не
+   помещается — остаётся один значок, у обеих кнопок тоже одного размера (aria-label есть) */
+@container controls (max-width: 359px) {
+  .shop-toggle {
+    width: 48px;
+    padding: 0;
+  }
+  .shop-toggle-label {
+    display: none;
+  }
+}
+
+/* Меню выбора стража на телефоне: выезжает снизу, список с описаниями и характеристиками */
+.shop-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Меню «парит» над низом экрана, а не прилипает к краям: отступ со всех сторон
+     (и не меньше выреза и полоски жестов на телефоне) */
+  padding: 12px max(10px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom) + 16px)
+    max(10px, env(safe-area-inset-left));
+}
+.shop-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 11, 20, 0.62);
+}
+.shop-drawer-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 560px);
+  max-height: min(100%, 700px);
+  padding: 10px 12px 12px;
+  background: var(--wall);
+  border: 2px solid var(--edge);
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
+  animation: drawer-up 0.18s ease-out;
+}
+.shop-drawer-body:focus {
+  outline: none;
+}
+@keyframes drawer-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+.shop-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 8px;
+}
+.shop-drawer-header h2 {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--parch-dim);
+}
+.shop-drawer-close {
+  width: 44px;
+  height: 44px;
+  margin: -6px -8px -6px 0;
+  background: none;
+  border: 0;
+  font-size: 1.2rem;
+  color: var(--parch-dim);
+  cursor: pointer;
+}
+.shop-drawer-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Место под полосу прокрутки: она не должна лежать на карточках */
+  scrollbar-gutter: stable;
+  padding-right: 8px;
+}
+.drawer-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'ico nm cost'
+    'ico ds ds'
+    'ico st st'
+    'ico poor poor';
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px 9px 8px;
+  background: var(--slab);
+  border: 2px solid var(--edge);
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+.drawer-card[aria-pressed='true'] {
+  border-color: var(--gold);
+  background: var(--slab-hi);
+}
+.drawer-card-icon {
+  grid-area: ico;
+  align-self: start;
+  width: 44px;
+  height: 44px;
+}
+.drawer-card-name {
+  grid-area: nm;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+.drawer-card-cost {
+  grid-area: cost;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.drawer-card-cost svg {
+  width: 14px;
+  height: 14px;
+}
+.drawer-card-description {
+  grid-area: ds;
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+.drawer-card-description::first-letter {
+  text-transform: uppercase;
+}
+.drawer-card-stats {
+  grid-area: st;
+  font-size: 0.88rem;
+  line-height: 1.25;
+  color: var(--parch-dim);
+}
+.drawer-card-poor {
+  grid-area: poor;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ember);
+}
+.drawer-card.poor .drawer-card-cost {
+  color: var(--parch-dim);
+}
+.drawer-card.poor .drawer-card-icon {
+  opacity: 0.5;
+}
+
+/* Меню башни: короткое описание, характеристики, кнопки */
+.tower-drawer .shop-drawer-backdrop {
+  /* Поле под меню остаётся видно: смотришь, что делает улучшение */
+  background: rgba(10, 11, 20, 0.35);
+}
+/* Башня в нижней половине поля — меню наверху, под шапкой, чтобы её не закрывать */
+.tower-drawer.top {
+  align-items: flex-start;
+  padding-top: calc(max(12px, env(safe-area-inset-top)) + var(--board-slack, 0px) + 44px);
+}
+.tower-sheet-stats {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--parch-dim);
+}
+.tower-sheet-stats .target-mode {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.tower-sheet-actions {
+  display: flex;
+  gap: 8px;
+}
+.tower-sheet-actions .btn.action {
+  flex: 1 1 0;
+  min-height: 54px;
 }

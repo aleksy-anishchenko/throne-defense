@@ -172,9 +172,52 @@ async function checkStartButtonVisible(page) {
   )
 }
 
+/** Нижняя строка кнопок помещается по ширине (на телефоне вертикально — одна строка) */
+async function checkControlsFit(page) {
+  const { width } = page.viewportSize()
+  const fits = await page.evaluate(() => {
+    const controls = document.querySelector('.controls').getBoundingClientRect()
+    return [...document.querySelectorAll('.controls > *')]
+      .filter((element) => getComputedStyle(element).display !== 'none')
+      .every((element) => {
+        const bounds = element.getBoundingClientRect()
+        return bounds.left >= controls.left - 0.5 && bounds.right <= controls.right + 0.5
+      })
+  })
+  check(`${width}: кнопки управления помещаются в строку`, fits)
+}
+
 /** Все шесть карточек магазина на экране, и имя башни в каждой влезло целиком (без «…») */
 async function checkShopCardsVisible(page) {
   const { width, height } = page.viewportSize()
+  // Телефон в вертикальной раскладке: кнопка на экране, а девять стражей — в меню
+  if (await page.locator('.shop-toggle').isVisible()) {
+    const toggle = await page.locator('.shop-toggle').boundingBox()
+    await page.locator('.shop-toggle').click()
+    // Меню выезжает снизу: размеры берём, когда оно доехало
+    await page.waitForTimeout(400)
+    const names = await page.locator('.drawer-card').evaluateAll((elements) =>
+      elements.map((card) => {
+        const bounds = card.getBoundingClientRect()
+        return { left: bounds.left, right: bounds.right }
+      }),
+    )
+    const drawerBox = await page.locator('.shop-drawer-body').boundingBox()
+    await page.keyboard.press('Escape')
+    check(
+      `${width}×${height}: кнопка «Выбрать стража» на экране, в меню все карточки (${names.length}) по ширине`,
+      toggle !== null &&
+        toggle.x >= 0 &&
+        toggle.x + toggle.width <= width &&
+        toggle.y + toggle.height <= height &&
+        names.length === 9 &&
+        names.every((card) => card.left >= 0 && card.right <= width) &&
+        drawerBox.y >= 0 &&
+        drawerBox.y + drawerBox.height <= height + 1,
+      JSON.stringify({ toggle, drawerBox }),
+    )
+    return
+  }
   const cards = await page.locator('.shop .card').evaluateAll((elements) =>
     elements.map((card) => {
       const bounds = card.getBoundingClientRect()
@@ -265,6 +308,20 @@ async function desktop(browser, url) {
     (await page.locator('#hint').textContent()) === 'Выберите стража и нажмите на плиту у ковра',
   )
 
+  // Курсор над полем: рука только там, где нажатие что-то делает
+  const boardCursor = () =>
+    page.locator('#board').evaluate((element) => getComputedStyle(element).cursor)
+  const hoverCell = async (col, row) => {
+    const bounds = await page.locator('#board').boundingBox()
+    await page.mouse.move(
+      bounds.x + ((col + 0.5) / COLS) * bounds.width,
+      bounds.y + ((row + 0.5) / ROWS) * bounds.height,
+    )
+    await waitForFrames(page)
+  }
+  await hoverCell(5, 11)
+  check('над пустой плитой без стража в руке курсор обычный', (await boardCursor()) === 'default')
+
   // Постройка мышью
   const archerCard = page.getByRole('button', { name: /Лучник/ })
   await archerCard.click()
@@ -275,10 +332,24 @@ async function desktop(browser, url) {
     (await page.locator('#hint').innerText()).startsWith('Нажмите на свободную плиту'),
     await page.locator('#hint').innerText(),
   )
+  await hoverCell(5, 11)
+  check('со стражем в руке над свободной плитой — рука', (await boardCursor()) === 'pointer')
+  await hoverCell(4, 11)
+  check('над ковром (строить нельзя) — обычный курсор', (await boardCursor()) === 'default')
   await clickCell(page, 5, 11, 'right')
   await clickCell(page, 5, 11, 'middle')
   check('правая и средняя кнопки не строят', (await readGameSnapshot(page)).towers.length === 0)
   await clickCell(page, 5, 11)
+  check(
+    'после постройки страж убран из «руки»',
+    (await archerCard.getAttribute('aria-pressed')) === 'false',
+  )
+  await clickCell(page, 2, 9)
+  check(
+    'нажатие на свободную плиту без стража ничего не строит',
+    (await readGameSnapshot(page)).towers.length === 1,
+  )
+  await archerCard.click()
   await clickCell(page, 2, 9)
   let snapshot = await readGameSnapshot(page)
   check(
@@ -287,7 +358,19 @@ async function desktop(browser, url) {
     JSON.stringify(snapshot),
   )
 
+  // Золота 50, Баллиста стоит 130: в руку не берётся, сразу отказ
+  const ballistaCard = page.getByRole('button', { name: /Баллиста/ })
+  await ballistaCard.click()
+  await waitForFrames(page)
+  check(
+    'без золота страж не берётся в руку, есть тост',
+    (await ballistaCard.getAttribute('aria-pressed')) === 'false' &&
+      !!(await page.locator('.toast.visible').textContent())?.includes('Баллиста стоит 130'),
+  )
+
   // Выбор, улучшение, продажа
+  await hoverCell(5, 11)
+  check('над башней — рука (её можно выбрать)', (await boardCursor()) === 'pointer')
   await page.keyboard.press('Escape')
   await waitForFrames(page)
   check('Escape снял выбор в магазине', (await archerCard.getAttribute('aria-pressed')) === 'false')
@@ -337,6 +420,35 @@ async function desktop(browser, url) {
     snapshot.towers.includes('archer0@5,11') && snapshot.gold === 50,
     JSON.stringify(snapshot),
   )
+  check(
+    'после постройки с клавиатуры страж тоже убран из «руки»',
+    (await archerCard.getAttribute('aria-pressed')) === 'false',
+  )
+  await page.keyboard.press('Escape')
+
+  // Shift+цифра выбирает стража так же, как цифра (на клавише «1» с Shift символ «!»)
+  await page.keyboard.down('Shift')
+  await page.keyboard.press('1')
+  await page.keyboard.up('Shift')
+  await waitForFrames(page)
+  check('Shift+1 выбрал стража', (await archerCard.getAttribute('aria-pressed')) === 'true')
+  await page.keyboard.press('Escape')
+
+  // Shift: страж остаётся «в руке», можно ставить подряд (потом башню возвращаем — золото прежнее)
+  await archerCard.click()
+  await page.keyboard.down('Shift')
+  await clickCell(page, 3, 9)
+  await page.keyboard.up('Shift')
+  check(
+    'Shift: построил и страж остался «в руке»',
+    (await readGameSnapshot(page)).towers.includes('archer0@3,9') &&
+      (await archerCard.getAttribute('aria-pressed')) === 'true',
+  )
+  await page.keyboard.press('Escape')
+  await clickCell(page, 3, 9)
+  await page.getByRole('button', { name: /Вернуть/ }).click()
+  await waitForFrames(page)
+  check('Shift-башню вернули, золото прежнее', (await readGameSnapshot(page)).gold === 50)
   await page.keyboard.press('Escape')
 
   // Волна: пробел, скорость ×3. Башня «в руке» перед волной — выбор должен сняться.
@@ -404,6 +516,13 @@ async function desktop(browser, url) {
     timeBefore === timeAfter && (await readGameSnapshot(page)).paused,
   )
   check('подсказка паузы', (await page.locator('#hint').textContent()).startsWith('Пауза'))
+  await archerCard.click()
+  check(
+    'на паузе страж «в руке» важнее подсказки паузы',
+    (await page.locator('#hint').innerText()).startsWith('Нажмите на свободную плиту'),
+    await page.locator('#hint').innerText(),
+  )
+  await page.keyboard.press('Escape')
   music = await readMusic(page)
   check(
     'в волне музыка боевая, на паузе — приглушённая',
@@ -702,11 +821,52 @@ async function phone(browser, url) {
   watchErrors(page, 'телефон')
   await page.goto(url)
   await page.getByRole('button', { name: 'Играть' }).tap()
-  await page.getByRole('button', { name: /Огневик/ }).tap()
+  const panelHeight = () =>
+    page.evaluate(() => document.querySelector('.panel').getBoundingClientRect().height)
+  const idlePanelHeight = await panelHeight()
+
+  // Вместо девяти карточек — кнопка; карточки с описанием и характеристиками — в меню
+  const shopToggle = page.getByRole('button', { name: 'Выбрать стража' })
   check(
-    'на телефоне описаний в карточках нет — подсказка показывает описание',
+    'на телефоне вместо карточек кнопка «Выбрать стража»',
+    (await shopToggle.isVisible()) && (await page.locator('.shop .card').first().isHidden()),
+  )
+  await shopToggle.tap()
+  const drawer = page.getByRole('dialog', { name: 'Выбор стража' })
+  check('кнопка открыла меню стражей', await drawer.isVisible())
+  // Меню модальное: Tab ходит по кругу внутри него и не уходит на кнопки под ним
+  let isFocusInside = true
+  for (let i = 0; i < 14; i++) {
+    await page.keyboard.press('Tab')
+    isFocusInside &&= await page.evaluate(
+      () => !!document.activeElement?.closest('[role="dialog"]'),
+    )
+  }
+  check('Tab не выводит фокус из меню стражей', isFocusInside)
+  const drawerText = await drawer.innerText()
+  check(
+    'в меню до покупки есть описание и характеристики',
+    drawerText.includes('Поджигает толпу') && /урон \d/.test(drawerText),
+    drawerText.slice(0, 200),
+  )
+  await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  check('Escape закрыл меню', (await page.getByRole('dialog').count()) === 0)
+  await shopToggle.tap()
+  await page.locator('.shop-drawer-backdrop').tap({ position: { x: 10, y: 10 } })
+  check('нажатие мимо меню закрыло его', (await page.getByRole('dialog').count()) === 0)
+
+  await shopToggle.tap()
+  await drawer.getByRole('button', { name: /Огневик/ }).tap()
+  check('выбор в меню закрыл его', (await page.getByRole('dialog').count()) === 0)
+  check(
+    'на телефоне подсказка показывает описание стража в руке',
     (await page.locator('#hint').innerText()).startsWith('Огневик:'),
     await page.locator('#hint').innerText(),
+  )
+  check(
+    'кнопка показывает стража в руке (значок и подпись для скринридера)',
+    (await page.locator('.shop-toggle.armed').getAttribute('aria-label')).includes('Огневик'),
   )
   const bounds = await page.locator('#board').boundingBox()
   await page.touchscreen.tap(
@@ -722,18 +882,90 @@ async function phone(browser, url) {
       .then(() => true)
       .catch(() => false),
   )
+  check(
+    'после постройки страж убран из руки, кнопка снова «Выбрать стража»',
+    await shopToggle.isVisible(),
+  )
+  // Выбранная башня: панели башни внизу нет (она в меню), высота панели та же, поле не прыгает
+  await page.touchscreen.tap(
+    bounds.x + (5.5 / COLS) * bounds.width,
+    bounds.y + (11.5 / ROWS) * bounds.height,
+  )
+  await waitForFrames(page)
+  check('панель башни на телефоне внизу скрыта', await page.locator('.tower-info').isHidden())
+  check(
+    'выбор башни не меняет высоту панели',
+    Math.abs((await panelHeight()) - idlePanelHeight) < 1,
+    `${idlePanelHeight} → ${await panelHeight()}`,
+  )
+  const towerToggle = page.getByRole('button', { name: 'Действия с башней' })
+  check('при выбранной башне кнопка слева — действия с башней', await towerToggle.isVisible())
+  await towerToggle.tap()
+  const towerMenu = page.getByRole('dialog', { name: /Башня: Огневик/ })
+  check('кнопка открыла меню башни', await towerMenu.isVisible())
+  const towerMenuText = await towerMenu.innerText()
+  check(
+    'в меню башни есть характеристики и кнопки, лишнего нет',
+    !towerMenuText.includes('Поджигает') &&
+      !towerMenuText.includes('Выбрать стража') &&
+      /урон \d/.test(towerMenuText) &&
+      towerMenuText.includes('Улучшить') &&
+      towerMenuText.includes('Вернуть'),
+    towerMenuText,
+  )
+  // Золота 60, улучшение стоит 80: отказ виден поверх меню
+  await towerMenu.getByRole('button', { name: /Улучшить/ }).tap()
+  await waitForFrames(page)
+  check(
+    'в меню башни отказ «не хватает золота» виден',
+    !!(await page.locator('.toast.visible').textContent())?.includes('Не хватает золота'),
+  )
+  await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  check(
+    'Escape закрыл меню башни, но башня осталась выбранной',
+    (await page.getByRole('dialog').count()) === 0 && (await towerToggle.isVisible()),
+  )
+  await towerToggle.tap()
+  await towerMenu.getByRole('button', { name: /Вернуть/ }).tap()
+  await waitForFrames(page)
+  check(
+    '«Вернуть» в меню: башни нет, меню закрылось, кнопка снова «Стражи»',
+    (await readGameSnapshot(page)).towers.length === 0 &&
+      (await page.getByRole('dialog').count()) === 0 &&
+      (await shopToggle.isVisible()),
+  )
 
   // Раскладка: кнопки управления не уезжают за край экрана ни в какой ориентации
   await checkStartButtonVisible(page)
+  await checkControlsFit(page)
   await checkShopCardsVisible(page)
   await page.setViewportSize({ width: 320, height: 568 }) // самый узкий телефон
   await waitForFrames(page)
   await checkStartButtonVisible(page)
+  await checkControlsFit(page)
   await checkShopCardsVisible(page)
   await page.setViewportSize({ width: 932, height: 430 }) // iPhone Plus/Max набок
   await waitForFrames(page)
   await checkStartButtonVisible(page)
   await checkShopCardsVisible(page)
+  // Почти квадратное окно: по бокам поля пусто — там боковая панель с карточками, а не меню
+  await page.setViewportSize({ width: 983, height: 987 })
+  await waitForFrames(page)
+  check(
+    '983×987: боковая панель с карточками, кнопки «Выбрать стража» нет',
+    (await page.locator('.shop-toggle').isHidden()) &&
+      (await page.locator('.shop .card').first().isVisible()),
+  )
+  await checkStartButtonVisible(page)
+  await checkShopCardsVisible(page)
+  // А планшет вертикально остаётся с нижней панелью
+  await page.setViewportSize({ width: 768, height: 1024 })
+  await waitForFrames(page)
+  check(
+    '768×1024: нижняя панель, кнопка «Выбрать стража»',
+    await page.locator('.shop-toggle').isVisible(),
+  )
   await page.close()
 }
 

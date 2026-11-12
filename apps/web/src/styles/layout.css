@@ -5,8 +5,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+  /* --board-slack: лишняя высота пополам сверху и снизу (useGameLoop.ts) */
+  padding: calc(env(safe-area-inset-top) + var(--board-slack, 0px)) env(safe-area-inset-right)
+    calc(env(safe-area-inset-bottom) + var(--board-slack, 0px)) env(safe-area-inset-left);
 }
 
 /* Верхняя строка */
@@ -73,6 +74,10 @@
   box-shadow:
     0 0 0 2px var(--edge),
     0 10px 30px rgba(8, 9, 18, 0.6);
+  /* Рука — только там, где нажатие что-то делает (класс clickable, см. selection.isBoardClickable) */
+  cursor: default;
+}
+#board.clickable {
   cursor: pointer;
 }
 .toast {
@@ -90,6 +95,8 @@
   transition: opacity 0.15s;
   pointer-events: none;
   text-align: center;
+  /* Выше меню стражей: отказ («не хватает золота») виден и поверх него */
+  z-index: 6;
 }
 .toast.visible {
   opacity: 1;
@@ -102,6 +109,11 @@
   gap: 6px;
   padding: 4px 10px 10px;
 }
+/* Всё в одну колонку явно: без этого блоки, делящие ячейки сетки, браузер выносит
+   во вторую, неявную колонку */
+.panel > * {
+  grid-column: 1;
+}
 #hint {
   grid-row: 1;
   margin: 0;
@@ -113,18 +125,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.shop,
-.tower-info {
-  grid-row: 2;
-  /* Три ряда карточек магазина. Панель башни той же высоты — поле не прыгает, когда
-     выбираешь башню */
-  height: 112px;
-}
+/* Телефон: подсказка и одна строка кнопок. Выбор стража и действия с башней — в меню
+   (кнопка слева в строке), поэтому высота панели всегда одна и поле не прыгает */
 .controls {
-  grid-row: 3;
-}
-.panel.has-selected-tower .shop {
-  display: none;
+  grid-row: 2;
 }
 /* Подсказка для башни «в руке»: по умолчанию — описание (в карточках его нет) */
 .hint-armed-action {

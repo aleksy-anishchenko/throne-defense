@@ -4,6 +4,8 @@
 import { onMounted, onUnmounted, type ShallowRef } from 'vue'
 import { createRenderer, type Renderer } from '@/render/renderer'
 import { useGameStore } from '@/stores/game'
+import { useSelectionStore } from '@/stores/selection'
+import { SIDE_PANEL_QUERY } from '@/utils/layout'
 
 /** Самый длинный кадр для симуляции, в секундах */
 const MAX_FRAME_DT = 0.1
@@ -19,6 +21,7 @@ export function useGameLoop(
   boardCanvas: Readonly<ShallowRef<HTMLCanvasElement | null>>,
 ): void {
   const store = useGameStore()
+  const selection = useSelectionStore()
 
   let renderer: Renderer | null = null
   let resizeObserver: ResizeObserver | null = null
@@ -35,13 +38,35 @@ export function useGameLoop(
     const realDt = Math.min(MAX_FRAME_DT, (timestamp - lastTimestamp) / MS_PER_SECOND || 0)
     lastTimestamp = timestamp
     store.game.advance(realDt)
-    renderer?.draw(realDt, store.boardView())
+    renderer?.draw(realDt, selection.boardView())
     store.syncHud()
+    selection.sync()
   }
+
+  /**
+   * Лишняя высота, которую делим поровну сверху и снизу (px, на каждую сторону). Поле на телефоне
+   * упирается в ширину, и высота остаётся: без этого она лежала бы пустыми полосами между шапкой,
+   * полем и кнопками. Теперь шапка, поле и кнопки — один блок по центру, а лишнее — поля экрана
+   */
+  let slackPadding = 0
+  const sidePanelQuery = matchMedia(SIDE_PANEL_QUERY)
 
   function fitBoard() {
     const bounds = stageElement.value!.getBoundingClientRect()
-    renderer?.resize(bounds.width, bounds.height)
+    // Высота «с запасом»: поле считается без учёта уже отданных полей, иначе оно бы сжималось
+    const fullHeight = bounds.height + 2 * slackPadding
+    renderer?.resize(bounds.width, fullHeight)
+    if (!renderer) return
+    const boardHeight = boardCanvas.value!.getBoundingClientRect().height
+    // С боковой панелью поле стоит в своей колонке — там лишнее место не делим
+    const wanted = sidePanelQuery.matches
+      ? 0
+      : Math.max(0, Math.floor((fullHeight - boardHeight) / 2))
+    if (wanted !== slackPadding) {
+      slackPadding = wanted
+      // Сторы и компоненты не нужны: это только раскладка. Стили читают переменную в layout.css
+      document.documentElement.style.setProperty('--board-slack', `${wanted}px`)
+    }
   }
 
   /**

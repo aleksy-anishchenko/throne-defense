@@ -4,8 +4,10 @@ import { useTemplateRef } from 'vue'
 import { useBoardPointer } from '@/composables/useBoardPointer'
 import { useGameLoop } from '@/composables/useGameLoop'
 import { useGameStore } from '@/stores/game'
+import { useSelectionStore } from '@/stores/selection'
 
 const store = useGameStore()
+const selection = useSelectionStore()
 const stageElement = useTemplateRef('stageElement')
 const boardCanvas = useTemplateRef('boardCanvas')
 
@@ -18,6 +20,7 @@ const { onPointerDown, onPointerMove, onPointerLeave } = useBoardPointer(boardCa
     <canvas
       id="board"
       ref="boardCanvas"
+      :class="{ clickable: selection.isBoardClickable }"
       tabindex="0"
       aria-label="Тронный зал: игровое поле"
       @pointerdown="onPointerDown"

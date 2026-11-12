@@ -2,6 +2,7 @@
 
 import type { ShallowRef } from 'vue'
 import { useGameStore } from '@/stores/game'
+import { useSelectionStore } from '@/stores/selection'
 import type { Cell } from '@/types'
 
 /** event.button основной кнопки: левая кнопка мыши, касание пальцем, кончик пера */
@@ -10,6 +11,7 @@ const PRIMARY_BUTTON = 0
 /** Обработчики событий указателя для canvas поля */
 export function useBoardPointer(boardCanvas: Readonly<ShallowRef<HTMLCanvasElement | null>>) {
   const store = useGameStore()
+  const selection = useSelectionStore()
 
   function cellFromPointer(event: PointerEvent): Cell {
     const bounds = boardCanvas.value!.getBoundingClientRect()
@@ -25,19 +27,20 @@ export function useBoardPointer(boardCanvas: Readonly<ShallowRef<HTMLCanvasEleme
     // isPrimary отсекает второй палец при касании двумя пальцами
     if (!event.isPrimary || event.button !== PRIMARY_BUTTON) return
     event.preventDefault()
-    store.cursorCell = null
+    selection.cursorCell = null
     const { col, row } = cellFromPointer(event)
-    store.tapCell(col, row)
+    // Shift — оставить стража «в руке» и ставить подряд
+    selection.tapCell(col, row, event.shiftKey)
   }
 
   function onPointerMove(event: PointerEvent) {
     if (event.pointerType !== 'mouse') return
     const cell = cellFromPointer(event)
-    store.hoverCell = store.game.isInsideField(cell.col, cell.row) ? cell : null
+    selection.hoverCell = store.game.isInsideField(cell.col, cell.row) ? cell : null
   }
 
   function onPointerLeave() {
-    store.hoverCell = null
+    selection.hoverCell = null
   }
 
   return { onPointerDown, onPointerMove, onPointerLeave }

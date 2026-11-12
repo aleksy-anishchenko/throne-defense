@@ -1,6 +1,6 @@
 // Рисует поле каждый кадр. Ничего не меняет в игре — только смотрит на game.state.
 
-import { TOWERS, towerStats, type Game, type Tower } from '@throne/game'
+import { TOWERS, towerStats, type Game, type Tower, type TowerDef } from '@throne/game'
 import type { BoardView, Cell } from '@/types'
 import { createEffects } from './effects'
 import { drawEnemy, getEnemyArt } from './enemies'
@@ -23,6 +23,11 @@ const MAX_PIXEL_RATIO = 3
 const MIN_CELL_CSS_PX = 16
 /** Отступ вокруг поля, CSS-пикселей */
 const BOARD_MARGIN_CSS_PX = 10
+/** Дальность на высшей ступени, клеток */
+const maxTierRange = (def: TowerDef): number => def.tiers[def.tiers.length - 1].range
+/** Кольцо максимальной дальности не рисуем, если оно почти совпадает с текущим (клеток) */
+const MIN_MAX_RANGE_DIFFERENCE = 0.01
+
 /** Размер клетки до первого resize, CSS-пикселей */
 const INITIAL_CELL_CSS_PX = 40
 /** Башня рисуется «готовой к выстрелу», когда осталось меньше этой доли перезарядки */
@@ -79,8 +84,21 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     ].join('|')
   }
 
-  /** isAllowed = false — красная подсветка: поставить нельзя, не хватает золота */
-  function drawRange(x: number, y: number, range: number, isAllowed: boolean) {
+  /**
+   * isAllowed = false — красная подсветка: поставить нельзя, не хватает золота.
+   * maxRange — дальность на высшей ступени: рисуется бледным частым пунктиром под основным
+   * кругом, чтобы было видно, насколько башня «вырастет». Только у призрака стража «в руке»;
+   * не больше текущей — не рисуется
+   */
+  function drawRange(x: number, y: number, range: number, isAllowed: boolean, maxRange = range) {
+    if (maxRange - range > MIN_MAX_RANGE_DIFFERENCE) {
+      circle(ctx, x, y, maxRange)
+      ctx.strokeStyle = isAllowed ? 'rgba(227,178,74,.3)' : 'rgba(240,110,80,.3)'
+      ctx.lineWidth = 0.025
+      ctx.setLineDash([0.04, 0.1])
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
     ctx.fillStyle = isAllowed ? 'rgba(243,233,210,.07)' : 'rgba(240,90,70,.08)'
     circle(ctx, x, y, range)
     ctx.fill()
@@ -101,15 +119,6 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         ctx.fill()
       }
     }
-  }
-
-  /** Золотая пунктирная рамка вокруг выбранной пустой плиты */
-  function drawSelectedEmptyCell(cell: Cell) {
-    ctx.strokeStyle = GOLD
-    ctx.lineWidth = 0.05
-    ctx.setLineDash([0.16, 0.1])
-    ctx.strokeRect(cell.col + 0.07, cell.row + 0.07, 0.86, 0.86)
-    ctx.setLineDash([])
   }
 
   function drawTowers(time: number, selectedTower: Tower | null | undefined) {
@@ -154,6 +163,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       ghostCell.row + CELL_CENTER,
       def.tiers[0].range,
       canAfford,
+      maxTierRange(def),
     )
     ctx.save()
     ctx.translate(ghostCell.col + CELL_CENTER, ghostCell.row + CELL_CENTER)
@@ -239,13 +249,13 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
 
       const isPlaying = game.isPlaying()
 
-      if (isPlaying && (boardView.armedTowerId || boardView.selectedEmptyCell)) drawFreeCellDots()
-      if (boardView.selectedEmptyCell) drawSelectedEmptyCell(boardView.selectedEmptyCell)
+      if (isPlaying && boardView.armedTowerId) drawFreeCellDots()
       const selectedTower =
         boardView.selectedTowerCell &&
         game.towerAt(boardView.selectedTowerCell.col, boardView.selectedTowerCell.row)
       if (selectedTower) {
         // Выбранная башня: подсветка всегда обычная (не красная)
+        // Только то, что есть по факту: максимум нужен, пока стража выбирают для постройки
         drawRange(selectedTower.x, selectedTower.y, towerStats(selectedTower).range, true)
       }
 

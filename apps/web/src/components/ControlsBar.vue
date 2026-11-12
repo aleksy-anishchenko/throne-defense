@@ -2,6 +2,7 @@
 import { TOWER_LIST } from '@throne/game'
 import { MAX_HOTKEY_DIGIT } from '@/composables/useKeyboard'
 import { useGameStore } from '@/stores/game'
+import ActionToggle from './ActionToggle.vue'
 
 const store = useGameStore()
 const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
@@ -9,6 +10,7 @@ const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
 
 <template>
   <div class="controls">
+    <ActionToggle />
     <button
       class="btn primary grow"
       type="button"
@@ -51,7 +53,8 @@ const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
     </button>
     <p class="keys">
       Клавиши: 1–{{ lastHotkeyDigit }} выбирают стража, пробел начинает волну и ставит паузу,
-      стрелки и Enter ставят стража без мыши, T меняет цель выбранного стража.
+      стрелки и Enter ставят стража без мыши, Shift оставляет стража «в руке» — можно ставить
+      подряд, T меняет цель выбранного стража.
     </p>
   </div>
 </template>

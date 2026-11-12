@@ -8,30 +8,15 @@
 // в реактивный объект hud (функция syncHud). Vue перерисует только то, что реально поменялось.
 
 import { isValidPlayerName, normalizePlayerName, type LeaderboardEntry } from '@throne/contracts'
-import {
-  BALANCE_VERSION,
-  ENEMIES,
-  LEVELS,
-  MAX_SPEED,
-  TARGET_MODES,
-  TOWERS,
-  createGame,
-  isFullRefund,
-  refundFor,
-  upgradeCost,
-  type Phase,
-  type TargetMode,
-  type Tower,
-} from '@throne/game'
+import { BALANCE_VERSION, LEVELS, MAX_SPEED, TOWERS, createGame, type Phase } from '@throne/game'
 import { defineStore } from 'pinia'
-import { computed, markRaw, nextTick, reactive, ref, watch } from 'vue'
+import { markRaw, nextTick, reactive, ref, watch } from 'vue'
 import { fetchLeaderboard, submitRun } from '@/api/leaderboard'
 import { audioEngine } from '@/audio/engine'
 import { connectGameSounds, musicMoodFor } from '@/audio/gameSounds'
 import { music } from '@/audio/music'
 import { sfx } from '@/audio/sfx'
-import type { BoardView, Cell, OverlayScreen } from '@/types'
-import { plural } from '@/utils/format'
+import type { OverlayScreen } from '@/types'
 import {
   loadBest,
   loadPlayerName,
@@ -55,14 +40,10 @@ type SubmissionStatus =
   /** Нет сети или сервер не ответил — игра идёт как раньше, просто без топа */
   | 'failed'
 
-const isSameCell = (cell: Cell | null, col: number, row: number) =>
-  cell !== null && cell.col === col && cell.row === row
-
 export const useGameStore = defineStore('game', () => {
   // markRaw — «Vue, не трогай этот объект»
   const game = markRaw(createGame(LEVELS[0]))
   const state = game.state
-  const { cols, rows } = game.level.def
 
   // ---------------------------------------------------------------- Снимок для интерфейса
 
@@ -79,15 +60,6 @@ export const useGameStore = defineStore('game', () => {
     /** Врагов осталось в волне */
     enemiesLeft: 0,
     towerCount: 0,
-    /** Тип и ступень улучшения выбранной башни (null — ничего не выбрано) */
-    selectedTowerId: null as string | null,
-    selectedTowerTier: 0,
-    /** Кого выбранная башня выбирает целью */
-    selectedTowerTargetMode: 'first' as TargetMode,
-    /** Сколько вернут за выбранную башню при продаже */
-    selectedTowerRefund: 0,
-    /** Вернут ли всё вложенное: башня ещё не была в бою */
-    isSelectedTowerFullRefund: false,
   })
 
   /** Вызывается каждый кадр. Присваивание того же значения Vue не замечает — это дёшево */
@@ -102,40 +74,12 @@ export const useGameStore = defineStore('game', () => {
     hud.speed = state.speed
     hud.enemiesLeft = game.enemiesLeft()
     hud.towerCount = state.towers.length
-
-    const tower = selectedTower()
-    // Так задумано: если выбранной башни уже нет (её продали), выбор снимается сам
-    if (selectedTowerCell.value && !tower) selectedTowerCell.value = null
-    hud.selectedTowerId = tower ? tower.def.id : null
-    hud.selectedTowerTier = tower ? tower.tier : 0
-    hud.selectedTowerTargetMode = tower ? tower.targetMode : 'first'
-    hud.selectedTowerRefund = tower ? refundFor(tower) : 0
-    hud.isSelectedTowerFullRefund = tower ? isFullRefund(tower) : false
   }
 
-  // ---------------------------------------------------------------- Выбор игрока
+  // ---------------------------------------------------------------- Экран поверх поля
 
   // Какой экран показан поверх поля (меню, поражение, победа) или null
   const screen = ref<OverlayScreen>('menu')
-  const armedTowerId = ref<string | null>(null)
-  const selectedTowerCell = ref<Cell | null>(null)
-  const selectedEmptyCell = ref<Cell | null>(null)
-  const cursorCell = ref<Cell | null>(null)
-  const hoverCell = ref<Cell | null>(null)
-
-  const selectedTower = (): Tower | undefined =>
-    selectedTowerCell.value
-      ? game.towerAt(selectedTowerCell.value.col, selectedTowerCell.value.row)
-      : undefined
-
-  /** Для рисования поля */
-  const boardView = (): BoardView => ({
-    armedTowerId: armedTowerId.value,
-    selectedTowerCell: selectedTowerCell.value,
-    selectedEmptyCell: selectedEmptyCell.value,
-    hoverCell: hoverCell.value,
-    cursorCell: cursorCell.value,
-  })
 
   // ---------------------------------------------------------------- Звук, тосты, рекорд
 
@@ -318,21 +262,22 @@ export const useGameStore = defineStore('game', () => {
 
   const isPlaying = () => game.isPlaying()
 
-  function clearSelection() {
-    armedTowerId.value = null
-    selectedTowerCell.value = null
-    selectedEmptyCell.value = null
-  }
+  /**
+   * Сколько раз начинали партию заново. Выбор игрока (stores/selection.ts) следит за этим
+   * числом и сам сбрасывается: игровой стор про выбор ничего не знает
+   */
+  const runCount = ref(0)
 
   function newGame() {
     game.reset()
-    clearSelection()
+    runCount.value++
     forgetFinishedRun()
     isNewBest.value = false
     screen.value = null
     syncHud()
   }
 
+  /** Построить стража; нехватка золота — отказ с тостом. true — построили */
   function tryBuild(towerId: string, col: number, row: number): boolean {
     const towerDef = TOWERS[towerId]
     if (state.gold < towerDef.cost) {
@@ -342,86 +287,8 @@ export const useGameStore = defineStore('game', () => {
     return game.build(towerId, col, row) !== null
   }
 
-  /** Нажали на карточку стража в магазине */
-  function chooseShopTower(towerId: string) {
-    if (!isPlaying()) return
-    const emptyCell = selectedEmptyCell.value
-    if (emptyCell && game.isCellFree(emptyCell.col, emptyCell.row)) {
-      if (tryBuild(towerId, emptyCell.col, emptyCell.row)) selectedEmptyCell.value = null
-      return
-    }
-    armedTowerId.value = armedTowerId.value === towerId ? null : towerId
-    selectedTowerCell.value = null
-  }
-
-  /** Нажали на клетку поля */
-  function tapCell(col: number, row: number) {
-    if (!isPlaying() || !game.isInsideField(col, row)) return
-    if (game.towerAt(col, row)) {
-      selectedTowerCell.value = isSameCell(selectedTowerCell.value, col, row) ? null : { col, row }
-      armedTowerId.value = null
-      selectedEmptyCell.value = null
-      return
-    }
-    selectedTowerCell.value = null
-    if (!game.isCellFree(col, row)) {
-      selectedEmptyCell.value = null
-      return
-    }
-    if (armedTowerId.value) {
-      tryBuild(armedTowerId.value, col, row)
-      return
-    }
-    selectedEmptyCell.value = isSameCell(selectedEmptyCell.value, col, row) ? null : { col, row }
-  }
-
-  // Проверка «партия идёт» — как в chooseShopTower и tapCell: кнопки под экраном итогов
-  // выключены (inert), но действие можно вызвать и не кнопкой
-  function upgradeSelected() {
-    const tower = selectedTower()
-    if (!tower || !isPlaying()) return
-    if (!game.upgrade(tower.col, tower.row) && upgradeCost(tower) !== null) {
-      rejectAction('Не хватает золота на улучшение')
-    }
-  }
-
-  function sellSelected() {
-    const tower = selectedTower()
-    if (!tower || !isPlaying()) return
-    game.sell(tower.col, tower.row)
-    selectedTowerCell.value = null
-  }
-
-  /** Переключить цель выбранной башни (умение баллисты): первый ↔ сильный */
-  function cycleTargetMode() {
-    const tower = selectedTower()
-    if (!tower || !isPlaying() || !tower.def.canChooseTarget) return
-    const nextIndex = (TARGET_MODES.indexOf(tower.targetMode) + 1) % TARGET_MODES.length
-    game.setTargetMode(tower.col, tower.row, TARGET_MODES[nextIndex])
-    syncHud()
-  }
-
-  function moveCursor(deltaCol: number, deltaRow: number) {
-    // Курсор ушёл с выбранной плиты — выбор снимаем: иначе цифра поставила бы стража
-    // на старую плиту, а не туда, где курсор
-    selectedEmptyCell.value = null
-    const current = cursorCell.value ?? { col: Math.floor(cols / 2), row: Math.floor(rows / 2) }
-    cursorCell.value = {
-      col: Math.max(0, Math.min(cols - 1, current.col + deltaCol)),
-      row: Math.max(0, Math.min(rows - 1, current.row + deltaRow)),
-    }
-  }
-
-  function confirmCursor() {
-    if (cursorCell.value) tapCell(cursorCell.value.col, cursorCell.value.row)
-  }
-
   function startWave() {
-    if (!game.startWave()) return
-    // Башня «в руке» после начала волны — ловушка: в бою нажимаешь на поле, чтобы посмотреть,
-    // а строишь. Панель уже выбранной башни оставляем — она ничего не строит
-    armedTowerId.value = null
-    selectedEmptyCell.value = null
+    game.startWave()
   }
 
   function cycleSpeed() {
@@ -474,54 +341,10 @@ export const useGameStore = defineStore('game', () => {
     screen.value = null
   }
 
-  // ---------------------------------------------------------------- Подсказка над магазином
-
-  const describeTower = (towerId: string) =>
-    `${TOWERS[towerId].name}: ${TOWERS[towerId].description}`
-
-  /** Какие враги придут в волне waveNumber: «5 бунтовщиков, 2 разведчика» */
-  function describeWave(waveNumber: number): string {
-    const counts = new Map<string, number>()
-    for (const [enemyId, count] of game.waveGroups(waveNumber)) {
-      counts.set(enemyId, (counts.get(enemyId) ?? 0) + count)
-    }
-    return [...counts]
-      .map(([enemyId, count]) => `${count} ${plural(count, ENEMIES[enemyId].nameForms)}`)
-      .join(', ')
-  }
-
-  // Порядок проверок — это приоритет подсказок: выбранная башня важнее паузы,
-  // пауза важнее выбора в магазине и так далее
-  const hint = computed(() => {
-    if (hud.selectedTowerId) return describeTower(hud.selectedTowerId)
-    if (hud.isPaused) return 'Пауза. Стражу можно ставить и улучшать'
-    if (armedTowerId.value) return describeTower(armedTowerId.value)
-    if (selectedEmptyCell.value) return 'Выберите стража для этой плиты'
-    if (hud.phase === 'wave') return `Врагов осталось: ${hud.enemiesLeft}`
-    if (hud.phase === 'lost' || hud.phase === 'won') return ''
-    if (hud.phase === 'build' && hud.wave === 1 && hud.towerCount === 0) {
-      return 'Выберите стража и нажмите на плиту у ковра'
-    }
-    return `Дальше: ${describeWave(hud.wave)}`
-  })
-
-  /**
-   * Подсказка сейчас — описание башни «в руке». Там, где карточки магазина сами показывают
-   * описания, оно повторялось бы дважды — SidePanel показывает вместо него, что делать дальше
-   */
-  const isArmedTowerHint = computed(
-    () => !hud.selectedTowerId && !hud.isPaused && armedTowerId.value !== null,
-  )
-
   return {
     game,
     hud,
     screen,
-    armedTowerId,
-    selectedTowerCell,
-    selectedEmptyCell,
-    cursorCell,
-    hoverCell,
     audioSettings,
     toast,
     bumpCounters,
@@ -530,19 +353,12 @@ export const useGameStore = defineStore('game', () => {
     playerName,
     submission,
     leaderboard,
-    hint,
-    isArmedTowerHint,
     syncHud,
-    boardView,
+    runCount,
     isPlaying,
     newGame,
-    chooseShopTower,
-    tapCell,
-    upgradeSelected,
-    sellSelected,
-    cycleTargetMode,
-    moveCursor,
-    confirmCursor,
+    tryBuild,
+    rejectAction,
     startWave,
     cycleSpeed,
     togglePause,
@@ -552,7 +368,6 @@ export const useGameStore = defineStore('game', () => {
     openSettings,
     closeSettings,
     continueEndless,
-    clearSelection,
     setPlayerName,
     changePlayerName,
     retrySubmission,

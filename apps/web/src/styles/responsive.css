@@ -3,8 +3,14 @@
 /* Широкий экран: панель справа.
    Включается по ориентации, а не только по ширине: телефон набок (844×390) тоже
    получает боковую панель, иначе поле сжимается до крошечного прямоугольника.
-   Если меняешь условие — поменяй его и в двух запросах ниже. */
-@media (min-width: 640px) and (min-aspect-ratio: 1/1) {
+   Второе условие — широкое окно, чуть вытянутое вверх (почти квадрат, 983×987): по бокам
+   поля остаётся пустое место, и боковая панель даёт поле крупнее, чем панель под ним.
+   У планшетов вертикально (768×1024, 820×1180) нижняя панель выгоднее — они не переключаются.
+   Условие повторено в запросе ниже (1150px) и в utils/layout.ts (SidePanel.vue закрывает
+   меню телефона при переходе на боковую панель); запросы 760px и 560px — только для низких
+   экранов, широкое окно их не касается. Меняешь одно — меняй все. */
+@media (min-width: 640px) and (min-aspect-ratio: 1/1),
+  (min-width: 940px) and (min-aspect-ratio: 9/10) {
   #app {
     grid-template-columns: minmax(0, 1fr) 340px;
     grid-template-rows: auto minmax(0, 1fr);
@@ -54,6 +60,7 @@
     align-self: start;
   }
   .tower-info {
+    display: flex;
     grid-row: 2;
     height: auto;
     flex-wrap: wrap;
@@ -70,10 +77,19 @@
     gap: 5px;
   }
   .shop {
+    display: grid;
     grid-row: 2;
     height: auto;
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+  .shop-toggle,
+  .shop-drawer {
+    display: none;
+  }
+  /* Панель выбранной башни встаёт на место магазина */
+  .panel.has-selected-tower .shop {
+    display: none;
   }
   .card {
     display: grid;
@@ -121,7 +137,8 @@
 /* Обычный экран компьютера с боковой панелью: девять карточек в один столбец влезают только
    в очень высокий экран, иначе панель пришлось бы прокручивать. Ставим их в два столбца —
    с описаниями: значок, рядом имя и цена, описание под ними во всю ширину карточки */
-@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 1150px) {
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 1150px),
+  (min-width: 940px) and (min-aspect-ratio: 9/10) and (max-height: 1150px) {
   .shop {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
@@ -236,21 +253,6 @@
 }
 /* Низкий экран без боковой панели (узкое окно на компьютере) */
 @media (max-height: 640px) and (max-width: 639px) {
-  .shop,
-  .tower-info {
-    height: 96px;
-  }
-  .card canvas {
-    width: 22px;
-    height: 22px;
-  }
-  .card {
-    grid-template-columns: 22px minmax(0, 1fr);
-  }
-  .card .card-name,
-  .card .cost {
-    font-size: 0.8rem;
-  }
   .btn {
     /* 44 px — меньше палец промахивается (рекомендация Apple для кнопок) */
     min-height: 44px;
@@ -273,6 +275,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .overlay,
+  .shop-drawer-body,
   .stat.bump {
     animation: none;
   }
