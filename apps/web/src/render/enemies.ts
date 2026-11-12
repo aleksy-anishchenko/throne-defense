@@ -468,10 +468,16 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       circle(ctx, 0, 0, radius)
       ctx.fill()
       ctx.stroke()
-      // светлое пузико
-      ctx.fillStyle = '#b9c56a'
-      circle(ctx, 0, radius * 0.35, radius * 0.5)
-      ctx.fill()
+      // раздвоенный язычок: так видно, что это змей, а не просто зелёный шарик
+      ctx.strokeStyle = '#d8394a'
+      ctx.lineWidth = 0.015
+      ctx.beginPath()
+      ctx.moveTo(0, radius * 0.35)
+      ctx.lineTo(0, radius * 0.75)
+      ctx.lineTo(-radius * 0.15, radius * 0.95)
+      ctx.moveTo(0, radius * 0.75)
+      ctx.lineTo(radius * 0.15, radius * 0.95)
+      ctx.stroke()
       // глаза
       ctx.fillStyle = '#ffcf4a'
       circle(ctx, -0.045, -0.03, 0.022)
