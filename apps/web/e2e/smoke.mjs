@@ -332,12 +332,15 @@ async function desktop(browser, url) {
   )
   await page.keyboard.press('Escape')
 
-  // Волна: пробел, скорость ×3. Башня «в руке» перед волной — выбор должен сняться
-  await page.keyboard.press('1')
-  await blurActiveElement(page)
+  // Волна: пробел, скорость ×3. Башня «в руке» перед волной — выбор должен сняться.
+  // Карточку выбираем мышью: фокус остаётся на ней, но без рамки — пробел всё равно игре
+  await archerCard.click()
   await page.keyboard.press('Space')
   await waitForFrames(page)
-  check('пробел начал волну', (await readGameSnapshot(page)).phase === 'wave')
+  check(
+    'пробел начал волну после щелчка по карточке мышью',
+    (await readGameSnapshot(page)).phase === 'wave',
+  )
   check(
     'начало волны сняло выбор в магазине',
     (await archerCard.getAttribute('aria-pressed')) === 'false',
@@ -662,6 +665,11 @@ async function offline(browser, url) {
   await page.getByRole('heading', { name: 'Трон пал' }).waitFor({ timeout: 60_000 })
   check(
     'нет сервера: итоги на месте, «таблица лучших недоступна»',
+    await appears(page.locator('.run-place').filter({ hasText: 'недоступна' })),
+  )
+  await page.getByRole('button', { name: 'Отправить ещё раз' }).click()
+  check(
+    'нет сервера: «Отправить ещё раз» пробует снова и честно говорит «недоступна»',
     await appears(page.locator('.run-place').filter({ hasText: 'недоступна' })),
   )
   await page.getByRole('button', { name: 'Лучшие результаты' }).click()

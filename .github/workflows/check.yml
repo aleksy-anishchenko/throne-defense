@@ -13,6 +13,11 @@ concurrency:
   group: check-${{ github.ref }}
   cancel-in-progress: true
 
+# Токену GitHub хватает права читать код: ни писать в репозиторий, ни трогать релизы
+# этим проверкам не нужно. Меньше прав — меньше вреда, если какой-то шаг взломают
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest

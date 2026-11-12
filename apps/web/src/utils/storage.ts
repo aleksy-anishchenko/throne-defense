@@ -68,7 +68,7 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   isSfxOn: true,
   isMusicOn: true,
   sfxVolume: 100,
-  musicVolume: 50,
+  musicVolume: 70,
 }
 
 /** Громкость из хранилища: число 0–100, иначе — значение по умолчанию */

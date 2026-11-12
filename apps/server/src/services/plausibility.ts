@@ -26,6 +26,8 @@ export function implausibilityReason(run: SubmitRunRequest): string | null {
   if (run.balanceVersion !== BALANCE_VERSION) {
     return `Версия баланса ${run.balanceVersion} устарела, сейчас ${BALANCE_VERSION} — обновите страницу`
   }
+  // Браузер партии без очков не присылает; такие строки только раздували бы «из N игроков»
+  if (run.score < 1) return 'Партия без очков — не результат'
   if (run.wavesCleared > MAX_WAVES_CLEARED) return 'Столько волн не бывает'
   if (run.score > maxPossibleScore(level, run.wavesCleared)) {
     return 'Столько очков за эти волны не бывает'

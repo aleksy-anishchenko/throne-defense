@@ -30,6 +30,11 @@ env:
   DEPLOY_USER: deploy
   DEPLOY_API_USER: throne
 
+# Токену GitHub хватает права читать код: ни писать в репозиторий, ни трогать релизы
+# этим проверкам не нужно. Меньше прав — меньше вреда, если какой-то шаг взломают
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

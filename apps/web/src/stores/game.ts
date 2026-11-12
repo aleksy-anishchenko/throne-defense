@@ -250,16 +250,26 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
+  /** Сеть подвела в момент отправки — «Отправить ещё раз» на экране итогов */
+  function retrySubmission() {
+    void submitFinishedRun()
+  }
+
   /** «Сменить имя» на экране итогов: снова показать поле ввода */
   function changePlayerName() {
     if (finishedRun) submission.status = 'needs-name'
   }
 
+  /** Номер последней загрузки таблицы: ответ на старую (открыли, закрыли, открыли) пропускаем */
+  let leaderboardRequestNumber = 0
+
   async function openLeaderboard() {
     if (screen.value !== 'leaderboard') screenBeforeLeaderboard = screen.value ?? 'menu'
     screen.value = 'leaderboard'
     leaderboard.status = 'loading'
+    const number = ++leaderboardRequestNumber
     const result = await fetchLeaderboard({ level: game.level.def.id, balance: BALANCE_VERSION })
+    if (number !== leaderboardRequestNumber) return
     if (result) {
       leaderboard.entries = result.entries
       leaderboard.playerCount = result.playerCount
@@ -295,11 +305,9 @@ export const useGameStore = defineStore('game', () => {
 
   // Музыка следует за снимком hud: он обновляется каждый кадр, а watch срабатывает,
   // только когда фаза, волна или пауза действительно поменялись
-  watch(
-    () => [hud.phase, hud.wave],
-    () => music.setMood(musicMoodFor(game)),
-    { immediate: true },
-  )
+  watch([() => hud.phase, () => hud.wave], () => music.setMood(musicMoodFor(game)), {
+    immediate: true,
+  })
   // В настройках музыку не глушим, хоть игра и на паузе: игрок подбирает её громкость
   watch(
     () => hud.isPaused && screen.value !== 'settings',
@@ -538,6 +546,7 @@ export const useGameStore = defineStore('game', () => {
     clearSelection,
     setPlayerName,
     changePlayerName,
+    retrySubmission,
     openLeaderboard,
     closeLeaderboard,
   }

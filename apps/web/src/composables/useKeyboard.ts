@@ -28,7 +28,8 @@ export function useKeyboard(): void {
     // Зажатая клавиша шлёт повторы. Курсор стрелками удобно водить с удержанием,
     // а остальное — нет: зажатый пробел сначала начал бы волну, потом дёргал паузу
     if (event.repeat && !ARROW_DIRECTIONS[event.key]) return
-    // На кнопке пробел и Enter должны нажимать саму кнопку
+    // На кнопке пробел и Enter должны нажимать саму кнопку (фокус на кнопке бывает только
+    // с клавиатуры — после щелчка мышью его снимает onClick ниже)
     const isButtonFocused = event.target instanceof HTMLButtonElement
     // Открыты настройки посреди партии: клавиши не должны управлять игрой под ними
     if (store.screen === 'settings' && event.key !== 'Escape') return
@@ -40,8 +41,15 @@ export function useKeyboard(): void {
       return
     }
     if (event.key === 'Escape') {
-      if (store.screen === 'leaderboard') store.closeLeaderboard()
-      if (store.screen === 'settings') store.closeSettings()
+      // Escape закрывает экран поверх поля — и только: выбранная башня остаётся выбранной
+      if (store.screen === 'leaderboard') {
+        store.closeLeaderboard()
+        return
+      }
+      if (store.screen === 'settings') {
+        store.closeSettings()
+        return
+      }
       store.clearSelection()
       return
     }
@@ -70,6 +78,24 @@ export function useKeyboard(): void {
     }
   }
 
-  onMounted(() => document.addEventListener('keydown', onKeyDown))
-  onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
+  /**
+   * Щёлкнули по кнопке мышью или пальцем — снимаем с неё фокус. Иначе фокус остаётся на
+   * кнопке, и пробел нажимает её, а не игру: щёлкнул «Лучника», нажал пробел — и вместо
+   * волны карточка отжалась. Нажатие с клавиатуры (Enter, пробел) — это click с detail 0:
+   * тогда фокус оставляем, чтобы можно было идти дальше клавишей Tab
+   */
+  function onClick(event: MouseEvent) {
+    if (event.detail === 0) return
+    const button = event.target instanceof Element ? event.target.closest('button') : null
+    if (button && button === document.activeElement) button.blur()
+  }
+
+  onMounted(() => {
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('click', onClick)
+  })
+  onUnmounted(() => {
+    document.removeEventListener('keydown', onKeyDown)
+    document.removeEventListener('click', onClick)
+  })
 }

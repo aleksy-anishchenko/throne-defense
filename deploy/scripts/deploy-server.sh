@@ -34,6 +34,8 @@ npm test
 # --delete удаляет на сервере файлы, которых больше нет в репозитории, — но только внутри
 # перечисленных папок. Исключённое (--exclude) он не трогает: так уцелеют .env с настройками
 # сервера и node_modules, которые ставит npm ci на сервере. Свой .env с Mac тоже не уедет.
+# Скрипт копирует папку как есть, а не git: .gitignore ему не указ. Поэтому руками
+# исключаем и базу для разработки (apps/server/data/*.db и её -wal/-shm)
 RSYNC_OPTIONS=(
   -av
   -r
@@ -44,6 +46,9 @@ RSYNC_OPTIONS=(
   --exclude=.env
   --exclude=node_modules/
   --exclude=.DS_Store
+  --exclude='*.db'
+  --exclude='*.db-wal'
+  --exclude='*.db-shm'
 )
 
 if [[ "${1:-}" == "--apply" ]]; then

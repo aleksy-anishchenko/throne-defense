@@ -112,11 +112,16 @@ export function createGame(levelDef: LevelDef): Game {
     !level.blockedCellKeys.has(cellKey(col, row)) &&
     !state.towersByCell.has(cellKey(col, row))
 
-  const towerAt = (col: number, row: number) => state.towersByCell.get(cellKey(col, row))
+  // Сначала — настоящая ли это клетка: ключ — строка, и без проверки '0' нашёл бы башню на 0
+  const towerAt = (col: number, row: number) =>
+    isInsideField(col, row) ? state.towersByCell.get(cellKey(col, row)) : undefined
 
   function step(dt: number) {
     // Партия не идёт (меню, поражение, победа) — мир стоит
     if (!isPlaying()) return
+    // NaN навсегда остановил бы выход врагов (сравнение с NaN всегда ложно), а отрицательный
+    // шаг отмотал бы время назад. Как и advance, методу не верим
+    if (!Number.isFinite(dt) || dt <= 0) return
     state.time += dt
     if (state.phase === 'wave') spawnDueEnemies(world, dt)
     if (!moveEnemies(world, dt)) {
@@ -166,7 +171,8 @@ export function createGame(levelDef: LevelDef): Game {
     build(towerId, col, row) {
       // Object.hasOwn, а не просто TOWERS[towerId]: иначе id 'constructor' найдёт
       // встроенную функцию объекта вместо башни (см. «прототип» в словарике PLAN.md)
-      if (!Object.hasOwn(TOWERS, towerId)) return null
+      // typeof: Object.hasOwn превратил бы и массив ['archer'] в строку 'archer'
+      if (typeof towerId !== 'string' || !Object.hasOwn(TOWERS, towerId)) return null
       const def = TOWERS[towerId]
       if (!isPlaying() || !isCellFree(col, row) || state.gold < def.cost) return null
       state.gold -= def.cost

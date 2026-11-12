@@ -5,6 +5,11 @@ import { ref } from 'vue'
 import { useGameStore } from '@/stores/game'
 
 const store = useGameStore()
+/**
+ * maxlength браузер считает в «половинках» символов (UTF-16): эмодзи — две. С обычным
+ * пределом имя из эмодзи обрезалось бы на 10. Настоящую длину проверяет isValidPlayerName
+ */
+const NAME_INPUT_MAX_LENGTH = PLAYER_NAME_MAX_LENGTH * 2
 /** «Сменить имя» — поле уже с прежним именем */
 const nameInput = ref(store.playerName ?? '')
 const nameError = ref('')
@@ -13,7 +18,7 @@ function submitName() {
   if (store.setPlayerName(nameInput.value)) {
     nameError.value = ''
   } else {
-    nameError.value = `Имя — от 1 до ${PLAYER_NAME_MAX_LENGTH} символов`
+    nameError.value = `Имя — от 1 до ${PLAYER_NAME_MAX_LENGTH} видимых символов`
   }
 }
 
@@ -37,7 +42,7 @@ function placeText(): string {
         id="player-name"
         v-model="nameInput"
         type="text"
-        :maxlength="PLAYER_NAME_MAX_LENGTH"
+        :maxlength="NAME_INPUT_MAX_LENGTH"
         autocomplete="nickname"
         enterkeyhint="send"
         spellcheck="false"
@@ -57,6 +62,11 @@ function placeText(): string {
       {{ placeText() }}
       <button class="link-button" type="button" @click="store.changePlayerName">Сменить имя</button>
     </template>
-    <template v-else>Таблица лучших сейчас недоступна.</template>
+    <template v-else>
+      Таблица лучших сейчас недоступна.
+      <button class="link-button" type="button" @click="store.retrySubmission">
+        Отправить ещё раз
+      </button>
+    </template>
   </p>
 </template>

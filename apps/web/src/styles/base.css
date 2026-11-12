@@ -28,6 +28,12 @@ button {
   font: inherit;
   color: inherit;
 }
+/* Выделение текста выключено для всей страницы (body), но в поле ввода оно нужно:
+   Safari на iPhone иначе может не дать напечатать имя */
+input {
+  -webkit-user-select: text;
+  user-select: text;
+}
 :focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 2px;

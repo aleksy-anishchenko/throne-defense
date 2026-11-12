@@ -269,7 +269,8 @@ function createMusic() {
   let requestedMood: MusicMood = 'calm'
   let playingMood: MusicMood = 'calm'
   let isMuffled = false
-  let isHidden = false
+  // Игру могли открыть в фоновой вкладке: событие visibilitychange тогда ещё не приходило
+  let isHidden = document.hidden
   let timerId: number | null = null
   let step = 0
   let nextStepTime = 0

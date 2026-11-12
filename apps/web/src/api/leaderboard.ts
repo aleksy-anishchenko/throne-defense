@@ -17,9 +17,17 @@ const REQUEST_TIMEOUT_MS = 5000
 
 async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T | null> {
   try {
-    const response = await fetch(path, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
-    if (!response.ok) return null
-    return (await response.json()) as T
+    // AbortController, а не AbortSignal.timeout(): того нет в Safari до 16-й версии,
+    // и на старом iPhone топ молча не работал бы никогда
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    try {
+      const response = await fetch(path, { ...init, signal: controller.signal })
+      if (!response.ok) return null
+      return (await response.json()) as T
+    } finally {
+      clearTimeout(timeoutId)
+    }
   } catch {
     return null
   }

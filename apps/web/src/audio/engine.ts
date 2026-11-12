@@ -9,8 +9,8 @@ type AudioContextClass = typeof AudioContext
 /** Громкость звуков на 100%: они и раньше были настроены под 1 */
 const MAX_SFX_GAIN = 1
 /**
- * Громкость музыки на 100%. По умолчанию музыка на 50% — это 0,3: тихий фон под звуками
- * (0,55 владелец счёл громким)
+ * Громкость музыки на 100%. По умолчанию музыка на 70% — это 0,7² × 0,6 ≈ 0,3: тихий фон
+ * под звуками (0,55 владелец счёл громким)
  */
 const MAX_MUSIC_GAIN = 0.6
 /** Ползунок двигают — громкость меняется плавно, без щелчков (постоянная времени, с) */
@@ -35,7 +35,11 @@ function createAudioEngine() {
   }
 
   const isSfxAudible = () => settings.isSfxOn && settings.sfxVolume > 0
-  const isMusicAudible = () => settings.isMusicOn && settings.musicVolume > 0
+  /**
+   * Громкость 0 музыку не останавливает, а только приглушает: иначе ползунок, проведённый
+   * через 0 и обратно, начинал бы мелодию с начала
+   */
+  const isMusicAudible = () => settings.isMusicOn
 
   function applyVolumes() {
     if (!outputs) return
@@ -73,7 +77,13 @@ function createAudioEngine() {
         outputs = { context, sfxOutput, musicOutput }
         notifyChange()
       }
-      if (outputs.context.state === 'suspended') void outputs.context.resume()
+      // Не только 'suspended': Safari на iPhone после звонка сообщает 'interrupted'
+      const state: string = outputs.context.state
+      if (state !== 'running' && state !== 'closed') {
+        outputs.context.resume().catch(() => {
+          /* браузер не дал разбудить — попробуем на следующем клике */
+        })
+      }
       return outputs
     } catch {
       return null

@@ -31,6 +31,35 @@ describe('игра не верит аргументам', () => {
     expect(game.state.towers).toHaveLength(0)
   })
 
+  it("id башни — только строка: массив ['archer'] не башня", () => {
+    const game = newGame()
+    // Массив в типах не пройдёт, но сервер получит его от чужого браузера как угодно
+    expect(game.build(['archer'] as unknown as string, 5, 11)).toBeNull()
+    expect(game.state.towers).toHaveLength(0)
+  })
+
+  it("клетка строкой ('5') не находит башню на 5: улучшить и продать её так нельзя", () => {
+    const game = newGame()
+    game.build('archer', 5, 11)
+    const col = '5' as unknown as number
+    const row = '11' as unknown as number
+    expect(game.towerAt(col, row)).toBeUndefined()
+    expect(game.upgrade(col, row)).toBe(false)
+    expect(game.sell(col, row)).toBeNull()
+    expect(game.state.towers).toHaveLength(1)
+  })
+
+  it('step(NaN) и отрицательный шаг не ломают волну', () => {
+    const game = newGame()
+    game.build('archer', 5, 11)
+    game.startWave()
+    game.step(NaN)
+    game.step(-5)
+    expect(game.state.time).toBe(0)
+    game.step(1 / 60)
+    expect(game.state.time).toBeGreaterThan(0)
+  })
+
   it('setSpeed(NaN) и setSpeed(Infinity) не меняют скорость', () => {
     const game = newGame()
     game.setSpeed(2)
