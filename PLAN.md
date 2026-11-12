@@ -11,7 +11,7 @@
 - **Игра в интернете: https://throne-defense.ru.** HTTPS (Let's Encrypt) продлевается сам, `http://` и `www` перенаправляют на основной адрес.
 - **Выкладка автоматическая:** пуш в `main` → GitHub Actions прогоняет проверки и, если всё зелёное, через 2–3 минуты новая версия на сайте. С красными проверками ничего не выкладывается. Какая версия на сайте — видно в меню игры («Версия хеш · дата»).
 - **Код:** логика игры в `packages/game` (без Vue и DOM), интерфейс в `apps/web` (Vite + TypeScript + Vue), бот и замеры баланса в `tools/balance`. 109 тестов и 58 проверок в настоящем браузере, всё зелёное. Код-ревью отработано полностью.
-- **Бэкенд в работе (ветка `backend`):** шаги 3.1 и 3.2 готовы — `apps/server` отвечает на `/api/health` у себя на Mac (`npm run dev:server`), схемы и типы API — в `packages/contracts`. На сайте его пока нет: `https://throne-defense.ru/api/…` отвечает 502 — это нормально до шага 3.4. Следующий — шаг 3.3 (подготовка VPS, команды выполняет владелец).
+- **Бэкенд в работе (ветка `backend`):** шаги 3.1–3.3 готовы — `apps/server` отвечает на `/api/health` у себя на Mac (`npm run dev:server`), схемы и типы API — в `packages/contracts`, на VPS стоят Node 24 и pm2, есть пользователь `throne` и папки. На сайте его пока нет: `https://throne-defense.ru/api/…` отвечает 502 — это нормально до шага 3.4. Следующий — шаг 3.4 (первая выкладка API вручную).
 
 ## Начать отсюда
 
@@ -21,7 +21,7 @@
 
 Параллельно подумать над [открытым вопросом](#открытый-вопрос-площадка): где живёт игра — Telegram, VK или просто сайт. Ответ нужен до этапа 4 (вход и рейтинг друзей). Таблицу `runs` (шаг 3.6) и общий топ (3.8) можно сделать до ответа: настоящий игрок из этапа 4 потом просто заменит имя, введённое руками.
 
-Как начать диалог с Claude: «прочитай PLAN.md и делай этап 3, шаг 3.3» (работаем в ветке `backend`).
+Как начать диалог с Claude: «прочитай PLAN.md и делай этап 3, шаг 3.4» (работаем в ветке `backend`).
 
 ---
 
@@ -100,14 +100,15 @@
 **3.2. Пакет `packages/contracts`** (`@throne/contracts`) — ✅ сделано в ветке `backend`
 - [x] Типы и схемы запросов и ответов API, общие для сайта и сервера — иначе они разойдутся. Начать с ответа `/api/health`. Схемы — JSON Schema (Fastify проверяет по ним запросы сам). Пишем через TypeBox: одно описание даёт и JSON Schema, и тип (`Static<typeof …Schema>`), так что разойтись им нельзя. Для `POST /api/runs` (3.8) подключить `@fastify/type-provider-typebox` — тогда `request.body` получит тип из схемы сам
 
-**3.3. Подготовить VPS** (команды выполняет владелец, Claude даёт их по порциям)
-- [ ] Установить Node 24 (из NodeSource, не из стандартного `apt` — там старая версия) и pm2 (`npm install -g pm2`)
-- [ ] Отдельный пользователь `throne`, от которого работает API (не `root`). Папки: `/srv/throne-defense/app` (код), `/srv/throne-defense/data` (база), владелец `throne`
-- [ ] Конфиг pm2 в репозитории: `deploy/pm2/ecosystem.config.cjs`. `pm2 startup` — чтобы pm2 поднимался после перезагрузки VPS
-- [ ] `.env` на сервере положить руками один раз (`/srv/throne-defense/app/apps/server/.env`, права `600`)
+**3.3. Подготовить VPS** (команды выполняет владелец, Claude даёт их по порциям) — ✅ сделано 12 ноября 2026
+- [x] Установить Node 24 (из NodeSource, не из стандартного `apt` — там старая версия) и pm2 (`npm install -g pm2`)
+- [x] Отдельный пользователь `throne`, от которого работает API (не `root`). Папки: `/srv/throne-defense/app` (код), `/srv/throne-defense/data` (база, права `750`), владелец `throne`
+- [x] Конфиг pm2 в репозитории: `deploy/pm2/ecosystem.config.cjs`. `pm2 startup` — чтобы pm2 поднимался после перезагрузки VPS (служба `pm2-throne`)
+- [x] `.env` на сервере положить руками один раз (`/srv/throne-defense/app/apps/server/.env`, права `600`)
 
 **3.4. Первая выкладка вручную**
-- [ ] Скрипт `deploy/scripts/deploy-server.sh` по образцу `deploy-web.sh`: `rsync` кода сервера и `packages/game`, `packages/contracts`, `package.json`, `package-lock.json` → на сервере `npm ci --omit=dev` → `pm2 reload`
+- [ ] Скрипт `deploy/scripts/deploy-server.sh` по образцу `deploy-web.sh`: `rsync` кода сервера и `packages/game`, `packages/contracts`, `deploy/pm2`, `package.json`, `package-lock.json` → на сервере `npm ci --omit=dev` → `pm2 reload`. ⚠️ `.env` на сервере лежит внутри папки кода: `rsync --delete` должен его не трогать (`--exclude=.env`), иначе выкладка сотрёт настройки. То же — `node_modules` (их ставит `npm ci` на сервере)
+- [ ] Первый запуск от `throne`: `pm2 start /srv/throne-defense/app/deploy/pm2/ecosystem.config.cjs`, потом `pm2 save` — без `save` после перезагрузки поднимать нечего
 - [ ] nginx уже пересылает `/api/` в `127.0.0.1:3000` (`deploy/nginx/throne-defense.conf`) — проверить: `curl https://throne-defense.ru/api/health`
 - [ ] Перезагрузить VPS (`reboot`) и убедиться, что API поднялось само. ⚠️ Перезагрузка на минуту оборвёт и VPN
 
@@ -124,6 +125,7 @@
 **3.7. Защита и бэкап**
 - [ ] Ограничение частоты запросов (`@fastify/rate-limit`). За nginx настоящий адрес игрока — в заголовке `X-Real-IP` (`trustProxy` в Fastify)
 - [ ] Ежедневный бэкап базы по cron: `sqlite3 … ".backup …"` (не просто копия файла — она может поймать базу посреди записи), хранить 14 последних
+- [ ] Журналы pm2 (`/home/throne/.pm2/logs`) растут без конца: Fastify пишет строчку на каждый запрос. Поставить `pm2-logrotate` (от `throne`: `pm2 install pm2-logrotate`) или настроить уровень журнала
 
 **3.8. Общий топ без входа** (первый результат, который видно в игре)
 - [ ] После партии игрок вводит имя (один раз, запоминаем в `localStorage` под новым ключом, например `throne-name`; старые ключи `throne-best` и `throne-muted` не трогаем). Имя — до 20 символов, без пустых
@@ -194,7 +196,7 @@
 - [ ] Удалить старые локальные ветки на Mac: `git branch -d refactor stage-0 review-fixes content` (всё из них уже в `main`)
 - [ ] Когда сценариев в `smoke.mjs` станет больше (этапы 4 и 6), разбить его на файлы: запуск, помощники, компьютер, телефон
 - [ ] Нарисовать настоящую картинку для превью ссылки вместо скриншота (`apps/web/public/og-image.png`, 1200×630)
-- [ ] Иногда обновлять пакеты на сервере: `apt update && apt upgrade` (обновления безопасности Ubuntu ставит сама). Если в списке Docker — VPN на минуту прервётся
+- [ ] Иногда обновлять пакеты на сервере: `apt update && apt upgrade` (обновления безопасности Ubuntu ставит сама). Если в списке Docker — VPN на минуту прервётся. Node из NodeSource сам не обновляется — только этой командой; после неё `pm2 reload throne-api` (от `throne`). pm2 обновлять отдельно: `npm install -g pm2`, потом от `throne` — `pm2 update`. Переход на Ubuntu 26.04 (`do-release-upgrade`) — только осознанно и не второпях: может задеть VPN и nginx
 - [ ] По желанию: TypeScript `noUncheckedIndexedAccess` — 65 ошибок, почти каждый доступ по индексу пришлось бы оборачивать проверкой. Пользы мало, поэтому не включён
 
 ---
@@ -255,8 +257,9 @@ throne-defense/
     bot.ts (бот), balance.ts (npm run balance), towers.ts (npm run towers),
     bot.test.ts (тесты-сторожа баланса). Пакет игры берут только через @throne/game
 
-  deploy/               ← всё про сервер: nginx/ (конфиги сайта), scripts/deploy-web.sh (ручная
-                          выкладка), known_hosts (публичный ключ сервера для автодеплоя)
+  deploy/               ← всё про сервер: nginx/ (конфиги сайта), pm2/ecosystem.config.cjs (как
+                          запускать API), scripts/deploy-web.sh (ручная выкладка), known_hosts
+                          (публичный ключ сервера для автодеплоя)
   .github/workflows/    ← check.yml (проверка веток и pull request), deploy.yml (автодеплой из main)
 ```
 
@@ -271,7 +274,6 @@ throne-defense/
 
 ```
 apps/server/                 (этап 3)  + src/db, src/services (src/routes уже есть)
-deploy/pm2/                  (этап 3)  настройки процесса сервера
 packages/game/src/core/      (этап 5)  + commands.ts и replay.ts: действия как данные
 apps/web/src/stores/         (этап 6)  + selection.ts — выбор игрока, из game.ts
 apps/web/src/audio/          (этап 6)  + gameSounds.ts — подписки на звук, из стора
@@ -384,6 +386,7 @@ npm run format       # Prettier: оформить код (format:check — то�
 | Файлы игры | `/var/www/throne-defense`, владелец `deploy` — только сборка, больше ничего: `rsync --delete` удаляет всё, чего нет в `dist` |
 | Автодеплой | `.github/workflows/deploy.yml` (пуш в `main`: проверки → `rsync` → «сайт отвечает»), `check.yml` (остальные ветки и pull request). Секрет `DEPLOY_SSH_KEY` — приватный ключ деплоя; публичный ключ сервера — `deploy/known_hosts`. Выложить ещё раз без коммита — «Run workflow» у «Деплой» на вкладке Actions |
 | Пользователь `deploy` | Ключи в `/home/deploy/.ssh/authorized_keys` (ключ GitHub Actions и личный ключ с Mac), оба ограничены `rrsync /var/www/throne-defense`: только `rsync` и только в папку игры, терминала нет. Путь назначения в `rsync` — `deploy@77.91.113.61:/` (для `rrsync` это корень папки игры) |
+| API (этап 3) | Node 24 из NodeSource (`apt`), pm2 7 (`npm install -g`). Работает от пользователя `throne` (вход только по ключу, пароля нет). Код — `/srv/throne-defense/app` (там же `apps/server/.env`, права `600`), база — `/srv/throne-defense/data`. pm2 поднимает служба `pm2-throne` (`systemctl status pm2-throne`) — она восстанавливает список, сохранённый `pm2 save`. Команды pm2 — только от `throne` (`su - throne`, потом `pm2 status`, `pm2 logs`): pm2, запущенный от `root`, — это отдельный, пустой pm2 |
 | VPN | Amnezia в Docker: `amnezia-awg2` (UDP 36548) и `amnezia-wireguard` (UDP 43365) — не трогать. Docker не перезапускать без нужды — оборвётся VPN |
 
 **Поменять конфиг nginx:** правим `deploy/nginx/…` → на Mac `scp deploy/nginx/throne-defense.conf root@77.91.113.61:/etc/nginx/sites-available/throne-defense` → на сервере `nginx -t && systemctl reload nginx`. Если `nginx -t` ругается, `reload` не выполнится и работающий сайт не пострадает.
