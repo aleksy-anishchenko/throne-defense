@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TOWERS } from '../src/index.ts'
+import { SIMULATION_STEP, TOWERS, isFullRefund } from '../src/index.ts'
 import { newGame, recordEvents } from './helpers.ts'
 
 describe('постройка', () => {
@@ -52,16 +52,44 @@ describe('улучшение и продажа', () => {
     expect(game.state.gold).toBe(1000 - 50 - 40 - 70)
   })
 
-  it('продажа возвращает 60% вложенного, включая улучшения', () => {
+  it('до начала волны продажа возвращает всё — это «отмена» постройки и улучшений', () => {
     const game = newGame()
     game.build('archer', 5, 11) // 50
     game.upgrade(5, 11) // +40 → вложено 90
     const before = game.state.gold
 
-    expect(game.sell(5, 11)).toBe(54) // floor(90 × 0.6)
-    expect(game.state.gold).toBe(before + 54)
+    expect(isFullRefund(game.towerAt(5, 11)!)).toBe(true)
+    expect(game.sell(5, 11)).toBe(90)
+    expect(game.state.gold).toBe(before + 90)
     expect(game.isCellFree(5, 11)).toBe(true)
     expect(game.state.towers).toHaveLength(0)
+  })
+
+  it('после начала волны — 60% вложенного', () => {
+    const game = newGame()
+    game.build('archer', 5, 11)
+    game.upgrade(5, 11) // вложено 90
+    game.startWave()
+    expect(isFullRefund(game.towerAt(5, 11)!)).toBe(false)
+    expect(game.sell(5, 11)).toBe(54) // floor(90 × 0.6)
+  })
+
+  it('улучшение между волнами возвращается целиком, старое вложение — на 60%', () => {
+    const game = newGame()
+    game.state.gold = 1000
+    game.build('archer', 5, 11) // 50
+    game.startWave()
+    game.state.spawnQueue = []
+    game.step(SIMULATION_STEP) // волна отбита, снова между волнами
+    game.upgrade(5, 11) // +40 — ещё не было в бою
+    expect(game.sell(5, 11)).toBe(30 + 40) // floor(50 × 0.6) + 40
+  })
+
+  it('построенная во время волны сразу в бою — полного возврата нет', () => {
+    const game = newGame()
+    game.startWave()
+    game.build('archer', 5, 11)
+    expect(game.sell(5, 11)).toBe(30) // floor(50 × 0.6)
   })
 
   it('сообщает о постройке, улучшении и продаже событиями', () => {

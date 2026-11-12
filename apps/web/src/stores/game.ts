@@ -14,6 +14,8 @@ import {
   TARGET_MODES,
   TOWERS,
   createGame,
+  isFullRefund,
+  refundFor,
   upgradeCost,
   type Phase,
   type TargetMode,
@@ -58,6 +60,10 @@ export const useGameStore = defineStore('game', () => {
     selectedTowerTier: 0,
     /** Кого выбранная башня выбирает целью */
     selectedTowerTargetMode: 'first' as TargetMode,
+    /** Сколько вернут за выбранную башню при продаже */
+    selectedTowerRefund: 0,
+    /** Вернут ли всё вложенное: башня ещё не была в бою */
+    isSelectedTowerFullRefund: false,
   })
 
   /** Вызывается каждый кадр. Присваивание того же значения Vue не замечает — это дёшево */
@@ -79,6 +85,8 @@ export const useGameStore = defineStore('game', () => {
     hud.selectedTowerId = tower ? tower.def.id : null
     hud.selectedTowerTier = tower ? tower.tier : 0
     hud.selectedTowerTargetMode = tower ? tower.targetMode : 'first'
+    hud.selectedTowerRefund = tower ? refundFor(tower) : 0
+    hud.isSelectedTowerFullRefund = tower ? isFullRefund(tower) : false
   }
 
   // ---------------------------------------------------------------- Выбор игрока

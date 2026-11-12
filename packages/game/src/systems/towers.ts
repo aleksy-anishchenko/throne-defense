@@ -20,9 +20,18 @@ export function investedGold(def: TowerDef, tier: number): number {
   return sum
 }
 
-/** Сколько вернут при продаже */
-export const refundFor = (def: TowerDef, tier: number): number =>
-  Math.floor(investedGold(def, tier) * REFUND_RATE)
+/**
+ * Сколько вернут при продаже: золото, вложенное после начала последней волны, — целиком
+ * (башня с ним ещё не была в бою — это «отмена»), остальное — с потерей (REFUND_RATE)
+ */
+export function refundFor(tower: Tower): number {
+  const usedGold = investedGold(tower.def, tower.tier) - tower.goldSinceLastWave
+  return Math.floor(usedGold * REFUND_RATE) + tower.goldSinceLastWave
+}
+
+/** Вернёт ли продажа всё вложенное: башню ещё ни разу не пускали в бой */
+export const isFullRefund = (tower: Tower): boolean =>
+  tower.goldSinceLastWave === investedGold(tower.def, tower.tier)
 
 /** Квадрат расстояния от башни до врага, клеток² */
 const distanceSquared = (tower: Tower, enemy: Enemy) =>

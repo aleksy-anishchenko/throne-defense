@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Панель выбранной башни: характеристики, «Улучшить», «Продать»
-import { TOWERS, refundFor, type StatKey, type TargetMode, type TowerStats } from '@throne/game'
+import { TOWERS, type StatKey, type TargetMode, type TowerStats } from '@throne/game'
 import { computed } from 'vue'
 import { useGameStore } from '@/stores/game'
 import { formatDecimal, formatPercent, toRoman } from '@/utils/format'
@@ -58,7 +58,9 @@ const selectedTowerInfo = computed(() => {
     lines: def.displayStats.map((statKey) => formatStatLine(statKey, def.tiers[tier], nextStats)),
     upgradeCost,
     canAfford: upgradeCost !== null && store.hud.gold >= upgradeCost,
-    refund: refundFor(def, tier),
+    refund: store.hud.selectedTowerRefund,
+    // Башня ещё не была в бою — продажа возвращает всё, это «отмена» постройки
+    sellLabel: store.hud.isSelectedTowerFullRefund ? 'Вернуть' : 'Продать',
     targetMode: def.canChooseTarget ? store.hud.selectedTowerTargetMode : null,
   }
 })
@@ -93,7 +95,9 @@ const selectedTowerInfo = computed(() => {
       }}</span>
     </button>
     <button class="btn action" type="button" @click="store.sellSelected">
-      <span>Продать</span><span class="price">за {{ selectedTowerInfo.refund }}</span>
+      <span>{{ selectedTowerInfo.sellLabel }}</span><span class="price"
+        >за {{ selectedTowerInfo.refund }}</span
+      >
     </button>
   </div>
 </template>

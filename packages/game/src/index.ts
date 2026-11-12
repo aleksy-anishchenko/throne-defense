@@ -19,7 +19,14 @@ export {
 export { ENEMIES } from './data/enemies.ts'
 export { TOWERS, TOWER_LIST } from './data/towers.ts'
 export { LEVELS } from './levels/index.ts'
-export { TARGET_MODES, investedGold, refundFor, towerStats, upgradeCost } from './systems/towers.ts'
+export {
+  TARGET_MODES,
+  investedGold,
+  isFullRefund,
+  refundFor,
+  towerStats,
+  upgradeCost,
+} from './systems/towers.ts'
 // Для замеров баланса (tools/balance): выпустить врага в обход волн
 export { spawnEnemy } from './systems/enemies.ts'
 

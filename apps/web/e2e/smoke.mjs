@@ -273,12 +273,13 @@ async function desktop(browser, url) {
     'тост «не хватает золота»',
     !!(await page.locator('.toast.visible').textContent())?.includes('Не хватает золота'),
   )
-  await page.getByRole('button', { name: /Продать/ }).click()
+  // Башня ещё не была в бою: кнопка «Вернуть», и возвращается всё вложенное (50 + 40)
+  await page.getByRole('button', { name: /Вернуть/ }).click()
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
   check(
-    'продажа вернула 60% (54 золота)',
-    snapshot.gold === 64 && snapshot.towers.length === 1,
+    'до волны «Вернуть» отдаёт всё (90 золота)',
+    snapshot.gold === 100 && snapshot.towers.length === 1,
     JSON.stringify(snapshot),
   )
   check('панель башни скрылась', (await page.locator('.tower-info').count()) === 0)
@@ -292,7 +293,7 @@ async function desktop(browser, url) {
   snapshot = await readGameSnapshot(page)
   check(
     'постройка с клавиатуры',
-    snapshot.towers.includes('archer0@5,11') && snapshot.gold === 14,
+    snapshot.towers.includes('archer0@5,11') && snapshot.gold === 50,
     JSON.stringify(snapshot),
   )
   await page.keyboard.press('Escape')

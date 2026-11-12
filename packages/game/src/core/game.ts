@@ -181,6 +181,8 @@ export function createGame(levelDef: LevelDef): Game {
         cooldownLeft: 0,
         aimAngle: INITIAL_AIM_ANGLE,
         targetMode: def.defaultTargetMode,
+        // Построена во время волны — сразу в бою, полного возврата нет
+        goldSinceLastWave: state.phase === 'build' ? def.cost : 0,
       }
       state.towers.push(tower)
       state.towersByCell.set(cellKey(col, row), tower)
@@ -194,6 +196,7 @@ export function createGame(levelDef: LevelDef): Game {
       const cost = upgradeCost(tower)
       if (cost === null || state.gold < cost) return false
       state.gold -= cost
+      if (state.phase === 'build') tower.goldSinceLastWave += cost
       tower.tier++
       events.emit('upgrade', tower)
       return true
@@ -202,7 +205,7 @@ export function createGame(levelDef: LevelDef): Game {
     sell(col, row) {
       const tower = towerAt(col, row)
       if (!tower || !isPlaying()) return null
-      const refund = refundFor(tower.def, tower.tier)
+      const refund = refundFor(tower)
       state.gold += refund
       state.towers.splice(state.towers.indexOf(tower), 1)
       state.towersByCell.delete(cellKey(col, row))
@@ -222,6 +225,8 @@ export function createGame(levelDef: LevelDef): Game {
 
     startWave() {
       if (state.phase !== 'build') return false
+      // Всё, что стоит на поле, идёт в бой: полный возврат при продаже кончается
+      for (const tower of state.towers) tower.goldSinceLastWave = 0
       state.spawnQueue = buildSpawnQueue(level, state.wave)
       state.waveTime = 0
       state.phase = 'wave'
