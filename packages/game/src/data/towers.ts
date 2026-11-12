@@ -4,7 +4,7 @@
 //
 // У каждой башни своя работа (баланс v4):
 // лучник — дешёвый и частый, огневик — против толпы и лат, Морозко — только замедляет,
-// баллиста — против толстых, Звонарь — ускоряет соседей, Казна — приносит золото.
+// баллиста — против толстых, Звонарь — ускоряет стреляющих соседей, Казна — приносит золото.
 
 import { frostPulse, shootHoming, shootLine } from '../systems/combat.ts'
 import type { TowerDef } from '../types.ts'
@@ -32,6 +32,7 @@ const archer: TowerDef = {
   ],
   displayStats: ['damage', 'range'],
   canChooseTarget: true,
+  takesFireRateBonus: true,
   fire: (world, tower, target, stats) =>
     shootHoming(world, tower, target, {
       look: 'arrow',
@@ -54,6 +55,7 @@ const mage: TowerDef = {
   ],
   displayStats: ['damage', 'range'],
   canChooseTarget: true,
+  takesFireRateBonus: true,
   fire: (world, tower, target, stats) =>
     shootHoming(world, tower, target, {
       look: 'orb',
@@ -79,6 +81,7 @@ const frost: TowerDef = {
   displayStats: ['slowAmount', 'range'],
   // Волна холода бьёт всех вокруг разом — выбирать цель незачем
   canChooseTarget: false,
+  takesFireRateBonus: false,
   fire: (world, tower, _target, stats) => frostPulse(world, tower, stats),
 }
 
@@ -97,6 +100,7 @@ const ballista: TowerDef = {
   ],
   displayStats: ['damage', 'range'],
   canChooseTarget: true,
+  takesFireRateBonus: true,
   fire: (world, tower, target, stats) =>
     shootLine(world, tower, target, {
       look: tower.tier >= BALLISTA_TWIN_BOLT_TIER ? 'twinBolt' : 'bolt',
@@ -111,7 +115,7 @@ const ballista: TowerDef = {
 const bell: TowerDef = {
   id: 'bell',
   name: 'Звонарь',
-  description: 'сам не стреляет, соседи с ним стреляют чаще',
+  description: 'сам не стреляет, башни рядом стреляют чаще (кроме Морозко)',
   cost: 100,
   upgradeCosts: [80, 120],
   tiers: [
@@ -122,6 +126,7 @@ const bell: TowerDef = {
   ],
   displayStats: ['fireRateBonus', 'range'],
   canChooseTarget: false,
+  takesFireRateBonus: false,
 }
 
 const treasury: TowerDef = {
@@ -137,6 +142,7 @@ const treasury: TowerDef = {
   ],
   displayStats: ['goldPerWave'],
   canChooseTarget: false,
+  takesFireRateBonus: false,
 }
 
 /** Башни в порядке магазина (клавиши 1, 2, 3…) */

@@ -80,7 +80,7 @@ export function findBestCell(game: Game, range: number): { col: number; row: num
 
 type Cell = { col: number; row: number }
 
-/** Свободная клетка, у которой больше всего стреляющих башен в радиусе range (для Звонаря) */
+/** Свободная клетка, у которой больше всего башен, которые ускоряет Звонарь, в радиусе range */
 function findCellNearTowers(game: Game, range: number): Cell | null {
   const { cols, rows } = game.level.def
   let bestCell: Cell | null = null
@@ -90,7 +90,8 @@ function findCellNearTowers(game: Game, range: number): Cell | null {
       if (!game.isCellFree(col, row)) continue
       const count = game.state.towers.filter(
         (tower) =>
-          tower.def.fire && (tower.x - col - 0.5) ** 2 + (tower.y - row - 0.5) ** 2 <= range ** 2,
+          tower.def.takesFireRateBonus &&
+          (tower.x - col - 0.5) ** 2 + (tower.y - row - 0.5) ** 2 <= range ** 2,
       ).length
       if (count > bestCount) {
         bestCount = count

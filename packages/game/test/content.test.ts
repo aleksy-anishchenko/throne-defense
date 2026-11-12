@@ -132,6 +132,16 @@ describe('Звонарь', () => {
     expect(archer.cooldownLeft).toBeCloseTo(1 - SIMULATION_STEP * (1 + bonus))
   })
 
+  it('Морозко не ускоряет — только стреляющих', () => {
+    const game = newGame()
+    game.state.gold = 1000
+    const frost = game.build('frost', 5, 11)!
+    game.build('bell', 6, 11)
+    frost.cooldownLeft = 1
+    game.step(SIMULATION_STEP)
+    expect(frost.cooldownLeft).toBeCloseTo(1 - SIMULATION_STEP)
+  })
+
   it('далёкую башню не ускоряет', () => {
     const game = newGame()
     game.state.gold = 1000

@@ -78,7 +78,8 @@ export function updateTowers(world: World, dt: number): void {
     const fire = tower.def.fire
     if (!fire) continue
 
-    tower.cooldownLeft -= dt * (1 + fireRateBonusFor(tower, bells))
+    const bonus = tower.def.takesFireRateBonus ? fireRateBonusFor(tower, bells) : 0
+    tower.cooldownLeft -= dt * (1 + bonus)
     if (tower.cooldownLeft > 0) continue
 
     const stats = towerStats(tower)
