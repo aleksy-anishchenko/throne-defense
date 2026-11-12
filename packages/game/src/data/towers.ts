@@ -158,7 +158,7 @@ const treasury: TowerDef = {
 }
 
 /** Башни в порядке магазина (клавиши 1, 2, 3…) */
-export const TOWER_LIST: readonly TowerDef[] = [archer, mage, frost, ballista, bell, treasury]
+export const TOWER_LIST: readonly TowerDef[] = [archer, ballista, mage, frost, bell, treasury]
 
 /** Все башни по id */
 export const TOWERS: Readonly<Record<string, TowerDef>> = Object.fromEntries(
