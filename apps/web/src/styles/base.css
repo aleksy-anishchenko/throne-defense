@@ -1,0 +1,42 @@
+/* Основа: сброс, body, кнопки, фокус, скрытый для глаз текст */
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+  /* Свайп вниз мимо поля на Android перезагрузил бы страницу, и партия пропала бы */
+  overscroll-behavior: none;
+}
+body {
+  background: var(--wall);
+  color: var(--parch);
+  font-family: var(--ui);
+  font-weight: 500;
+  font-size: 16px;
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

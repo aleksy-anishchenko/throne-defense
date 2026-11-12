@@ -1,0 +1,146 @@
+/* Части панели: карточка башни, магазин, кнопки */
+.tower-info {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.tower-info .tower-stats {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: center;
+  line-height: 1.25;
+}
+.tower-info .tower-stats b {
+  display: block;
+  font-weight: 800;
+  font-size: 1.12rem;
+}
+.tower-info .tower-stats span {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--parch-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 3px 4px 5px;
+  background: var(--slab);
+  border: 2px solid var(--edge);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  min-width: 0;
+}
+.card canvas {
+  width: 36px;
+  height: 36px;
+  display: block;
+}
+.card .card-name {
+  font-weight: 800;
+  font-size: 0.92rem;
+  line-height: 1.1;
+}
+.card .cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.card .cost svg {
+  width: 13px;
+  height: 13px;
+}
+.card .card-description {
+  display: none;
+}
+.card .card-description::first-letter {
+  text-transform: uppercase;
+}
+.card[aria-pressed='true'] {
+  border-color: var(--gold);
+  background: var(--slab-hi);
+}
+.card.poor .cost {
+  color: var(--parch-dim);
+}
+.card.poor canvas {
+  opacity: 0.5;
+}
+
+.controls {
+  display: flex;
+  gap: 6px;
+}
+.btn {
+  min-height: 46px;
+  padding: 0 14px;
+  background: var(--slab);
+  border: 2px solid var(--edge);
+  border-radius: 6px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:disabled {
+  /* Видно, что кнопка выключена, но надпись читается */
+  opacity: 0.65;
+  cursor: default;
+}
+.btn.primary {
+  background: var(--crimson);
+  border-color: var(--gold);
+  color: #fff3d6;
+}
+.btn.grow {
+  flex: 1 1 auto;
+}
+.btn.icon {
+  flex: none;
+  width: 48px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+.btn.icon svg {
+  width: 22px;
+  height: 22px;
+}
+.btn.action {
+  flex: none;
+  min-width: 98px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 10px;
+  line-height: 1.1;
+}
+.btn.action .price {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.btn.action.primary .price {
+  color: #ffe7a8;
+}
+.keys {
+  display: none;
+}

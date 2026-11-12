@@ -9,7 +9,7 @@ import '@fontsource/alegreya-sans/cyrillic-800.css'
 import '@fontsource/alegreya-sans/latin-800.css'
 import '@fontsource/ruslan-display/cyrillic-400.css'
 import '@fontsource/ruslan-display/latin-400.css'
-import './style.css'
+import './styles/index.css'
 
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'

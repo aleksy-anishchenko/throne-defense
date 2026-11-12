@@ -1,0 +1,8 @@
+/* Все стили игры. Порядок файлов важен: правила ниже перебивают правила выше
+   (responsive — последним, он переопределяет раскладку для других экранов) */
+@import './variables.css';
+@import './base.css';
+@import './layout.css';
+@import './components.css';
+@import './overlay.css';
+@import './responsive.css';

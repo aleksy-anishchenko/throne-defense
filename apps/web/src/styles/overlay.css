@@ -1,0 +1,75 @@
+/* Экран поверх поля: меню, поражение, победа */
+/* Заставка и итоги */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  /* На очень низком экране содержимое не влезает — тогда его можно прокрутить */
+  overflow-y: auto;
+  /* 24px от краёв, но не меньше выреза и скруглений экрана телефона */
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  background: rgba(16, 17, 28, 0.78);
+  animation: fade 0.25s;
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+.sheet {
+  width: min(100%, 430px);
+  /* По центру через margin: auto, а не place-items: center — если содержимое выше экрана,
+     верх не уходит за край, куда прокрутка не достаёт */
+  margin: auto;
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  text-align: center;
+}
+/* Фокус на самом экране ставит программа (см. ScreenOverlay.vue) — рамка вокруг всего текста не нужна */
+.sheet:focus {
+  outline: none;
+}
+.sheet h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(2.7rem, 12vw, 4.4rem);
+  line-height: 1.02;
+  color: var(--gold);
+  text-shadow: 0 0.07em 0 var(--crimson-deep);
+  text-wrap: balance;
+}
+.sheet p {
+  margin: 0;
+  font-size: 1.12rem;
+  line-height: 1.4;
+  max-width: 34ch;
+}
+.sheet .note {
+  color: var(--parch-dim);
+  font-size: 1rem;
+}
+.sheet .version {
+  color: var(--parch-dim);
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+.sheet .buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 4px;
+}
+.sheet .btn {
+  min-height: 50px;
+  padding: 0 20px;
+  font-size: 1.05rem;
+}
+.sheet .btn.primary {
+  min-width: 190px;
+  font-size: 1.15rem;
+}

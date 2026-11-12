@@ -1,0 +1,15 @@
+/* Цвета и шрифты — переменные для всех остальных файлов */
+:root {
+  --wall: #1c1f30;
+  --slab: #2a2e45;
+  --slab-hi: #363b58;
+  --edge: #474d70;
+  --parch: #f3e9d2;
+  --parch-dim: #b7af9d;
+  --gold: #e3b24a;
+  --crimson: #a8212f;
+  --crimson-deep: #7a1421;
+  --ember: #f0863a;
+  --display: 'Ruslan Display', Georgia, serif;
+  --ui: 'Alegreya Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
