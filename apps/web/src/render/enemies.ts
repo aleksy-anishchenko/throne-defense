@@ -79,15 +79,41 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
     sparkColor: '#a9b4c6',
     sparkCount: 5,
     body(ctx, radius) {
+      // меч за спиной, справа: клинок, гарда, рукоять
+      ctx.strokeStyle = '#dfe5f2'
+      ctx.lineWidth = 0.035
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(radius * 0.75, radius * 0.3)
+      ctx.lineTo(radius * 1.2, -radius * 1.0)
+      ctx.stroke()
+      ctx.strokeStyle = '#8a5d30'
+      ctx.lineWidth = 0.03
+      ctx.beginPath()
+      ctx.moveTo(radius * 0.55, radius * 0.2)
+      ctx.lineTo(radius * 1.0, radius * 0.38)
+      ctx.stroke()
+      // шлем-ведро
       ctx.fillStyle = '#a9b4c6'
       ctx.strokeStyle = '#4d566a'
+      ctx.lineWidth = 0.035
       circle(ctx, 0, 0, radius)
       ctx.fill()
       ctx.stroke()
-      // забрало
-      ctx.fillStyle = '#2a3040'
-      ctx.fillRect(-radius * 0.62, -0.04, radius * 1.24, 0.07)
-      ctx.fillRect(-0.025, -0.04, 0.05, radius * 0.7)
+      // блик на металле
+      ctx.fillStyle = '#d6dde9'
+      circle(ctx, -radius * 0.35, -radius * 0.45, radius * 0.22)
+      ctx.fill()
+      // смотровая щель и прорези для дыхания
+      ctx.fillStyle = '#1c2130'
+      ctx.fillRect(-radius * 0.62, -0.05, radius * 1.24, 0.06)
+      ctx.fillRect(-0.02, -0.05, 0.04, radius * 0.75)
+      // заклёпки
+      ctx.fillStyle = '#6b7488'
+      circle(ctx, -radius * 0.7, radius * 0.25, 0.018)
+      ctx.fill()
+      circle(ctx, radius * 0.7, radius * 0.25, 0.018)
+      ctx.fill()
       // плюмаж
       ctx.fillStyle = '#c0392b'
       ctx.beginPath()
@@ -96,6 +122,25 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
       ctx.lineTo(0.05, -radius)
       ctx.closePath()
       ctx.fill()
+      // щит спереди слева: сразу видно, что этот враг в броне
+      ctx.save()
+      ctx.translate(-radius * 0.7, radius * 0.45)
+      ctx.fillStyle = '#8f2430'
+      ctx.strokeStyle = GOLD
+      ctx.lineWidth = 0.022
+      ctx.beginPath()
+      ctx.moveTo(-0.09, -0.09)
+      ctx.lineTo(0.09, -0.09)
+      ctx.lineTo(0.09, 0.02)
+      ctx.quadraticCurveTo(0.08, 0.1, 0, 0.14)
+      ctx.quadraticCurveTo(-0.08, 0.1, -0.09, 0.02)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = GOLD
+      ctx.fillRect(-0.012, -0.07, 0.024, 0.16)
+      ctx.fillRect(-0.06, -0.025, 0.12, 0.024)
+      ctx.restore()
     },
   },
 
@@ -169,26 +214,59 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
     sparkColor: '#8fd17a',
     sparkCount: 6,
     body(ctx, radius) {
-      // светлая ряса
+      // посох с травами — за спиной, слева; травы светятся: знахарь лечит
+      ctx.strokeStyle = '#8a5d30'
+      ctx.lineWidth = 0.03
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(-radius * 0.9, radius * 0.9)
+      ctx.lineTo(-radius * 1.2, -radius * 1.25)
+      ctx.stroke()
+      ctx.fillStyle = 'rgba(127,209,106,.35)'
+      circle(ctx, -radius * 1.2, -radius * 1.35, 0.085)
+      ctx.fill()
+      ctx.fillStyle = '#7fd16a'
+      circle(ctx, -radius * 1.2, -radius * 1.35, 0.045)
+      ctx.fill()
+      // светлая ряса с капюшоном
       ctx.fillStyle = '#e8e1cc'
       ctx.strokeStyle = '#7d765f'
+      ctx.lineWidth = 0.035
       circle(ctx, 0, 0, radius)
       ctx.fill()
       ctx.stroke()
-      // зелёный крест-оберег
-      ctx.fillStyle = '#4f9a44'
-      ctx.fillRect(-0.025, -radius * 0.65, 0.05, radius * 1.3)
-      ctx.fillRect(-radius * 0.55, -0.025, radius * 1.1, 0.05)
-      // посох с травами
-      ctx.strokeStyle = '#8a5d30'
-      ctx.lineWidth = 0.03
-      ctx.beginPath()
-      ctx.moveTo(-0.2, 0.2)
-      ctx.lineTo(-0.26, -0.26)
-      ctx.stroke()
-      ctx.fillStyle = '#7fd16a'
-      circle(ctx, -0.26, -0.28, 0.05)
+      // лицо в глубине капюшона
+      ctx.fillStyle = '#7d765f'
+      circle(ctx, 0, -radius * 0.25, radius * 0.6)
       ctx.fill()
+      ctx.fillStyle = '#e0b48a'
+      circle(ctx, 0, -radius * 0.2, radius * 0.45)
+      ctx.fill()
+      // седая борода: от щёк вниз, ниже лица, на груди — клином.
+      // Верхний край — усы домиком, иначе борода похожа на широкую улыбку
+      ctx.fillStyle = '#f6f2e6'
+      ctx.strokeStyle = '#b9b2a0'
+      ctx.lineWidth = 0.012
+      ctx.beginPath()
+      ctx.moveTo(-radius * 0.4, -radius * 0.15)
+      ctx.quadraticCurveTo(-radius * 0.35, radius * 0.4, 0, radius * 0.6)
+      ctx.quadraticCurveTo(radius * 0.35, radius * 0.4, radius * 0.4, -radius * 0.15)
+      ctx.lineTo(radius * 0.12, -radius * 0.05)
+      ctx.lineTo(0, -radius * 0.12)
+      ctx.lineTo(-radius * 0.12, -radius * 0.05)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      // глаза
+      ctx.fillStyle = '#2a1a0c'
+      circle(ctx, -radius * 0.17, -radius * 0.3, 0.018)
+      ctx.fill()
+      circle(ctx, radius * 0.17, -radius * 0.3, 0.018)
+      ctx.fill()
+      // зелёный крест-оберег на рясе, сбоку от бороды
+      ctx.fillStyle = '#4f9a44'
+      ctx.fillRect(-radius * 0.62, radius * 0.1, 0.03, radius * 0.45)
+      ctx.fillRect(-radius * 0.78, radius * 0.22, radius * 0.32, 0.03)
     },
   },
 
@@ -270,6 +348,16 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
         ctx.fillStyle = '#4f9a3e'
         ctx.strokeStyle = '#1f3f18'
         ctx.lineWidth = 0.025
+        // ушки-рожки: рисуем до головы, чтобы их основание спряталось под ней
+        for (const side of [-1, 1]) {
+          ctx.beginPath()
+          ctx.moveTo(headX + side * 0.03, headY - 0.07)
+          ctx.lineTo(headX + side * 0.11, headY - 0.15)
+          ctx.lineTo(headX + side * 0.09, headY - 0.03)
+          ctx.closePath()
+          ctx.fill()
+          ctx.stroke()
+        }
         circle(ctx, headX, headY, 0.1)
         ctx.fill()
         ctx.stroke()
@@ -314,31 +402,88 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
     healthBarOffset: 0.32,
     drawOnTop: true,
     body(ctx, radius) {
-      ctx.fillStyle = '#4a2478'
-      circle(ctx, 0, 0.04, radius)
+      // скипетр справа: золотое древко и держава с камнем
+      ctx.strokeStyle = GOLD
+      ctx.lineWidth = 0.04
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(radius * 0.75, radius * 0.6)
+      ctx.lineTo(radius * 1.05, -radius * 0.55)
+      ctx.stroke()
+      ctx.fillStyle = GOLD
+      circle(ctx, radius * 1.08, -radius * 0.68, 0.07)
       ctx.fill()
-      ctx.fillStyle = '#7a45b8'
+      ctx.fillStyle = '#ff5a4a'
+      circle(ctx, radius * 1.08, -radius * 0.68, 0.032)
+      ctx.fill()
+      // мантия
+      ctx.fillStyle = '#4a2478'
       ctx.strokeStyle = '#2f1650'
       ctx.lineWidth = 0.045
-      circle(ctx, 0, 0, radius * 0.8)
+      circle(ctx, 0, 0.04, radius)
+      ctx.fill()
+      ctx.stroke()
+      // горностаевый воротник: белый мех с чёрными хвостиками
+      ctx.fillStyle = '#f3efe4'
+      ctx.beginPath()
+      ctx.ellipse(0, radius * 0.22, radius * 0.72, radius * 0.3, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#1c1a22'
+      for (const spotX of [-0.5, -0.2, 0.2, 0.5]) {
+        ctx.fillRect(radius * spotX - 0.012, radius * 0.2, 0.024, 0.045)
+      }
+      // лицо
+      ctx.fillStyle = '#d9b394'
+      ctx.strokeStyle = '#6b4a35'
+      ctx.lineWidth = 0.025
+      circle(ctx, 0, -radius * 0.12, radius * 0.48)
+      ctx.fill()
+      ctx.stroke()
+      // чёрная борода клином
+      ctx.fillStyle = '#231a24'
+      ctx.beginPath()
+      ctx.moveTo(-radius * 0.42, -radius * 0.05)
+      ctx.quadraticCurveTo(-radius * 0.3, radius * 0.4, 0, radius * 0.55)
+      ctx.quadraticCurveTo(radius * 0.3, radius * 0.4, radius * 0.42, -radius * 0.05)
+      ctx.quadraticCurveTo(0, radius * 0.15, -radius * 0.42, -radius * 0.05)
+      ctx.closePath()
+      ctx.fill()
+      // злые брови и горящие красные глаза
+      ctx.strokeStyle = '#231a24'
+      ctx.lineWidth = 0.035
+      ctx.beginPath()
+      ctx.moveTo(-radius * 0.34, -radius * 0.34)
+      ctx.lineTo(-radius * 0.08, -radius * 0.22)
+      ctx.moveTo(radius * 0.34, -radius * 0.34)
+      ctx.lineTo(radius * 0.08, -radius * 0.22)
+      ctx.stroke()
+      ctx.fillStyle = '#ff5a4a'
+      circle(ctx, -radius * 0.18, -radius * 0.14, 0.03)
+      ctx.fill()
+      circle(ctx, radius * 0.18, -radius * 0.14, 0.03)
+      ctx.fill()
+      // корона с камнями
+      ctx.fillStyle = GOLD
+      ctx.strokeStyle = '#8a6420'
+      ctx.lineWidth = 0.02
+      ctx.beginPath()
+      ctx.moveTo(-0.22, -0.2)
+      ctx.lineTo(-0.25, -0.46)
+      ctx.lineTo(-0.11, -0.33)
+      ctx.lineTo(0, -0.5)
+      ctx.lineTo(0.11, -0.33)
+      ctx.lineTo(0.25, -0.46)
+      ctx.lineTo(0.22, -0.2)
+      ctx.closePath()
       ctx.fill()
       ctx.stroke()
       ctx.fillStyle = '#ff5a4a'
-      circle(ctx, -0.1, 0, 0.04)
+      circle(ctx, 0, -0.27, 0.03)
       ctx.fill()
-      circle(ctx, 0.1, 0, 0.04)
+      ctx.fillStyle = '#5ac8ff'
+      circle(ctx, -0.13, -0.25, 0.022)
       ctx.fill()
-      // корона
-      ctx.fillStyle = GOLD
-      ctx.beginPath()
-      ctx.moveTo(-0.22, -0.2)
-      ctx.lineTo(-0.24, -0.44)
-      ctx.lineTo(-0.11, -0.32)
-      ctx.lineTo(0, -0.48)
-      ctx.lineTo(0.11, -0.32)
-      ctx.lineTo(0.24, -0.44)
-      ctx.lineTo(0.22, -0.2)
-      ctx.closePath()
+      circle(ctx, 0.13, -0.25, 0.022)
       ctx.fill()
     },
   },
