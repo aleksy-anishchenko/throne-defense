@@ -491,19 +491,28 @@ const FALLBACK_TOWER_ART: TowerArt = {
   },
 }
 
-/** Цвет обода постамента на ступенях I, II, III: камень, железо, золото */
-const PEDESTAL_RIM_COLORS = ['#5a6186', '#8a95ab', '#c9a24a']
+/** Цвет кольца вокруг постамента на ступенях II и III: серебро и золото (у I кольца нет) */
+const TIER_RING_COLORS = ['', '#c3cbd9', GOLD]
+/** Радиус кольца ступени, клеток: снаружи каменного обода (0.37) */
+const TIER_RING_RADIUS = 0.395
+/** Толщина кольца ступени и тёмного зазора вокруг него, клеток */
+const TIER_RING_WIDTH = 0.028
+const TIER_RING_GAP_WIDTH = 0.05
 
-/** Заклёпки на ободе постамента (II и III): восемь штук по кругу, кроме низа — там точки ступени */
-function drawRimRivets(ctx: Canvas2D, tier: number) {
-  ctx.fillStyle = tier >= TIER_III ? '#fff1c2' : '#d6dde9'
-  for (let i = 0; i < 8; i++) {
-    const angle = (i * Math.PI) / 4
-    // низ обода (угол 90°) занят точками ступени
-    if (i === 2) continue
-    circle(ctx, Math.cos(angle) * 0.335, Math.sin(angle) * 0.335, 0.018)
-    ctx.fill()
-  }
+/**
+ * Кольцо ступени вокруг постамента: серебряное (II) или золотое (III).
+ * Снаружи и с тёмным зазором — чтобы золото рамки не сливалось с золотом самой башни
+ * (колокол Звонаря, сундук Казны, лук лучника III)
+ */
+function drawTierRing(ctx: Canvas2D, tier: number) {
+  ctx.strokeStyle = '#2a2e45'
+  ctx.lineWidth = TIER_RING_GAP_WIDTH
+  circle(ctx, 0, 0, TIER_RING_RADIUS)
+  ctx.stroke()
+  ctx.strokeStyle = TIER_RING_COLORS[tier] ?? GOLD
+  ctx.lineWidth = TIER_RING_WIDTH
+  circle(ctx, 0, 0, TIER_RING_RADIUS)
+  ctx.stroke()
 }
 
 /** Башня целиком: тень, постамент, сама башня, золотые точки ступени */
@@ -518,11 +527,11 @@ export function drawTower(
   ctx.fillStyle = 'rgba(8,9,18,.45)'
   circle(ctx, 0, 0.05, 0.39)
   ctx.fill()
-  // обод постамента: I — камень, II — железо, III — золото
-  ctx.fillStyle = PEDESTAL_RIM_COLORS[tier] ?? PEDESTAL_RIM_COLORS[0]
+  // каменный обод — у всех ступеней одинаковый; ступень II и III видно по кольцу снаружи
+  ctx.fillStyle = '#5a6186'
   circle(ctx, 0, 0, 0.37)
   ctx.fill()
-  if (tier >= TIER_II) drawRimRivets(ctx, tier)
+  if (tier >= TIER_II) drawTierRing(ctx, tier)
   ctx.fillStyle = '#3b4162'
   circle(ctx, 0, 0, 0.3)
   ctx.fill()
@@ -532,7 +541,7 @@ export function drawTower(
   art.body(ctx, aimAngle, time, isReady, tier)
   ctx.restore()
 
-  // точки ступени — с тёмной обводкой, чтобы читались и на золотом ободе
+  // точки ступени — с тёмной обводкой, чтобы не сливались с золотыми деталями башни
   ctx.fillStyle = GOLD
   ctx.strokeStyle = '#2a2e45'
   ctx.lineWidth = 0.015
