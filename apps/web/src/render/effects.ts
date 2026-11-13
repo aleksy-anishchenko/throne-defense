@@ -4,6 +4,7 @@
 import type { Enemy, Game, Tower } from '@throne/game'
 import { getEnemyArt } from './enemies'
 import { GOLD, circle, drawNet, prefersReducedMotion, type Canvas2D } from './shapes'
+import { FIRE_RGB } from './statuses'
 import { TOWER_ART } from './towers'
 
 interface TextEffect {
@@ -74,9 +75,13 @@ interface SteamEffect {
   duration: number
 }
 
-/** Искорка над горящим врагом: летит вверх и гаснет (без тяжести, в отличие от искр) */
-interface EmberEffect {
-  kind: 'ember'
+/**
+ * Частица эффекта на враге: искорка огня летит вверх, снежинка мороза сыплется вниз.
+ * Летит ровно (без тяжести, в отличие от искр при гибели) и гаснет, см. STATUS_PARTICLES
+ */
+interface MoteEffect {
+  kind: 'mote'
+  look: MoteLook
   x: number
   y: number
   vx: number
@@ -86,7 +91,7 @@ interface EmberEffect {
 }
 
 export type Effect =
-  TextEffect | SparkEffect | RingEffect | BoomEffect | SteamEffect | NetEffect | EmberEffect
+  TextEffect | SparkEffect | RingEffect | BoomEffect | SteamEffect | NetEffect | MoteEffect
 
 export interface EffectSink {
   add(effect: Effect): void
@@ -146,6 +151,11 @@ const NET_DURATION = 0.45
 const KNOCKBACK_DUST_DURATION = 0.35
 /** Цвет пыли от отброса */
 const KNOCKBACK_DUST_RGB = '200,190,170'
+/** Сгоревшая сеть: искры, их цвет, насколько разбегается огненное кольцо (клеток) и сколько, с */
+const NET_BURN_SPARK_COUNT = 8
+const NET_BURN_SPARK_COLOR = '#ffb347'
+const NET_BURN_RING_GROWTH = 0.3
+const NET_BURN_DURATION = 0.35
 /** Сколько длится взрыв, с */
 const BOOM_DURATION = 0.3
 /** Тряска экрана при потере жизни, с */
@@ -171,18 +181,61 @@ const TEXT_FONT_SHARE = 0.34
 /** Сдвиг тени надписи, px */
 const TEXT_SHADOW_OFFSET_PX = 1
 
-/** Сколько искорок в секунду летит от горящего врага (от «мокрого» — вдвое меньше) */
-const EMBER_RATE = 10
-/** Сколько живёт искорка, с: самое малое и разброс */
-const EMBER_MIN_LIFETIME = 0.45
-const EMBER_LIFETIME_SPREAD = 0.3
-/** Скорость искорки вверх, клеток/с: самая малая и разброс */
-const EMBER_MIN_RISE = 0.45
-const EMBER_RISE_SPREAD = 0.35
-/** Размах качания искорки вбок, клеток/с */
-const EMBER_DRIFT = 0.25
-/** Размер искорки в начале, клеток */
-const EMBER_SIZE = 0.06
+/** Как выглядит и летит частица эффекта */
+interface MoteLook {
+  /** Цвет в начале жизни и к концу */
+  youngColor: string
+  oldColor: string
+  /** Точка или снежинка-крестик */
+  shape: 'dot' | 'flake'
+  /** Размер в начале, клеток */
+  size: number
+}
+
+/**
+ * Частицы эффектов на враге (общие правила — в statuses.ts). Движение глаз замечает
+ * раньше цвета: так эффект видно даже на маленьком экране
+ */
+interface StatusParticles {
+  isActive(enemy: Enemy): boolean
+  look: MoteLook
+  /** Сколько частиц в секунду от одного врага (в среднем) */
+  rate: number
+  /** Откуда вылетает: по высоте, в долях радиуса от центра врага (минус — выше), [от, до] */
+  spawnY: readonly [number, number]
+  /** Скорость по вертикали, клеток/с (минус — вверх), [от, до] */
+  speedY: readonly [number, number]
+  /** Размах качания вбок, клеток/с */
+  drift: number
+  /** Сколько живёт, с, [от, до] */
+  lifetime: readonly [number, number]
+}
+
+const STATUS_PARTICLES: readonly StatusParticles[] = [
+  {
+    // Огонь: искорки летят вверх
+    isActive: (enemy) => enemy.burnTimeLeft > 0,
+    look: { youngColor: '#fff0a8', oldColor: '#ffb347', shape: 'dot', size: 0.06 },
+    rate: 10,
+    spawnY: [-1.2, -0.6],
+    speedY: [-0.8, -0.45],
+    drift: 0.25,
+    lifetime: [0.45, 0.75],
+  },
+  {
+    // Мороз: снежинки сыплются с врага вниз
+    isActive: (enemy) => enemy.slowTimeLeft > 0,
+    look: { youngColor: '#ffffff', oldColor: '#bfe9ff', shape: 'flake', size: 0.05 },
+    rate: 6,
+    spawnY: [-0.6, 0.2],
+    speedY: [0.15, 0.3],
+    drift: 0.2,
+    lifetime: [0.6, 0.9],
+  },
+]
+
+/** Случайное число в промежутке [from, to] */
+const randomBetween = ([from, to]: readonly [number, number]) => from + Math.random() * (to - from)
 
 /** Упавшая сеть: за первую треть жизни раскрывается до полного радиуса, потом тает */
 function drawNetLanding(ctx: Canvas2D, effect: NetEffect, lifeShare: number) {
@@ -264,36 +317,50 @@ export function createEffects(game: Game): Effects {
     ctx.globalAlpha = 1
   }
 
-  /** Искорка гаснет и уменьшается; жёлтая в начале, оранжевая к концу */
-  function drawEmber(ctx: Canvas2D, ember: EmberEffect, lifeShare: number) {
+  /** Частица гаснет и уменьшается, к концу жизни меняет цвет */
+  function drawMote(ctx: Canvas2D, mote: MoteEffect, lifeShare: number) {
+    const { look } = mote
+    const size = look.size * (0.4 + 0.6 * lifeShare)
     ctx.globalAlpha = Math.min(1, lifeShare * 1.6)
-    ctx.fillStyle = lifeShare > 0.3 ? '#fff0a8' : '#ffb347'
-    circle(ctx, ember.x, ember.y, EMBER_SIZE * (0.4 + 0.6 * lifeShare))
-    ctx.fill()
+    if (look.shape === 'dot') {
+      ctx.fillStyle = lifeShare > 0.3 ? look.youngColor : look.oldColor
+      circle(ctx, mote.x, mote.y, size)
+      ctx.fill()
+    } else {
+      // снежинка — крестик из двух палочек и «х» поменьше
+      ctx.strokeStyle = lifeShare > 0.3 ? look.youngColor : look.oldColor
+      ctx.lineWidth = size * 0.45
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(mote.x - size, mote.y)
+      ctx.lineTo(mote.x + size, mote.y)
+      ctx.moveTo(mote.x, mote.y - size)
+      ctx.lineTo(mote.x, mote.y + size)
+      ctx.stroke()
+    }
     ctx.globalAlpha = 1
   }
 
-  /**
-   * От каждого горящего врага поднимаются искорки: движение глаз замечает раньше цвета.
-   * Случайно, в среднем EMBER_RATE в секунду — так они не вылетают все разом
-   */
-  function spawnEmbers(simDt: number) {
+  /** От врагов под эффектами летят частицы — случайно, в среднем rate в секунду, не все разом */
+  function spawnStatusParticles(simDt: number) {
     if (prefersReducedMotion || simDt <= 0) return
     for (const enemy of game.state.enemies) {
-      if (enemy.burnTimeLeft <= 0 || enemy.isDead) continue
-      const rate = enemy.slowTimeLeft > 0 ? EMBER_RATE / 2 : EMBER_RATE
-      if (Math.random() >= rate * simDt) continue
+      if (enemy.isDead) continue
       const radius = enemy.def.radius
-      const timeLeft = EMBER_MIN_LIFETIME + Math.random() * EMBER_LIFETIME_SPREAD
-      add({
-        kind: 'ember',
-        x: enemy.x + (Math.random() - 0.5) * radius * 1.4,
-        y: enemy.y - radius * (0.6 + Math.random() * 0.6),
-        vx: (Math.random() - 0.5) * EMBER_DRIFT,
-        vy: -(EMBER_MIN_RISE + Math.random() * EMBER_RISE_SPREAD),
-        timeLeft,
-        duration: timeLeft,
-      })
+      for (const particles of STATUS_PARTICLES) {
+        if (!particles.isActive(enemy) || Math.random() >= particles.rate * simDt) continue
+        const timeLeft = randomBetween(particles.lifetime)
+        add({
+          kind: 'mote',
+          look: particles.look,
+          x: enemy.x + (Math.random() - 0.5) * radius * 1.4,
+          y: enemy.y + radius * randomBetween(particles.spawnY),
+          vx: (Math.random() - 0.5) * particles.drift,
+          vy: randomBetween(particles.speedY),
+          timeLeft,
+          duration: timeLeft,
+        })
+      }
     }
   }
 
@@ -372,6 +439,30 @@ export function createEffects(game: Game): Effects {
         duration: KILL_TEXT_DURATION,
       })
     }),
+    // Огонь растопил лёд — облачко пара, без числа: урона нет
+    game.on('thaw', (enemy) =>
+      add({
+        kind: 'steam',
+        x: enemy.x,
+        y: enemy.y,
+        timeLeft: STEAM_DURATION,
+        duration: STEAM_DURATION,
+      }),
+    ),
+    // Сеть сгорела — оранжевые искры и огненное кольцо разбегается от врага
+    game.on('netBurn', (enemy) => {
+      spawnSparks(enemy.x, enemy.y, NET_BURN_SPARK_COLOR, NET_BURN_SPARK_COUNT)
+      add({
+        kind: 'ring',
+        x: enemy.x,
+        y: enemy.y,
+        startRadius: enemy.def.radius,
+        endRadius: enemy.def.radius + NET_BURN_RING_GROWTH,
+        rgb: FIRE_RGB,
+        timeLeft: NET_BURN_DURATION,
+        duration: NET_BURN_DURATION,
+      })
+    }),
     game.on('leak', () => {
       shakeTime = LEAK_SHAKE_DURATION
       throneHurtTime = THRONE_HURT_DURATION
@@ -396,14 +487,14 @@ export function createEffects(game: Game): Effects {
           effect.x += effect.vx * simDt
           effect.y += effect.vy * simDt
           effect.vy += SPARK_GRAVITY * simDt
-        } else if (effect.kind === 'ember') {
+        } else if (effect.kind === 'mote') {
           effect.x += effect.vx * simDt
           effect.y += effect.vy * simDt
         } else if (effect.kind === 'text') {
           effect.y -= TEXT_RISE_SPEED * simDt
         }
       }
-      spawnEmbers(simDt)
+      spawnStatusParticles(simDt)
       if (
         (activeEffects.length && activeEffects[0].timeLeft <= 0) ||
         activeEffects.length > COMPACTION_THRESHOLD
@@ -438,8 +529,8 @@ export function createEffects(game: Game): Effects {
           drawSteam(ctx, effect, lifeShare)
         } else if (effect.kind === 'net') {
           drawNetLanding(ctx, effect, lifeShare)
-        } else if (effect.kind === 'ember') {
-          drawEmber(ctx, effect, lifeShare)
+        } else if (effect.kind === 'mote') {
+          drawMote(ctx, effect, lifeShare)
         }
       }
     },

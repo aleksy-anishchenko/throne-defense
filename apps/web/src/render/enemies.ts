@@ -1,7 +1,8 @@
 // Как выглядит каждый враг. Новый враг в @throne/game → добавь его рисунок сюда.
 
 import type { Enemy } from '@throne/game'
-import { GOLD, circle, drawNet, prefersReducedMotion } from './shapes'
+import { GOLD, circle, prefersReducedMotion } from './shapes'
+import { drawStatusMarks, drawStatusRings } from './statuses'
 import type { Canvas2D } from './shapes'
 
 export interface EnemyArt {
@@ -614,212 +615,12 @@ function healthBarColor(healthFraction: number): string {
 /** Кусок полоски здоровья, который ещё сгорит */
 const BURN_PREVIEW_COLOR = '#ff9a2e'
 
-/** Цвета огня: снаружи внутрь. Светлая сердцевина и тёмная обводка — видно на любом фоне */
-const FIRE_OUTER = '#ff6a1a'
-const FIRE_MIDDLE = '#ffc23a'
-const FIRE_CORE = '#fff4b8'
-const FIRE_OUTLINE = 'rgba(70,18,0,.85)'
-/** Цвет огня (RGB для прозрачности) — для кольца у ног */
-const FIRE_RGB = '255,130,40'
-/** Цвет мороза (RGB для прозрачности) */
-const FROST_RGB = '170,230,255'
-
-/** Насколько ледяное свечение выходит за край врага, клеток */
-const FROST_GLOW_MARGIN = 0.08
-/** Где над врагом висят снежинки: [доля радиуса по x, по y] */
-const FROST_FLAKE_SPOTS: readonly (readonly [number, number])[] = [
-  [-0.75, -0.85],
-  [0.1, -1.1],
-  [0.8, -0.7],
-]
-/** Размер снежинки, клеток */
-const FROST_FLAKE_SIZE = 0.045
-
-/** Ледяное свечение под замедленным врагом */
-function drawFrostGlow(ctx: Canvas2D, radius: number) {
-  ctx.fillStyle = `rgba(${FROST_RGB},.35)`
-  ctx.strokeStyle = `rgba(${FROST_RGB},.9)`
-  ctx.lineWidth = 0.03
-  circle(ctx, 0, 0, radius + FROST_GLOW_MARGIN)
-  ctx.fill()
-  ctx.stroke()
-}
-
-/** Поверх замедленного врага: голубой оттенок тела и три снежинки над ним */
-function drawFrostOverlay(ctx: Canvas2D, radius: number) {
-  ctx.fillStyle = 'rgba(150,215,255,.25)'
-  circle(ctx, 0, 0, radius)
-  ctx.fill()
-  ctx.strokeStyle = '#eaf8ff'
-  ctx.lineWidth = 0.014
-  ctx.lineCap = 'round'
-  ctx.beginPath()
-  for (const [shareX, shareY] of FROST_FLAKE_SPOTS) {
-    const x = shareX * radius
-    const y = shareY * radius
-    // снежинка из трёх палочек через 60°
-    for (let i = 0; i < 3; i++) {
-      const angle = (i * Math.PI) / 3
-      const deltaX = Math.cos(angle) * FROST_FLAKE_SIZE
-      const deltaY = Math.sin(angle) * FROST_FLAKE_SIZE
-      ctx.moveTo(x - deltaX, y - deltaY)
-      ctx.lineTo(x + deltaX, y + deltaY)
-    }
-  }
-  ctx.stroke()
-}
-
-/**
- * Путь-язык пламени: капля острым концом вверх. x, baseY — середина основания,
- * width — ширина, height — высота, sway — насколько кончик качнулся вбок (в долях ширины)
- */
-function flamePath(
-  ctx: Canvas2D,
-  x: number,
-  baseY: number,
-  width: number,
-  height: number,
-  sway = 0,
-) {
-  const half = width / 2
-  const tipX = x + sway * width
-  ctx.beginPath()
-  ctx.moveTo(x - half, baseY)
-  ctx.bezierCurveTo(
-    x - half,
-    baseY - height * 0.45,
-    tipX - half * 0.2,
-    baseY - height * 0.7,
-    tipX,
-    baseY - height,
-  )
-  ctx.bezierCurveTo(
-    tipX + half * 0.2,
-    baseY - height * 0.7,
-    x + half,
-    baseY - height * 0.45,
-    x + half,
-    baseY,
-  )
-  // круглое донышко
-  ctx.quadraticCurveTo(x + half, baseY + width * 0.45, x, baseY + width * 0.45)
-  ctx.quadraticCurveTo(x - half, baseY + width * 0.45, x - half, baseY)
-  ctx.closePath()
-}
-
-/**
- * Язык пламени в три слоя: тёмная обводка + оранжевый, жёлтый, почти белая сердцевина.
- * Обводка отделяет огонь от рыжего врага и красного ковра, сердцевина — самое яркое место на поле
- */
-function drawFlame(
-  ctx: Canvas2D,
-  x: number,
-  baseY: number,
-  width: number,
-  height: number,
-  sway: number,
-  outlineWidth: number,
-) {
-  flamePath(ctx, x, baseY, width, height, sway)
-  ctx.fillStyle = FIRE_OUTER
-  ctx.fill()
-  ctx.strokeStyle = FIRE_OUTLINE
-  ctx.lineWidth = outlineWidth
-  ctx.stroke()
-  flamePath(ctx, x, baseY, width * 0.62, height * 0.68, sway * 0.6)
-  ctx.fillStyle = FIRE_MIDDLE
-  ctx.fill()
-  flamePath(ctx, x, baseY, width * 0.3, height * 0.38, sway * 0.3)
-  ctx.fillStyle = FIRE_CORE
-  ctx.fill()
-}
-
-/**
- * Языки пламени на враге: [доля радиуса по x, где основание по y, ширина, высота — в долях радиуса].
- * Средний — высокий, выше макушки: силуэт врага меняется, огонь виден и на телефоне
- */
-const BURN_TONGUES: readonly (readonly [number, number, number, number])[] = [
-  [-0.55, 0.05, 0.55, 1.05],
-  [0.55, 0.1, 0.5, 0.95],
-  [0, -0.25, 0.75, 1.45],
-]
-/** Во сколько раз меньше пламя на «мокром» (замедленном) враге: он горит хуже */
-const WET_FLAME_SCALE = 0.6
-/** Насколько огненное кольцо у ног выходит за край врага, клеток (снаружи ледяного) */
-const BURN_RING_MARGIN = 0.13
-
-/** Огненное кольцо и отсвет у ног горящего врага — рисуется до тела, как ледяное свечение */
-function drawBurnGlow(ctx: Canvas2D, radius: number, time: number, isWet: boolean) {
-  const flicker = prefersReducedMotion ? 0.85 : 0.75 + 0.25 * Math.sin(time * 11)
-  const strength = isWet ? 0.5 : 1
-  ctx.fillStyle = `rgba(${FIRE_RGB},${0.22 * strength})`
-  circle(ctx, 0, 0, radius + BURN_RING_MARGIN)
-  ctx.fill()
-  ctx.strokeStyle = `rgba(${FIRE_RGB},${flicker * strength})`
-  ctx.lineWidth = 0.035
-  ctx.stroke()
-}
-
-/**
- * Горящий враг: оранжевый отсвет на теле и три языка пламени поверх (огневик).
- * isWet — враг под замедлением, горит хуже: пламя меньше и бледнее, отсвета нет
- */
-function drawBurning(ctx: Canvas2D, radius: number, time: number, isWet: boolean) {
-  if (!isWet) {
-    ctx.fillStyle = 'rgba(255,120,40,.25)'
-    circle(ctx, 0, 0, radius)
-    ctx.fill()
-  }
-  ctx.globalAlpha = isWet ? 0.8 : 1
-  ctx.lineJoin = 'round'
-  const scale = isWet ? WET_FLAME_SCALE : 1
-  BURN_TONGUES.forEach(([shareX, shareY, widthShare, heightShare], i) => {
-    const flicker = prefersReducedMotion ? 1 : 0.85 + 0.15 * Math.sin(time * 14 + i * 2.1)
-    const sway = prefersReducedMotion ? 0 : 0.18 * Math.sin(time * 9 + i * 1.7)
-    drawFlame(
-      ctx,
-      shareX * radius,
-      shareY * radius,
-      widthShare * radius * scale,
-      heightShare * radius * scale * flicker,
-      sway,
-      radius * 0.09,
-    )
-  })
-  ctx.globalAlpha = 1
-}
-
-/** Цвет проклятия Колдуна (RGB для прозрачности) — тот же, что у его шара */
-const CURSE_RGB = '190,120,255'
-/** Насколько сеть на враге шире самого врага, в долях радиуса */
-const ROOT_NET_SCALE = 1.25
-
-/**
- * Проклятый враг: фиолетовое кольцо у ног и тёмно-фиолетовый оттенок тела.
- * Рисуется до тела (кольцо) и после (оттенок) — как замедление
- */
-function drawCurseRing(ctx: Canvas2D, radius: number, time: number) {
-  const pulse = prefersReducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(time * 6)
-  ctx.strokeStyle = `rgba(${CURSE_RGB},${0.55 + pulse * 0.35})`
-  ctx.lineWidth = 0.03
-  ctx.setLineDash([0.06, 0.05])
-  circle(ctx, 0, 0, radius + 0.06)
-  ctx.stroke()
-  ctx.setLineDash([])
-}
-
-function drawCurseTint(ctx: Canvas2D, radius: number) {
-  ctx.fillStyle = `rgba(${CURSE_RGB},.22)`
-  circle(ctx, 0, 0, radius)
-  ctx.fill()
-}
-
-/** Покачивание врага на ходу, клеток. Одно и то же для тела и для полоски со значками */
+/** Покачивание врага на ходу, клеток. Одно и то же для тела и для полоски здоровья */
 function bobOffset(enemy: Enemy, time: number, bobPhase: number): number {
   return prefersReducedMotion ? 0 : Math.sin(time * 9 * enemy.def.speed + bobPhase) * 0.02
 }
 
-/** Враг целиком: тень, покачивание, сам враг, замедление, огонь, вспышка от удара */
+/** Враг целиком: тень, покачивание, сам враг, эффекты на нём, вспышка от удара */
 export function drawEnemy(
   ctx: Canvas2D,
   enemy: Enemy,
@@ -837,25 +638,14 @@ export function drawEnemy(
   ctx.ellipse(0, radius * 0.8, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2)
   ctx.fill()
 
-  const isSlowed = enemy.slowTimeLeft > 0
-  const isCursed = enemy.curseTimeLeft > 0
-  const isBurning = enemy.burnTimeLeft > 0
-  // Кольца у ног — до тела, от широкого к узкому: огонь, мороз, проклятие.
-  // Ледяное свечение — ПОД врагом (иначе оно перечёркивало бы то, что торчит за край тела:
-  // дубину огра, крылья Горыныча, щит латника), а голубой оттенок и снежинки — поверх.
-  // Так одно правило подходит любому врагу, без отдельного рисунка
-  if (isBurning) drawBurnGlow(ctx, radius, time + bobPhase, isSlowed)
-  if (isSlowed) drawFrostGlow(ctx, radius)
-  if (isCursed) drawCurseRing(ctx, radius, time + bobPhase)
+  // Эффекты (огонь, мороз, проклятие, сеть) — по общим правилам, см. statuses.ts:
+  // кольца у ног — под телом, оттенок и знаки — поверх
+  drawStatusRings(ctx, enemy, radius, time + bobPhase)
 
   ctx.lineWidth = 0.035
   art.body(ctx, radius)
 
-  if (isSlowed) drawFrostOverlay(ctx, radius)
-  if (isCursed) drawCurseTint(ctx, radius)
-  // В сети — сеть поверх врага, чуть шире его
-  if (enemy.rootTimeLeft > 0) drawNet(ctx, 0, 0, radius * ROOT_NET_SCALE, 0.4, '#a9b4c6')
-  if (isBurning) drawBurning(ctx, radius, time + bobPhase, isSlowed)
+  drawStatusMarks(ctx, enemy, radius, time + bobPhase)
   if (isFlashing) {
     ctx.fillStyle = 'rgba(255,255,255,.55)'
     circle(ctx, 0, 0, radius)
