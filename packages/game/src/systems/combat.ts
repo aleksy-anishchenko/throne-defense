@@ -313,7 +313,7 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
     // Сеть падает, а не взрывается — у неё своё событие и своя картинка
     const area = { x: shot.targetX, y: shot.targetY, radius: shot.splashRadius }
     if (shot.rootDuration > 0) world.emit('net', area)
-    else world.emit('splash', area)
+    else world.emit('splash', { ...area, look: shot.look })
   } else if (!shot.target.isDead) {
     hitWithShot(world, shot, shot.target)
   }

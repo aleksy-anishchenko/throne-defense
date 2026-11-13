@@ -162,6 +162,28 @@ describe('Пушкарь', () => {
     expect(enemy.pathDistance).toBe(0)
   })
 
+  it('ядро Пушкаря бьёт и отбрасывает всех в круге взрыва', () => {
+    const game = newGame()
+    game.build('cannon', 5, 11)
+    const front = placeEnemy(game, 'rebel', 3)
+    const behind = placeEnemy(game, 'rebel', 2.8)
+    let splashLook = ''
+    game.on('splash', ({ look }) => (splashLook = look))
+    stepUntil(game, () => front.hp < front.maxHp, 10)
+    expect(behind.hp).toBeLessThan(behind.maxHp)
+    expect(front.knockbackImmunityLeft).toBeGreaterThan(0)
+    expect(behind.knockbackImmunityLeft).toBeGreaterThan(0)
+    expect(splashLook).toBe('cannonball')
+  })
+
+  it('Пушкарь бьёт дальше всех башен', () => {
+    const cannonRange = TOWERS['cannon'].tiers[0].range
+    for (const def of Object.values(TOWERS)) {
+      if (def.id === 'cannon' || !def.fire) continue
+      expect(cannonRange, def.id).toBeGreaterThan(def.tiers[0].range)
+    }
+  })
+
   it('второе ядро сразу после первого не отбрасывает', () => {
     const { game, enemy, fire } = knockBack('rebel', 3, 1)
     expect(enemy.knockbackImmunityLeft).toBeGreaterThan(KNOCKBACK_IMMUNITY_SECONDS - steps(5))

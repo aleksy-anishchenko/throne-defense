@@ -401,7 +401,8 @@ export interface GameEvents {
   fire: { tower: Tower; stats: TowerStats }
   hit: Enemy
   kill: Enemy
-  splash: { x: number; y: number; radius: number }
+  /** Взрыв снаряда по площади. look — вид снаряда: огненный шар горит, ядро поднимает пыль */
+  splash: { x: number; y: number; radius: number; look: string }
   /** Волна холода потушила горящего врага: огонь погас, остаток огня пропал */
   steam: { x: number; y: number }
   /** Огонь растопил лёд: замедление с врага снято */

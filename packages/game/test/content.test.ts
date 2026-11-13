@@ -164,6 +164,22 @@ describe('Звонарь', () => {
     expect(fireRateBonusOf(towers, bell)).toBe(0)
   })
 
+  it('каждая ступень Звонаря достаёт новые клетки', () => {
+    const game = newGame()
+    game.state.gold = 1000
+    // лучник через клетку по прямой (расстояние 2) и «ходом коня» (√5 ≈ 2,24)
+    const straight = game.build('archer', 5, 11)!
+    const knight = game.build('archer', 6, 9)!
+    const bell = game.build('bell', 7, 11)!
+    const bonusOf = (tower: typeof straight) => fireRateBonusOf(game.state.towers, tower)
+    expect([bonusOf(straight), bonusOf(knight)]).toEqual([0, 0])
+    game.upgrade(bell.col, bell.row)
+    expect(bonusOf(straight)).toBeGreaterThan(0)
+    expect(bonusOf(knight)).toBe(0)
+    game.upgrade(bell.col, bell.row)
+    expect(bonusOf(knight)).toBeGreaterThan(0)
+  })
+
   it('Морозко не ускоряет — только стреляющих', () => {
     const game = newGame()
     game.state.gold = 1000

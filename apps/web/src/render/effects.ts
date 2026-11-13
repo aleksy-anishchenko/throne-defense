@@ -51,6 +51,8 @@ interface BoomEffect {
   y: number
   /** Радиус взрыва, клеток */
   radius: number
+  /** Ядро Пушкаря: не огонь, а пыль с тёмным краем. Нет — огненный взрыв */
+  isDust?: boolean
   timeLeft: number
   duration: number
 }
@@ -154,6 +156,10 @@ const NET_BURN_SPARK_COUNT = 8
 const NET_BURN_SPARK_COLOR = '#ffb347'
 const NET_BURN_RING_GROWTH = 0.3
 const NET_BURN_DURATION = 0.35
+/** Взрыв ядра: цвет пыли (RGB для прозрачности), цвет и число осколков */
+const CANNON_DUST_RGB = '200,188,165'
+const CANNON_DEBRIS_COLOR = '#7a6a55'
+const CANNON_DEBRIS_COUNT = 7
 /** Сколько длится взрыв, с */
 const BOOM_DURATION = 0.3
 /** Тряска экрана при потере жизни, с */
@@ -304,9 +310,20 @@ export function createEffects(game: Game): Effects {
   }
 
   function drawBoom(ctx: Canvas2D, boom: BoomEffect, lifeShare: number) {
-    ctx.fillStyle = `rgba(255,140,50,${lifeShare * 0.45})`
-    circle(ctx, boom.x, boom.y, boom.radius * (1 - lifeShare * 0.6))
+    const radius = boom.radius * (1 - lifeShare * 0.6)
+    if (!boom.isDust) {
+      ctx.fillStyle = `rgba(255,140,50,${lifeShare * 0.45})`
+      circle(ctx, boom.x, boom.y, radius)
+      ctx.fill()
+      return
+    }
+    // Ядро: облако пыли и тёмное кольцо ударной волны по краю
+    ctx.fillStyle = `rgba(${CANNON_DUST_RGB},${lifeShare * 0.5})`
+    circle(ctx, boom.x, boom.y, radius)
     ctx.fill()
+    ctx.strokeStyle = `rgba(60,52,44,${lifeShare * 0.8})`
+    ctx.lineWidth = 0.04
+    ctx.stroke()
   }
 
   function drawSteam(ctx: Canvas2D, steam: SteamEffect, lifeShare: number) {
@@ -478,9 +495,12 @@ export function createEffects(game: Game): Effects {
       spawnSparks(enemy.x, enemy.y, art.sparkColor, art.sparkCount)
     }),
     game.on('fire', ({ tower, stats }) => TOWER_ART[tower.def.id]?.onFire?.({ add }, tower, stats)),
-    game.on('splash', ({ x, y, radius }) =>
-      add({ kind: 'boom', x, y, radius, timeLeft: BOOM_DURATION, duration: BOOM_DURATION }),
-    ),
+    game.on('splash', ({ x, y, radius, look }) => {
+      const isDust = look === 'cannonball'
+      add({ kind: 'boom', x, y, radius, isDust, timeLeft: BOOM_DURATION, duration: BOOM_DURATION })
+      // от ядра летят комья земли и осколки камня
+      if (isDust) spawnSparks(x, y, CANNON_DEBRIS_COLOR, CANNON_DEBRIS_COUNT)
+    }),
     game.on('net', ({ x, y, radius }) =>
       add({ kind: 'net', x, y, radius, timeLeft: NET_DURATION, duration: NET_DURATION }),
     ),

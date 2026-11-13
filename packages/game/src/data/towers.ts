@@ -128,15 +128,18 @@ const ballista: TowerDef = {
 const cannon: TowerDef = {
   id: 'cannon',
   name: 'Пушкарь',
-  description: 'ядро отбрасывает врага назад',
+  description: 'бьёт дальше всех, ядро разбивает толпу и отбрасывает',
   cost: 140,
   upgradeCosts: [100, 140],
   tiers: [
-    { damage: 30, cooldown: 3.5, range: 2.6, knockbackDistance: 0.6 },
-    { damage: 50, cooldown: 3.2, range: 2.8, knockbackDistance: 0.8 },
-    { damage: 80, cooldown: 3, range: 3, knockbackDistance: 1 },
+    // v6: было ядро в одного (урон 30/50/80, дальность 2,6/2,8/3) — урона на монету в 5–7 раз
+    // меньше других. Теперь — самая дальняя башня, ядро бьёт и отбрасывает всех в круге.
+    // Урон физический: латы его режут — против брони есть баллиста
+    { damage: 21, cooldown: 3.2, range: 3.8, splashRadius: 0.7, knockbackDistance: 0.4 },
+    { damage: 35, cooldown: 3, range: 4.1, splashRadius: 0.8, knockbackDistance: 0.5 },
+    { damage: 56, cooldown: 2.8, range: 4.4, splashRadius: 0.9, knockbackDistance: 0.6 },
   ],
-  displayStats: ['damage', 'knockbackDistance', 'range'],
+  displayStats: ['damage', 'splashRadius', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: true,
@@ -146,6 +149,7 @@ const cannon: TowerDef = {
       speed: 9,
       damage: stats.damage,
       damageKind: 'physical',
+      splashRadius: stats.splashRadius,
       knockbackDistance: stats.knockbackDistance,
     }),
 }
@@ -205,9 +209,11 @@ const bell: TowerDef = {
   cost: 100,
   upgradeCosts: [80, 120],
   tiers: [
-    // Дальность 1,5 — восемь соседних клеток (до угловой — 1,41); 2,3 — ещё и через одну
+    // Каждая ступень достаёт новые клетки (центры клеток — на расстоянии 1; 1,41; 2; 2,24 …):
+    // 1,5 — восемь соседних; 2,05 — ещё четыре через одну по прямой; 2,3 — ещё восемь «ходом коня».
+    // До v6 на I и II было 1,5 — улучшение радиус не меняло
     { damage: 0, cooldown: 0, range: 1.5, fireRateBonus: 0.15 },
-    { damage: 0, cooldown: 0, range: 1.5, fireRateBonus: 0.25 },
+    { damage: 0, cooldown: 0, range: 2.05, fireRateBonus: 0.25 },
     { damage: 0, cooldown: 0, range: 2.3, fireRateBonus: 0.35 },
   ],
   displayStats: ['fireRateBonus', 'range'],
