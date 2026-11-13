@@ -75,7 +75,7 @@ describe('проверка уровня при загрузке', () => {
     },
     {
       name: 'препятствие за краем поля',
-      patch: { props: [{ kind: 'statue', cell: [9, 3] }] },
+      patch: { props: [{ kind: 'amphora', cell: [9, 3] }] },
       message: 'препятствие на клетке (9,3)',
     },
     {

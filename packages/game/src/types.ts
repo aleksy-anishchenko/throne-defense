@@ -152,8 +152,37 @@ export interface EnemySplit {
 export type WaveGroup = readonly [enemyId: string, count: number, gap: number, delay: number]
 
 /** Описание уровня (карты) */
-/** Что стоит на клетке-препятствии. Строить там нельзя; для игры все виды одинаковы */
-export type PropKind = 'column' | 'statue' | 'brazier' | 'barrel'
+/**
+ * Что стоит на клетке-препятствии. Строить там нельзя; для игры все виды одинаковы —
+ * вид нужен только картинке (apps/web/src/render/props.ts)
+ */
+export type PropKind =
+  // античность
+  | 'column'
+  | 'fountain'
+  | 'amphora'
+  | 'pool'
+  // тронный зал
+  | 'brazier'
+  | 'banner'
+  | 'orb'
+  | 'candelabrum'
+  | 'weaponRack'
+  // покои
+  | 'vase'
+  | 'birdcage'
+  | 'globe'
+  | 'lectern'
+  | 'chessTable'
+  | 'palm'
+  | 'tree'
+  | 'barrel'
+  // Египет
+  | 'papyrusColumn'
+  | 'egyptObelisk'
+  | 'sphinx'
+  | 'anubis'
+  | 'ankh'
 
 /** Препятствие на поле: вид и клетка [столбец, строка] */
 export interface LevelProp {

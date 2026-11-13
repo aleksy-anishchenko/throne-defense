@@ -22,6 +22,7 @@ import {
   circle,
   prefersReducedMotion,
 } from './shapes'
+import { drawPropFlames } from './props'
 import { drawShot } from './shots'
 import { drawBuffRing } from './statuses'
 import { drawTower } from './towers'
@@ -358,6 +359,8 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       }
 
       drawThrone(ctx, throne, time, hurtIntensity())
+      // Живое пламя светцев и канделябров — каждый кадр, поверх неподвижного фона
+      drawPropFlames(ctx, game.level.def.props ?? [], time)
       drawTowers(time, selectedTower)
       drawEnemies(time)
 

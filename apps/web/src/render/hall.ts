@@ -1,10 +1,11 @@
 // Зал: пол, ковёр, помост, дверь, препятствия, трон и факелы.
 // Всё неподвижное рисуется один раз в отдельный canvas («слой»), а потом просто копируется.
-// Залы отличаются оформлением (HALL_THEMES — цвета пола и ковра) и препятствиями (PROP_ART).
+// Залы отличаются оформлением (HALL_THEMES — цвета пола и ковра) и препятствиями (props.ts).
 // Правило оформления: приглушённые цвета, без оранжевого, голубого, фиолетового и яркого
 // золота — ими рисуются эффекты (огонь, лёд, проклятие, баффы), с ними не должно путаться
 
-import type { Level, LevelProp, Point, PropKind } from '@throne/game'
+import type { Level, Point } from '@throne/game'
+import { drawProps } from './props'
 import {
   CRIMSON,
   FLOOR_COLOR,
@@ -36,29 +37,29 @@ const HALL_THEMES: Record<string, HallTheme> = {
     carpet: CRIMSON,
     carpetInner: '#8c1826',
   },
-  // Холодный серо-голубой камень, тёмно-синий ковёр
-  ice: {
-    floorHue: 208,
-    floorSaturation: 16,
-    floorLightness: 27,
-    carpet: '#27507c',
-    carpetInner: '#1b3b5e',
+  // Тёплый серый камень, красный ковёр — мрамор колонн и фонтанов на нём светлее пола
+  antique: {
+    floorHue: 35,
+    floorSaturation: 9,
+    floorLightness: 25,
+    carpet: CRIMSON,
+    carpetInner: '#8c1826',
   },
-  // Тёплое тёмное дерево, винный ковёр
-  terem: {
+  // Тёмное дерево, винный ковёр
+  chambers: {
     floorHue: 26,
     floorSaturation: 24,
     floorLightness: 21,
     carpet: '#74213d',
     carpetInner: '#55162b',
   },
-  // Серо-зелёный старый камень, тёмно-красный ковёр
-  crypt: {
-    floorHue: 140,
-    floorSaturation: 7,
-    floorLightness: 21,
-    carpet: '#7c1f2a',
-    carpetInner: '#5a141d',
+  // Песчаник (темнее эскиза — враги и башни на нём читаются), ковёр ляпис-лазурь
+  egypt: {
+    floorHue: 38,
+    floorSaturation: 26,
+    floorLightness: 27,
+    carpet: '#2b4f8f',
+    carpetInner: '#1f3b6e',
   },
 }
 
@@ -164,137 +165,6 @@ function drawDoor(ctx: Canvas2D, path: Level['path'], rows: number): void {
   ctx.fillStyle = '#7880ab'
   ctx.fillRect(doorX - 0.62, rows - 0.5, 0.16, 0.05)
   ctx.fillRect(doorX + 0.46, rows - 0.5, 0.16, 0.05)
-}
-
-// ——— Препятствия ———
-
-/** Тень под препятствием — как у башен и врагов: эллипс внизу клетки */
-function drawPropShadow(ctx: Canvas2D) {
-  ctx.fillStyle = 'rgba(8,9,18,.4)'
-  ctx.beginPath()
-  ctx.ellipse(0, 0.26, 0.34, 0.12, 0, 0, Math.PI * 2)
-  ctx.fill()
-}
-
-/** Как выглядит каждое препятствие. (0, 0) — центр клетки, размеры в клетках */
-const PROP_ART: Record<PropKind, (ctx: Canvas2D) => void> = {
-  // Колонна сверху: широкая база, ствол с бликом, кольцо капители
-  column(ctx) {
-    drawPropShadow(ctx)
-    ctx.fillStyle = '#5c6075'
-    circle(ctx, 0, 0.04, 0.36)
-    ctx.fill()
-    ctx.fillStyle = '#8d92a8'
-    ctx.strokeStyle = '#4a4e60'
-    ctx.lineWidth = 0.03
-    circle(ctx, 0, 0, 0.26)
-    ctx.fill()
-    ctx.stroke()
-    ctx.strokeStyle = 'rgba(255,255,255,.25)'
-    ctx.lineWidth = 0.025
-    circle(ctx, 0, 0, 0.17)
-    ctx.stroke()
-    ctx.fillStyle = 'rgba(255,255,255,.22)'
-    circle(ctx, -0.08, -0.08, 0.06)
-    ctx.fill()
-  },
-  // Статуя на квадратном постаменте: силуэт витязя с щитом
-  statue(ctx) {
-    drawPropShadow(ctx)
-    ctx.fillStyle = '#585c70'
-    roundedRect(ctx, -0.32, -0.08, 0.64, 0.42, 0.05)
-    ctx.fill()
-    ctx.fillStyle = '#6c7085'
-    roundedRect(ctx, -0.32, -0.08, 0.64, 0.08, 0.03)
-    ctx.fill()
-    ctx.fillStyle = '#9a9eb0'
-    ctx.strokeStyle = '#4a4e60'
-    ctx.lineWidth = 0.025
-    // тело и голова
-    ctx.beginPath()
-    ctx.moveTo(-0.13, 0.02)
-    ctx.lineTo(-0.1, -0.24)
-    ctx.lineTo(0.1, -0.24)
-    ctx.lineTo(0.13, 0.02)
-    ctx.closePath()
-    ctx.fill()
-    ctx.stroke()
-    circle(ctx, 0, -0.32, 0.08)
-    ctx.fill()
-    ctx.stroke()
-    // щит
-    ctx.fillStyle = '#80849a'
-    circle(ctx, -0.14, -0.12, 0.07)
-    ctx.fill()
-    ctx.stroke()
-  },
-  // Погасшая жаровня: железная чаша на треноге, внутри тлеющие угли (без пламени и свечения —
-  // огонь на поле — только эффект Огневика)
-  brazier(ctx) {
-    drawPropShadow(ctx)
-    ctx.strokeStyle = '#3a3c48'
-    ctx.lineWidth = 0.04
-    ctx.lineCap = 'round'
-    ctx.beginPath()
-    for (const legX of [-0.2, 0, 0.2]) {
-      ctx.moveTo(legX * 0.6, 0.05)
-      ctx.lineTo(legX, 0.3)
-    }
-    ctx.stroke()
-    ctx.fillStyle = '#4a4d5c'
-    ctx.strokeStyle = '#2c2e38'
-    ctx.lineWidth = 0.03
-    ctx.beginPath()
-    ctx.ellipse(0, -0.02, 0.3, 0.17, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.stroke()
-    ctx.fillStyle = '#2a1f1f'
-    ctx.beginPath()
-    ctx.ellipse(0, -0.04, 0.22, 0.11, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#6b2b22'
-    for (const [emberX, emberY] of [
-      [-0.08, -0.05],
-      [0.05, -0.02],
-      [0.1, -0.07],
-    ]) {
-      circle(ctx, emberX, emberY, 0.035)
-      ctx.fill()
-    }
-  },
-  // Бочка сверху: доски и два железных обруча
-  barrel(ctx) {
-    drawPropShadow(ctx)
-    ctx.fillStyle = '#5e4128'
-    ctx.strokeStyle = '#33220f'
-    ctx.lineWidth = 0.03
-    circle(ctx, 0, 0, 0.3)
-    ctx.fill()
-    ctx.stroke()
-    ctx.strokeStyle = 'rgba(30,18,6,.55)'
-    ctx.lineWidth = 0.02
-    ctx.beginPath()
-    for (const plankX of [-0.15, 0, 0.15]) {
-      ctx.moveTo(plankX, -0.27)
-      ctx.lineTo(plankX, 0.27)
-    }
-    ctx.stroke()
-    ctx.strokeStyle = '#6f7383'
-    ctx.lineWidth = 0.035
-    circle(ctx, 0, 0, 0.27)
-    ctx.stroke()
-    circle(ctx, 0, 0, 0.16)
-    ctx.stroke()
-  },
-}
-
-function drawProps(ctx: Canvas2D, props: readonly LevelProp[]): void {
-  for (const { kind, cell } of props) {
-    ctx.save()
-    ctx.translate(cell[0] + 0.5, cell[1] + 0.5)
-    PROP_ART[kind](ctx)
-    ctx.restore()
-  }
 }
 
 /** Затемнение по краям */
