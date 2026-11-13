@@ -55,7 +55,8 @@ export function useKeyboard(): void {
         store.closeSettings()
         return
       }
-      // Открыто меню (стражей или башни) — Escape закрывает только его, выбор остаётся
+      // Открыто меню — Escape закрывает его. Страж «в руке» остаётся, а выбранная башня — нет:
+      // на телефоне она без меню не нужна (см. closeMenu)
       if (selection.openMenu) {
         selection.closeMenu()
         return

@@ -977,11 +977,13 @@ async function phone(browser, url) {
     Math.abs((await panelHeight()) - idlePanelHeight) < 1,
     `${idlePanelHeight} → ${await panelHeight()}`,
   )
-  const towerToggle = page.getByRole('button', { name: 'Действия с башней' })
-  check('при выбранной башне кнопка слева — действия с башней', await towerToggle.isVisible())
-  await towerToggle.tap()
   const towerMenu = page.getByRole('dialog', { name: /Башня: Огневик/ })
-  check('кнопка открыла меню башни', await towerMenu.isVisible())
+  check('нажатие на башню сразу открыло её меню', await towerMenu.isVisible())
+  check(
+    'кнопки «Действие» нет: слева по-прежнему «Стражи»',
+    (await page.getByRole('button', { name: 'Действия с башней' }).count()) === 0 &&
+      (await page.locator('.shop-toggle .shop-toggle-label').innerText()) === 'Стражи',
+  )
   const towerMenuText = await towerMenu.innerText()
   check(
     'в меню башни есть характеристики и кнопки, лишнего нет',
@@ -1002,10 +1004,29 @@ async function phone(browser, url) {
   await page.keyboard.press('Escape')
   await waitForFrames(page)
   check(
-    'Escape закрыл меню башни, но башня осталась выбранной',
-    (await page.getByRole('dialog').count()) === 0 && (await towerToggle.isVisible()),
+    'Escape закрыл меню башни и снял с неё выбор',
+    (await page.getByRole('dialog').count()) === 0 &&
+      (await page.evaluate(() => window.__throne.selection.selectedTowerCell)) === null,
   )
-  await towerToggle.tap()
+  // Снова нажали на башню — меню снова открыто; нажали мимо меню — закрыто и без выбора.
+  // Башня внизу поля, поэтому меню наверху, а левый нижний угол экрана — мимо него
+  const tapTower = () =>
+    page.touchscreen.tap(
+      bounds.x + (5.5 / COLS) * bounds.width,
+      bounds.y + (11.5 / ROWS) * bounds.height,
+    )
+  await tapTower()
+  await waitForFrames(page)
+  check('повторное нажатие на башню снова открыло меню', await towerMenu.isVisible())
+  await page.touchscreen.tap(4, page.viewportSize().height - 4)
+  await waitForFrames(page)
+  check(
+    'нажатие мимо меню закрыло его и сняло выбор',
+    (await page.getByRole('dialog').count()) === 0 &&
+      (await page.evaluate(() => window.__throne.selection.selectedTowerCell)) === null,
+  )
+  await tapTower()
+  await waitForFrames(page)
   await towerMenu.getByRole('button', { name: /Вернуть/ }).tap()
   await waitForFrames(page)
   check(

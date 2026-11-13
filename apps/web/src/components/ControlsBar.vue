@@ -2,7 +2,7 @@
 import { TOWER_LIST } from '@throne/game'
 import { MAX_HOTKEY_DIGIT } from '@/composables/useKeyboard'
 import { useGameStore } from '@/stores/game'
-import ActionToggle from './ActionToggle.vue'
+import ShopToggle from './ShopToggle.vue'
 
 const store = useGameStore()
 const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
@@ -10,7 +10,7 @@ const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
 
 <template>
   <div class="controls">
-    <ActionToggle />
+    <ShopToggle />
     <button
       class="btn primary grow"
       type="button"

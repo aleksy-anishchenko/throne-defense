@@ -21,11 +21,19 @@ import type { TargetMode, Tower } from '@throne/game'
 import { defineStore } from 'pinia'
 import { computed, reactive, ref, watch } from 'vue'
 import type { BoardView, Cell } from '@/types'
+import { SIDE_PANEL_QUERY } from '@/utils/layout'
 import { plural } from '@/utils/format'
 import { useGameStore } from './game'
 
 const isSameCell = (cell: Cell | null, col: number, row: number) =>
   cell !== null && cell.col === col && cell.row === row
+
+/**
+ * Телефонная раскладка (нет боковой панели): действия с башней — во всплывающем меню.
+ * matchMedia нет в тестах без браузера — там считаем, что панель есть
+ */
+const isPhoneLayout = () =>
+  typeof matchMedia === 'function' && !matchMedia(SIDE_PANEL_QUERY).matches
 
 export const useSelectionStore = defineStore('selection', () => {
   const gameStore = useGameStore()
@@ -121,7 +129,7 @@ export const useSelectionStore = defineStore('selection', () => {
   watch(
     () => gameStore.screen,
     (screen) => {
-      if (screen !== null) openMenu.value = null
+      if (screen !== null) closeMenu()
     },
   )
   // Страж «в руке» после начала волны — ловушка: в бою нажимаешь на поле, чтобы посмотреть,
@@ -140,13 +148,33 @@ export const useSelectionStore = defineStore('selection', () => {
     if (gameStore.isPlaying()) openMenu.value = 'shop'
   }
 
+  /**
+   * Меню башни на телефоне. Открывается само при выборе башни: башню на телефоне выбирают,
+   * чтобы с ней что-то сделать, отдельная кнопка «Действие» была лишним шагом
+   */
   function openTowerMenu() {
-    if (gameStore.isPlaying() && selectedTowerCell.value) openMenu.value = 'tower'
+    if (gameStore.isPlaying() && selectedTowerCell.value && isPhoneLayout()) {
+      openMenu.value = 'tower'
+    }
   }
 
-  /** Закрыть меню (выбор стража или башни остаётся) */
+  /**
+   * Закрыть меню (крестик, нажатие мимо, Escape). Меню башни закрывается вместе с выбором:
+   * на телефоне выбранная башня без меню ничего не даёт. Страж «в руке» остаётся
+   */
   function closeMenu() {
+    if (openMenu.value === 'tower') selectedTowerCell.value = null
     openMenu.value = null
+  }
+
+  /**
+   * Сменилась раскладка (повернули телефон, растянули окно). Появилась боковая панель —
+   * меню скрыты стилями, а «открыто» блокировало бы клавиши: закрываем, выбор оставляем
+   * (башня теперь видна на панели). Пропала панель — выбранной башне нужно меню
+   */
+  function syncMenuWithLayout() {
+    if (!isPhoneLayout()) openMenu.value = null
+    else if (selectedTowerCell.value && openMenu.value === null) openTowerMenu()
   }
 
   /**
@@ -181,6 +209,7 @@ export const useSelectionStore = defineStore('selection', () => {
     if (game.towerAt(col, row)) {
       selectedTowerCell.value = isSameCell(selectedTowerCell.value, col, row) ? null : { col, row }
       armedTowerId.value = null
+      openTowerMenu()
       return
     }
     selectedTowerCell.value = null
@@ -283,6 +312,7 @@ export const useSelectionStore = defineStore('selection', () => {
     openShop,
     openTowerMenu,
     closeMenu,
+    syncMenuWithLayout,
     chooseShopTower,
     tapCell,
     upgradeSelected,

@@ -10,14 +10,11 @@ import TowerInfo from './TowerInfo.vue'
 
 const selection = useSelectionStore()
 
-// Окно стало широким или телефон повернули набок — меню скрыты стилями, а состояние «открыто»
-// осталось бы и блокировало клавиши. Условие то же, что у боковой панели в responsive.css
+// Окно стало широким или телефон повернули — меню подстраиваются (см. syncMenuWithLayout).
+// Условие то же, что у боковой панели в responsive.css
 const sidePanelQuery = matchMedia(SIDE_PANEL_QUERY)
-const closeMenuIfSidePanel = () => {
-  if (sidePanelQuery.matches) selection.closeMenu()
-}
-onMounted(() => sidePanelQuery.addEventListener('change', closeMenuIfSidePanel))
-onUnmounted(() => sidePanelQuery.removeEventListener('change', closeMenuIfSidePanel))
+onMounted(() => sidePanelQuery.addEventListener('change', selection.syncMenuWithLayout))
+onUnmounted(() => sidePanelQuery.removeEventListener('change', selection.syncMenuWithLayout))
 </script>
 
 <template>
