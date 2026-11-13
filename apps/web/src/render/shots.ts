@@ -69,7 +69,7 @@ function drawFireball(ctx: Canvas2D, shot: Shot) {
 }
 
 /** Ядро: радиус, клеток */
-const CANNONBALL_RADIUS = 0.125
+const CANNONBALL_RADIUS = 0.106
 /** Клубы дыма за ядром: [на сколько позади — в долях радиуса, размер — в долях радиуса, прозрачность] */
 const CANNON_SMOKE_PUFFS: readonly (readonly [number, number, number])[] = [
   [1.6, 0.75, 0.5],
