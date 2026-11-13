@@ -63,8 +63,8 @@ export interface Renderer {
 
 export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer {
   const ctx = canvas.getContext('2d')!
-  // Размер поля и трон у всех залов одни (levels/hall-base.ts, проверяет тест) — читаем один раз
-  const { cols, rows, throne } = game.level.def
+  // Размер поля у всех залов один (levels/hall-base.ts, проверяет тест) — читаем один раз
+  const { cols, rows } = game.level.def
   const effects = createEffects(game)
 
   let cellCssPx = INITIAL_CELL_CSS_PX // размер клетки в CSS-пикселях
@@ -358,7 +358,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         )
       }
 
-      drawThrone(ctx, throne, time, hurtIntensity())
+      drawThrone(ctx, game.level, time, hurtIntensity())
       // Живое пламя светцев и канделябров — каждый кадр, поверх неподвижного фона
       drawPropFlames(ctx, game.level.def.props ?? [], time)
       drawTowers(time, selectedTower)
