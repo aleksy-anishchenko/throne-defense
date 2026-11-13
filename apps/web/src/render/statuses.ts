@@ -22,10 +22,10 @@ export const FROST_RGB = '170,230,255'
 export const CURSE_RGB = '190,120,255'
 
 /** Цвета пламени: снаружи внутрь. Светлая сердцевина и тёмная обводка — видно на любом фоне */
-const FIRE_OUTER = '#ff6a1a'
-const FIRE_MIDDLE = '#ffc23a'
-const FIRE_CORE = '#fff4b8'
-const FIRE_OUTLINE = 'rgba(70,18,0,.85)'
+export const FIRE_OUTER = '#ff6a1a'
+export const FIRE_MIDDLE = '#ffc23a'
+export const FIRE_CORE = '#fff4b8'
+export const FIRE_OUTLINE = 'rgba(70,18,0,.85)'
 
 /** Насколько кольцо у ног выходит за край врага, клеток: [ближнее место, дальнее] */
 const RING_SLOT_MARGINS = [0.07, 0.14] as const
