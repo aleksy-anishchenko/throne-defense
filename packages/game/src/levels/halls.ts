@@ -112,8 +112,10 @@ export const HALLS: readonly LevelDef[] = [
       [5, 3],
       [8, 3],
       [8, 8],
+      // четвёртое — добавлено владельцем: пруд с лотосами у левой стены
+      [0, 6],
     ],
-    ['sphinx', 'papyrusColumn', 'ankh'],
+    ['sphinx', 'papyrusColumn', 'ankh', 'pool'],
   ),
   hall(
     'colonnade',
