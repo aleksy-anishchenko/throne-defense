@@ -9,17 +9,17 @@ const PIERCING_ARMOR_FACTOR = 0.5
 
 // Огонь и лёд не уживаются: холод тушит горящего (пар), огонь растапливает лёд (замедление
 // снимается). Их выгодно разводить по ковру. Зато по отдельности огневик и Морозко сильные
-// (см. data/towers.ts). Огонь и сеть — тоже: загоревшийся враг сжигает сеть, горящего она не ловит
+// (см. data/towers.ts). Огонь и сеть: горящая сеть держит лишь пятую часть времени и сгорает
 
 /**
- * «Пар»: волна холода тушит горящего врага, и оставшийся запас огня он получает сразу,
- * но не весь — огонь не догорел: 0.75 = три четверти
+ * Горящая сеть держит лишь эту долю своего времени, потом сгорает: 0.2 — пятую часть.
+ * И когда сеть упала на горящего, и когда пойманный загорелся
  */
-export const STEAM_DAMAGE_MULTIPLIER = 0.75
+export const NET_ON_FIRE_SHARE = 0.2
 
 /**
  * Огонь по замороженному: часть силы уходит на то, чтобы растопить лёд — поджог даёт
- * эту долю огня. Зеркально пару: столкнулись огонь и лёд — огонь теряет четверть
+ * эту долю огня. (Наоборот, холод по горящему, огонь просто гасит — см. extinguishWithSteam)
  */
 export const THAW_BURN_MULTIPLIER = 0.75
 
@@ -200,15 +200,13 @@ const controlShare = (enemy: Enemy) => 1 - (enemy.def.controlResistance ?? 0)
 
 /**
  * Поймать врага в сеть на duration секунд — если он не рвёт сети после прошлой.
- * Горящего сеть не ловит: сгорает сразу (рвать новые сети он после этого не начинает)
+ * Горящего сеть держит лишь NET_ON_FIRE_SHARE своего времени, потом сгорает
  */
-function rootEnemy(world: World, enemy: Enemy, duration: number): void {
+function rootEnemy(enemy: Enemy, duration: number): void {
   if (enemy.isDead || duration <= 0 || enemy.rootImmunityLeft > 0) return
-  if (enemy.burnTimeLeft > 0) {
-    world.emit('netBurn', enemy)
-    return
-  }
-  const rootTime = duration * controlShare(enemy)
+  const fullTime = duration * controlShare(enemy)
+  const rootTime = enemy.burnTimeLeft > 0 ? fullTime * NET_ON_FIRE_SHARE : fullTime
+  enemy.rootDuration = fullTime
   enemy.rootTimeLeft = rootTime
   enemy.rootImmunityLeft = rootTime + ROOT_IMMUNITY_SECONDS
 }
@@ -225,13 +223,11 @@ function knockBackEnemy(world: World, enemy: Enemy, distance: number): void {
   world.emit('knockback', enemy)
 }
 
-/** «Пар»: потушить горящего врага — запас огня сразу, но меньше (× STEAM_DAMAGE_MULTIPLIER) */
+/** «Пар»: волна холода тушит горящего врага — огонь погас, остаток огня пропадает */
 function extinguishWithSteam(world: World, enemy: Enemy): void {
-  const damage = enemy.burnDamageLeft * STEAM_DAMAGE_MULTIPLIER
   enemy.burnDamageLeft = 0
   enemy.burnTimeLeft = 0
-  world.emit('steam', { x: enemy.x, y: enemy.y, damage })
-  loseHp(world, enemy, damage)
+  world.emit('steam', { x: enemy.x, y: enemy.y })
 }
 
 /**
@@ -328,15 +324,15 @@ function hitWithShot(world: World, shot: HomingShot, enemy: Enemy): void {
   // Сеть не ранит: без этой проверки броня превратила бы урон 0 в 1 (Math.max(1, …))
   if (shot.damage > 0) damageEnemy(world, enemy, shot.damage, shot.damageKind)
   igniteEnemy(world, enemy, shot.burnDamage, shot.burnDuration)
-  rootEnemy(world, enemy, shot.rootDuration)
+  rootEnemy(enemy, shot.rootDuration)
   knockBackEnemy(world, enemy, shot.knockbackDistance)
 }
 
 /**
  * Поджечь врага: добавить burnDamage в запас огня. Догорает весь запас за burnDuration
  * (если враг уже горит дольше — за оставшееся время).
- * Огонь растапливает лёд (замедление снимается, а огня — меньше, см. THAW_BURN_MULTIPLIER)
- * и сжигает сеть (враг идёт дальше)
+ * Огонь растапливает лёд (замедление снимается, а огня — меньше, см. THAW_BURN_MULTIPLIER).
+ * Пойманный в сеть загорелся — сеть догорает: держит не дольше NET_ON_FIRE_SHARE своего времени
  */
 function igniteEnemy(world: World, enemy: Enemy, burnDamage: number, burnDuration: number): void {
   if (enemy.isDead || burnDamage <= 0 || burnDuration <= 0) return
@@ -348,8 +344,10 @@ function igniteEnemy(world: World, enemy: Enemy, burnDamage: number, burnDuratio
     world.emit('thaw', enemy)
   }
   if (enemy.rootTimeLeft > 0) {
-    enemy.rootTimeLeft = 0
-    world.emit('netBurn', enemy)
+    const burningNetTime = Math.min(enemy.rootTimeLeft, enemy.rootDuration * NET_ON_FIRE_SHARE)
+    // «Устойчивость» к сетям — по-прежнему ROOT_IMMUNITY_SECONDS после того, как вырвался
+    enemy.rootImmunityLeft -= enemy.rootTimeLeft - burningNetTime
+    enemy.rootTimeLeft = burningNetTime
   }
   enemy.burnDamageLeft += burnDamage * burnShare
   enemy.burnTimeLeft = Math.max(enemy.burnTimeLeft, burnDuration)

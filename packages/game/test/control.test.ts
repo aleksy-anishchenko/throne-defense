@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { SIMULATION_STEP } from '../src/index.ts'
+import { SIMULATION_STEP, TOWERS } from '../src/index.ts'
 import {
   KNOCKBACK_IMMUNITY_SECONDS,
+  NET_ON_FIRE_SHARE,
   ROOT_IMMUNITY_SECONDS,
   damageEnemy,
   shootHoming,
@@ -35,7 +36,7 @@ describe('Ловчий', () => {
     expect(enemy.rootImmunityLeft - enemy.rootTimeLeft).toBeCloseTo(ROOT_IMMUNITY_SECONDS)
   })
 
-  it('горящего сеть не ловит — сгорает', () => {
+  it('горящего сеть держит пятую часть времени, потом сгорает', () => {
     const game = newGame()
     game.build('trapper', 5, 11)
     const enemy = placeEnemy(game, 'rebel', 1.5)
@@ -43,17 +44,21 @@ describe('Ловчий', () => {
     enemy.burnTimeLeft = 100
     let burntNets = 0
     game.on('netBurn', () => burntNets++)
-    stepUntil(game, () => burntNets > 0, 10)
-    expect(enemy.rootTimeLeft).toBe(0)
-    // Сеть его не взяла — значит, и рвать следующие сети он не начал
-    expect(enemy.rootImmunityLeft).toBe(0)
+    stepUntil(game, () => enemy.rootTimeLeft > 0, 10)
+    const netTime = TOWERS['trapper'].tiers[0].rootDuration! * NET_ON_FIRE_SHARE
+    expect(enemy.rootTimeLeft).toBeCloseTo(netTime, 1)
+    // Вырвавшись, рвёт сети, как обычно, — ROOT_IMMUNITY_SECONDS
+    expect(enemy.rootImmunityLeft - enemy.rootTimeLeft).toBeCloseTo(ROOT_IMMUNITY_SECONDS)
+    stepUntil(game, () => enemy.rootTimeLeft === 0, 2)
+    expect(burntNets).toBe(1)
   })
 
-  it('загоревшись в сети, враг сжигает её и идёт дальше', () => {
+  it('загоревшись в сети, враг сжигает её: она держит не дольше пятой части времени', () => {
     const game = newGame()
     const trapper = game.build('trapper', 5, 11) as Tower
     const enemy = placeEnemy(game, 'rebel', 1.5)
     stepUntil(game, () => enemy.rootTimeLeft > 0, 10)
+    const fullNetTime = enemy.rootDuration
     let burntNets = 0
     game.on('netBurn', () => burntNets++)
     // Огненный снаряд — когда враг уже в сети
@@ -66,7 +71,10 @@ describe('Ловчий', () => {
       burnDuration: 1,
     })
     stepUntil(game, () => enemy.burnTimeLeft > 0, 5)
-    expect(enemy.rootTimeLeft).toBe(0)
+    expect(enemy.rootTimeLeft).toBeGreaterThan(0)
+    expect(enemy.rootTimeLeft).toBeLessThanOrEqual(fullNetTime * NET_ON_FIRE_SHARE)
+    expect(enemy.rootImmunityLeft - enemy.rootTimeLeft).toBeCloseTo(ROOT_IMMUNITY_SECONDS)
+    stepUntil(game, () => enemy.rootTimeLeft === 0, 2)
     expect(burntNets).toBe(1)
   })
 

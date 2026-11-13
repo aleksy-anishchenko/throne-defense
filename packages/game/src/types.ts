@@ -248,6 +248,11 @@ export interface Enemy {
    * дольше самой сети — вырвавшись, враг какое-то время рвёт сети сразу
    */
   rootImmunityLeft: number
+  /**
+   * Сколько держала бы текущая сеть целиком, с (с учётом устойчивости врага). Нужно, когда враг
+   * загорается в сети: горящая сеть держит лишь долю этого времени (NET_ON_FIRE_SHARE)
+   */
+  rootDuration: number
   /** Сколько секунд ядро Пушкаря его не отбросит (только что отбросило) */
   knockbackImmunityLeft: number
   /** Сколько ещё секунд враг проклят Колдуном */
@@ -397,11 +402,11 @@ export interface GameEvents {
   hit: Enemy
   kill: Enemy
   splash: { x: number; y: number; radius: number }
-  /** Волна холода потушила горящего врага: весь запас огня — сразу (см. STEAM_DAMAGE_MULTIPLIER) */
-  steam: { x: number; y: number; damage: number }
+  /** Волна холода потушила горящего врага: огонь погас, остаток огня пропал */
+  steam: { x: number; y: number }
   /** Огонь растопил лёд: замедление с врага снято */
   thaw: Enemy
-  /** Сеть на враге сгорела: он загорелся в сети или сеть упала на горящего */
+  /** Сеть на враге сгорела: горящая сеть продержалась свою долю времени (NET_ON_FIRE_SHARE) */
   netBurn: Enemy
   /** Знахарь лечит соседей */
   heal: { x: number; y: number; radius: number }

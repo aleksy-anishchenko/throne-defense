@@ -58,7 +58,7 @@ interface StatusLook {
   /** Красить ли тело оттенком эффекта */
   hasTint: boolean
   /** Знак на модельке, поверх тела. (0, 0) — центр врага */
-  drawMark?(ctx: Canvas2D, radius: number, time: number): void
+  drawMark?(ctx: Canvas2D, radius: number, time: number, enemy: Enemy): void
 }
 
 const steady = () => 1
@@ -86,11 +86,20 @@ const STATUS_LOOKS: readonly StatusLook[] = [
     hasTint: true,
   },
   {
-    // Сеть: сама сеть поверх врага, чуть шире его; без кольца и оттенка
+    // Сеть: сама сеть поверх врага, чуть шире его; без кольца и оттенка.
+    // Горит (враг в огне) — грузила тлеют оранжевым: сеть скоро сгорит
     isActive: (enemy) => enemy.rootTimeLeft > 0,
     rgb: '217,192,138',
     hasTint: false,
-    drawMark: (ctx, radius) => drawNet(ctx, 0, 0, radius * ROOT_NET_SCALE, 0.4, '#a9b4c6'),
+    drawMark: (ctx, radius, _time, enemy) =>
+      drawNet(
+        ctx,
+        0,
+        0,
+        radius * ROOT_NET_SCALE,
+        0.4,
+        enemy.burnTimeLeft > 0 ? '#ff8a2a' : '#a9b4c6',
+      ),
   },
   {
     // Огонь: мерцающее оранжевое кольцо со свечением, оранжевый оттенок, языки пламени
@@ -131,7 +140,7 @@ export function drawStatusMarks(ctx: Canvas2D, enemy: Enemy, radius: number, tim
     ctx.fill()
   }
   for (const look of STATUS_LOOKS) {
-    if (look.drawMark && look.isActive(enemy)) look.drawMark(ctx, radius, time)
+    if (look.drawMark && look.isActive(enemy)) look.drawMark(ctx, radius, time, enemy)
   }
 }
 

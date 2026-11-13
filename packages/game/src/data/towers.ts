@@ -53,10 +53,11 @@ const mage: TowerDef = {
   upgradeCosts: [80, 130],
   tiers: [
     // Баланс v4: был взрыв на 16/27/44 сразу. Теперь ~20% урона — взрывом,
-    // ~80% — горением за 3 с (запас огня: повторный поджог добавляет, а не перезапускает)
-    { damage: 5, cooldown: 1.2, range: 2.2, splashRadius: 0.9, burnDamage: 19, burnDuration: 3 },
-    { damage: 9, cooldown: 1.1, range: 2.4, splashRadius: 1, burnDamage: 33, burnDuration: 3 },
-    { damage: 14, cooldown: 1, range: 2.6, splashRadius: 1.15, burnDamage: 53, burnDuration: 3 },
+    // ~80% — горением за 3 с (запас огня: повторный поджог добавляет, а не перезапускает).
+    // v6: горение +10% (19/33/53 → 21/36/58) — пар больше не наносит урона
+    { damage: 5, cooldown: 1.2, range: 2.2, splashRadius: 0.9, burnDamage: 21, burnDuration: 3 },
+    { damage: 9, cooldown: 1.1, range: 2.4, splashRadius: 1, burnDamage: 36, burnDuration: 3 },
+    { damage: 14, cooldown: 1, range: 2.6, splashRadius: 1.15, burnDamage: 58, burnDuration: 3 },
   ],
   displayStats: ['damage', 'burnDamage', 'range'],
   defaultTargetMode: 'first',

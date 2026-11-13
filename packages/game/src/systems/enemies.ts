@@ -30,6 +30,7 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
     burnTimeLeft: 0,
     rootTimeLeft: 0,
     rootImmunityLeft: 0,
+    rootDuration: 0,
     knockbackImmunityLeft: 0,
     curseTimeLeft: 0,
     curseAmount: 0,
@@ -55,7 +56,7 @@ export function moveEnemies(world: World, dt: number): boolean {
     }
     // В сети — стоит. Замедление при этом идёт своим чередом
     if (enemy.rootTimeLeft > 0) speed = 0
-    tickStatusTimers(enemy, dt)
+    tickStatusTimers(world, enemy, dt)
     enemy.pathDistance += speed * dt
 
     if (enemy.pathDistance >= path.length) {
@@ -79,9 +80,14 @@ export function moveEnemies(world: World, dt: number): boolean {
   return true
 }
 
-/** Часы сети, проклятия и «устойчивости» после них. Не ниже нуля — так проще читать состояние */
-function tickStatusTimers(enemy: Enemy, dt: number): void {
+/**
+ * Часы сети, проклятия и «устойчивости» после них. Не ниже нуля — так проще читать состояние.
+ * Сеть кончилась на горящем враге — значит, сгорела (событие netBurn для картинки)
+ */
+function tickStatusTimers(world: World, enemy: Enemy, dt: number): void {
+  const wasRooted = enemy.rootTimeLeft > 0
   enemy.rootTimeLeft = Math.max(0, enemy.rootTimeLeft - dt)
+  if (wasRooted && enemy.rootTimeLeft === 0 && enemy.burnTimeLeft > 0) world.emit('netBurn', enemy)
   enemy.rootImmunityLeft = Math.max(0, enemy.rootImmunityLeft - dt)
   enemy.knockbackImmunityLeft = Math.max(0, enemy.knockbackImmunityLeft - dt)
   enemy.curseTimeLeft = Math.max(0, enemy.curseTimeLeft - dt)

@@ -7,11 +7,7 @@ import {
   waveBonus,
   type TargetMode,
 } from '../src/index.ts'
-import {
-  STEAM_DAMAGE_MULTIPLIER,
-  THAW_BURN_MULTIPLIER,
-  damageEnemy,
-} from '../src/systems/combat.ts'
+import { THAW_BURN_MULTIPLIER, damageEnemy } from '../src/systems/combat.ts'
 import { newGame, placeEnemy, stepUntil, worldOf } from './helpers.ts'
 
 // Выбор цели, знахарь, Змей Горыныч, Звонарь и Казна (баланс v4)
@@ -256,23 +252,21 @@ describe('огневик: горение', () => {
 })
 
 describe('пар: Морозко тушит горящих', () => {
-  it('запас огня — сразу, но меньше (не догорел), и событие steam', () => {
+  it('огонь гаснет без урона: остаток огня пропадает, событие steam', () => {
     const game = newGame()
     game.build('frost', 5, 11)
     const ogre = placeEnemy(game, 'ogre', 1.5)
     ogre.burnDamageLeft = 40
     ogre.burnTimeLeft = 3
-    const steams: number[] = []
-    game.on('steam', ({ damage }) => steams.push(damage))
+    let steams = 0
+    game.on('steam', () => steams++)
     game.step(SIMULATION_STEP)
 
-    // за этот шаг горение успело отнять 40 × (1/60) / 3, остальное — паром
+    // за этот шаг горение успело отнять 40 × (1/60) / 3, остальное пропало
     const burnedThisStep = (40 * SIMULATION_STEP) / 3
-    const steamDamage = (40 - burnedThisStep) * STEAM_DAMAGE_MULTIPLIER
     const frostDamage = TOWERS['frost'].tiers[0].damage
-    expect(steams).toHaveLength(1)
-    expect(steams[0]).toBeCloseTo(steamDamage)
-    expect(ogre.maxHp - ogre.hp).toBeCloseTo(burnedThisStep + frostDamage + steamDamage)
+    expect(steams).toBe(1)
+    expect(ogre.maxHp - ogre.hp).toBeCloseTo(burnedThisStep + frostDamage)
     expect(ogre.burnDamageLeft).toBe(0)
     expect(ogre.burnTimeLeft).toBe(0)
   })
@@ -281,10 +275,10 @@ describe('пар: Морозко тушит горящих', () => {
     const game = newGame()
     game.build('frost', 5, 11)
     const ogre = placeEnemy(game, 'ogre', 1.5)
-    const steams: number[] = []
-    game.on('steam', ({ damage }) => steams.push(damage))
+    let steams = 0
+    game.on('steam', () => steams++)
     game.step(SIMULATION_STEP)
-    expect(steams).toHaveLength(0)
+    expect(steams).toBe(0)
     expect(ogre.slowTimeLeft).toBeGreaterThan(0)
   })
 })

@@ -66,7 +66,7 @@ interface NetEffect {
   duration: number
 }
 
-/** Облачко пара: Морозко потушил горящего врага */
+/** Облачко пара: Морозко потушил горящего врага или огонь растопил лёд */
 interface SteamEffect {
   kind: 'steam'
   x: number
@@ -143,8 +143,6 @@ const STEAM_PUFFS: readonly (readonly [number, number, number])[] = [
   [0.1, -0.03, 0.13],
   [0, -0.12, 0.12],
 ]
-/** Цвет числа урона от пара: холодный белый, не путать с золотой наградой */
-const STEAM_TEXT_COLOR = '#e4f6ff'
 /** Сколько раскрывается и тает упавшая сеть, с */
 const NET_DURATION = 0.45
 /** Сколько расходится облачко пыли, когда ядро отбросило врага, с */
@@ -520,19 +518,10 @@ export function createEffects(game: Game): Effects {
         duration: INCOME_TEXT_DURATION,
       }),
     ),
-    game.on('steam', ({ x, y, damage }) => {
-      add({ kind: 'steam', x, y, timeLeft: STEAM_DURATION, duration: STEAM_DURATION })
-      add({
-        kind: 'text',
-        x,
-        // выше, чем «+награда» за убийство: пар часто добивает, и надписи не должны слипаться
-        y: y - 0.65,
-        text: String(Math.round(damage)),
-        color: STEAM_TEXT_COLOR,
-        timeLeft: KILL_TEXT_DURATION,
-        duration: KILL_TEXT_DURATION,
-      })
-    }),
+    // Огонь погас — облачко пара, без числа: остаток огня пропал
+    game.on('steam', ({ x, y }) =>
+      add({ kind: 'steam', x, y, timeLeft: STEAM_DURATION, duration: STEAM_DURATION }),
+    ),
     // Огонь растопил лёд — облачко пара, без числа: урона нет
     game.on('thaw', (enemy) =>
       add({
