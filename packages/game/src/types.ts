@@ -183,6 +183,7 @@ export type PropKind =
   | 'sphinx'
   | 'anubis'
   | 'ankh'
+  | 'lotusPool'
 
 /** Препятствие на поле: вид и клетка [столбец, строка] */
 export interface LevelProp {

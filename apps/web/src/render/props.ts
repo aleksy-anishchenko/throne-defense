@@ -777,6 +777,48 @@ const PROP_ART: Record<PropKind, (ctx: Canvas2D) => void> = {
     ctx.fill()
   },
 
+  // Пруд с лотосами: края — песчаник с синей полосой, в воде — розовые и белые лотосы
+  lotusPool(ctx) {
+    drawShadow(ctx, 0.42, 0.3)
+    ctx.fillStyle = SAND_SHADE
+    roundedRect(ctx, -0.42, -0.2, 0.84, 0.46, 0.04)
+    ctx.fill()
+    stroke(ctx, SAND_LINE, 0.02)
+    ctx.fillStyle = SAND
+    roundedRect(ctx, -0.42, -0.2, 0.84, 0.08, 0.03)
+    ctx.fill()
+    ctx.fillStyle = LAPIS
+    ctx.fillRect(-0.42, 0.18, 0.84, 0.035)
+    ctx.fillStyle = WATER
+    roundedRect(ctx, -0.34, -0.11, 0.68, 0.27, 0.03)
+    ctx.fill()
+    // листья лотоса
+    ctx.fillStyle = '#3e8a5a'
+    for (const [x, y] of [
+      [-0.2, 0],
+      [0.06, 0.08],
+      [0.22, -0.03],
+    ]) {
+      ellipse(ctx, x, y, 0.08, 0.045)
+      ctx.fill()
+    }
+    // цветы
+    for (const [x, y, color] of [
+      [-0.2, -0.03, '#e89ab0'],
+      [0.22, -0.06, '#f3eee2'],
+    ] as const) {
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.moveTo(x - 0.05, y + 0.01)
+      ctx.lineTo(x - 0.025, y - 0.05)
+      ctx.lineTo(x, y - 0.01)
+      ctx.lineTo(x + 0.025, y - 0.05)
+      ctx.lineTo(x + 0.05, y + 0.01)
+      ctx.closePath()
+      ctx.fill()
+    }
+  },
+
   ankh(ctx) {
     drawShadow(ctx, 0.22, 0.33)
     ctx.fillStyle = SAND_SHADE

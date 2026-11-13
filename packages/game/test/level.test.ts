@@ -120,6 +120,16 @@ describe('залы', () => {
     }
   })
 
+  it('препятствия не у самого края поля — по краю смотрится дёшево', () => {
+    for (const { def } of hallLevels) {
+      for (const { cell } of def.props ?? []) {
+        const [col, row] = cell
+        const isEdge = col === 0 || col === def.cols - 1 || row === 0 || row === def.rows - 1
+        expect(isEdge, `${def.id}: препятствие у края (${col},${row})`).toBe(false)
+      }
+    }
+  })
+
   it('на препятствии строить нельзя', () => {
     const [withProps] = hallLevels.filter((level) => level.def.props?.length)
     const [col, row] = withProps.def.props![0].cell
