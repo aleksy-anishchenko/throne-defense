@@ -97,7 +97,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   /**
    * isAllowed = false — красная подсветка: поставить нельзя, не хватает золота.
    * maxRange — дальность на высшей ступени: рисуется бледным частым пунктиром под основным
-   * кругом, чтобы было видно, насколько башня «вырастет». Только у призрака стража «в руке»;
+   * кругом, чтобы было видно, насколько башня «вырастет» — у призрака стража «в руке» и у выбранной;
    * не больше текущей — не рисуется
    */
   function drawRange(x: number, y: number, range: number, isAllowed: boolean, maxRange = range) {
@@ -153,9 +153,11 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
           ctx.lineWidth = 0.03
           ctx.strokeRect(left, top, size, size)
         } else {
-          ctx.strokeStyle = isAllowed ? 'rgba(227,178,74,.3)' : 'rgba(240,110,80,.3)'
+          ctx.fillStyle = isAllowed ? 'rgba(227,178,74,.05)' : 'rgba(240,90,70,.05)'
+          ctx.fillRect(left, top, size, size)
+          ctx.strokeStyle = isAllowed ? 'rgba(227,178,74,.5)' : 'rgba(240,110,80,.5)'
           ctx.lineWidth = 0.025
-          ctx.setLineDash([0.04, 0.1])
+          ctx.setLineDash([0.06, 0.08])
           ctx.strokeRect(left, top, size, size)
           ctx.setLineDash([])
         }
@@ -332,10 +334,17 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         boardView.selectedTowerCell &&
         game.towerAt(boardView.selectedTowerCell.col, boardView.selectedTowerCell.row)
       if (selectedTower) {
-        // Выбранная башня: подсветка всегда обычная (не красная)
-        // Только то, что есть по факту: максимум нужен, пока стража выбирают для постройки
+        // Выбранная башня: подсветка всегда обычная (не красная). И бледно — дальность на высшей
+        // ступени: видно, что даст улучшение (на высшей ступени совпадает и не рисуется)
         const stats = towerStats(selectedTower)
-        drawReach(stats, selectedTower.x, selectedTower.y, stats.range, true)
+        drawReach(
+          stats,
+          selectedTower.x,
+          selectedTower.y,
+          stats.range,
+          true,
+          maxTierRange(selectedTower.def),
+        )
       }
 
       drawThrone(ctx, throne, time, hurtIntensity())
