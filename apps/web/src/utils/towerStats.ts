@@ -16,7 +16,6 @@ export const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: numb
   goldPerWave: { label: 'доход за волну', format: String },
   rootDuration: { label: 'держит в сети', format: (value) => `${formatDecimal(value)} с` },
   curseAmount: { label: 'урон по проклятым', format: (value) => `+${formatPercent(value)}` },
-  knockbackDistance: { label: 'отбрасывает', format: formatDecimal },
 }
 
 /**

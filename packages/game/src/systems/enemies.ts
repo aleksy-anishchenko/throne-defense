@@ -31,7 +31,6 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
     rootTimeLeft: 0,
     rootImmunityLeft: 0,
     rootDuration: 0,
-    knockbackImmunityLeft: 0,
     curseTimeLeft: 0,
     curseAmount: 0,
     isDead: false,
@@ -89,7 +88,6 @@ function tickStatusTimers(world: World, enemy: Enemy, dt: number): void {
   enemy.rootTimeLeft = Math.max(0, enemy.rootTimeLeft - dt)
   if (wasRooted && enemy.rootTimeLeft === 0 && enemy.burnTimeLeft > 0) world.emit('netBurn', enemy)
   enemy.rootImmunityLeft = Math.max(0, enemy.rootImmunityLeft - dt)
-  enemy.knockbackImmunityLeft = Math.max(0, enemy.knockbackImmunityLeft - dt)
   enemy.curseTimeLeft = Math.max(0, enemy.curseTimeLeft - dt)
 }
 

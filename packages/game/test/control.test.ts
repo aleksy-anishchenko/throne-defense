@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { SIMULATION_STEP, TOWERS } from '../src/index.ts'
 import {
-  KNOCKBACK_IMMUNITY_SECONDS,
   NET_ON_FIRE_SHARE,
   ROOT_IMMUNITY_SECONDS,
   damageEnemy,
   shootHoming,
 } from '../src/systems/combat.ts'
-import type { Enemy, Tower } from '../src/types.ts'
+import type { Tower } from '../src/types.ts'
 import { newGame, placeEnemy, stepUntil, worldOf } from './helpers.ts'
 
-// Башни контроля (баланс v5): Ловчий держит в сети, Колдун проклинает, Пушкарь отбрасывает
+// Башни баланса v5: Ловчий держит в сети, Колдун проклинает, Пушкарь бьёт толпу издалека
 
 /** Сколько секунд в n шагах симуляции */
 const steps = (count: number) => count * SIMULATION_STEP
@@ -126,43 +125,7 @@ describe('Колдун', () => {
 })
 
 describe('Пушкарь', () => {
-  /** Выстрелить в врага ядром, отбрасывающим на distance клеток, и дождаться попадания */
-  function knockBack(enemyId: string, pathDistance: number, distance: number) {
-    const game = newGame()
-    const shooter = game.build('archer', 5, 11) as Tower
-    const enemy: Enemy = placeEnemy(game, enemyId, pathDistance)
-    // Враг стоит в «сети», чтобы сам не сдвинулся, пока летит ядро
-    enemy.rootTimeLeft = 100
-    enemy.rootImmunityLeft = 100
-    const fire = () =>
-      shootHoming(worldOf(game), shooter, enemy, {
-        look: 'cannonball',
-        speed: 50,
-        damage: 1,
-        damageKind: 'magic',
-        knockbackDistance: distance,
-      })
-    fire()
-    stepUntil(game, () => game.state.shots.length === 0, 5)
-    return { game, enemy, fire }
-  }
-
-  it('отбрасывает врага назад по ковру', () => {
-    const { enemy } = knockBack('rebel', 3, 1)
-    expect(enemy.pathDistance).toBeCloseTo(2)
-  })
-
-  it('огра отбрасывает на 30% меньше', () => {
-    const { enemy } = knockBack('ogre', 3, 1)
-    expect(enemy.pathDistance).toBeCloseTo(2.3)
-  })
-
-  it('не дальше двери', () => {
-    const { enemy } = knockBack('rebel', 0.3, 1)
-    expect(enemy.pathDistance).toBe(0)
-  })
-
-  it('ядро Пушкаря бьёт и отбрасывает всех в круге взрыва', () => {
+  it('ядро бьёт всех в круге взрыва и никого не отбрасывает (с v7)', () => {
     const game = newGame()
     game.build('cannon', 5, 11)
     const front = placeEnemy(game, 'rebel', 3)
@@ -171,8 +134,9 @@ describe('Пушкарь', () => {
     game.on('splash', ({ look }) => (splashLook = look))
     stepUntil(game, () => front.hp < front.maxHp, 10)
     expect(behind.hp).toBeLessThan(behind.maxHp)
-    expect(front.knockbackImmunityLeft).toBeGreaterThan(0)
-    expect(behind.knockbackImmunityLeft).toBeGreaterThan(0)
+    // Оба шли вперёд, пока летело ядро, и после удара не оказались позади
+    expect(front.pathDistance).toBeGreaterThan(3)
+    expect(behind.pathDistance).toBeGreaterThan(2.8)
     expect(splashLook).toBe('cannonball')
   })
 
@@ -182,13 +146,5 @@ describe('Пушкарь', () => {
       if (def.id === 'cannon' || !def.fire) continue
       expect(cannonRange, def.id).toBeGreaterThan(def.tiers[0].range)
     }
-  })
-
-  it('второе ядро сразу после первого не отбрасывает', () => {
-    const { game, enemy, fire } = knockBack('rebel', 3, 1)
-    expect(enemy.knockbackImmunityLeft).toBeGreaterThan(KNOCKBACK_IMMUNITY_SECONDS - steps(5))
-    fire()
-    stepUntil(game, () => game.state.shots.length === 0, 5)
-    expect(enemy.pathDistance).toBeCloseTo(2)
   })
 })

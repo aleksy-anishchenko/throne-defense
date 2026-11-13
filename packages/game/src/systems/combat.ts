@@ -35,9 +35,6 @@ const SPLASH_ENEMY_RADIUS_SHARE = 0.5
  */
 export const ROOT_IMMUNITY_SECONDS = 2
 
-/** Сколько секунд после отброса ядро не отбросит врага снова — иначе пушки гоняли бы его бесконечно */
-export const KNOCKBACK_IMMUNITY_SECONDS = 2
-
 /** Настройки снаряда, который летит за целью */
 export interface HomingShotOptions {
   /** Как рисовать снаряд: 'arrow' | 'orb' | 'bolt' | 'twinBolt' (см. SHOT_ART в apps/web) */
@@ -54,8 +51,6 @@ export interface HomingShotOptions {
   burnDuration?: number
   /** Сеть: сколько секунд держит всех, кого накрыла (вместе с splashRadius — радиус сети) */
   rootDuration?: number
-  /** Ядро: на сколько клеток отбрасывает цель назад по ковру */
-  knockbackDistance?: number
 }
 
 /** Настройки снаряда, который летит по прямой */
@@ -130,7 +125,6 @@ export function shootHoming(
     burnDamage: options.burnDamage ?? 0,
     burnDuration: options.burnDuration ?? 0,
     rootDuration: options.rootDuration ?? 0,
-    knockbackDistance: options.knockbackDistance ?? 0,
     isDone: false,
   })
 }
@@ -195,32 +189,18 @@ export function cursePulse(world: World, tower: Tower, stats: TowerStats): void 
   }
 }
 
-/** Насколько враг поддаётся сети и ядру: 1 — полностью, 0.3 — на 30% (см. controlResistance) */
-const controlShare = (enemy: Enemy) => 1 - (enemy.def.controlResistance ?? 0)
-
 /**
  * Поймать врага в сеть на duration секунд — если он не рвёт сети после прошлой.
+ * Крупных сеть держит меньше (controlResistance).
  * Горящего сеть держит лишь NET_ON_FIRE_SHARE своего времени, потом сгорает
  */
 function rootEnemy(enemy: Enemy, duration: number): void {
   if (enemy.isDead || duration <= 0 || enemy.rootImmunityLeft > 0) return
-  const fullTime = duration * controlShare(enemy)
+  const fullTime = duration * (1 - (enemy.def.controlResistance ?? 0))
   const rootTime = enemy.burnTimeLeft > 0 ? fullTime * NET_ON_FIRE_SHARE : fullTime
   enemy.rootDuration = fullTime
   enemy.rootTimeLeft = rootTime
   enemy.rootImmunityLeft = rootTime + ROOT_IMMUNITY_SECONDS
-}
-
-/** Отбросить врага назад по ковру на distance клеток — не дальше двери */
-function knockBackEnemy(world: World, enemy: Enemy, distance: number): void {
-  if (enemy.isDead || distance <= 0 || enemy.knockbackImmunityLeft > 0) return
-  enemy.pathDistance = Math.max(0, enemy.pathDistance - distance * controlShare(enemy))
-  // Сразу на новое место: иначе до следующего шага враг рисовался бы там, где его ударило
-  const [x, y] = world.level.path.positionAt(enemy.pathDistance)
-  enemy.x = x
-  enemy.y = y
-  enemy.knockbackImmunityLeft = KNOCKBACK_IMMUNITY_SECONDS
-  world.emit('knockback', enemy)
 }
 
 /** «Пар»: волна холода тушит горящего врага — огонь погас, остаток огня пропадает */
@@ -319,13 +299,12 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
   }
 }
 
-/** Всё, что снаряд делает с врагом при попадании: урон, огонь, сеть, отброс */
+/** Всё, что снаряд делает с врагом при попадании: урон, огонь, сеть */
 function hitWithShot(world: World, shot: HomingShot, enemy: Enemy): void {
   // Сеть не ранит: без этой проверки броня превратила бы урон 0 в 1 (Math.max(1, …))
   if (shot.damage > 0) damageEnemy(world, enemy, shot.damage, shot.damageKind)
   igniteEnemy(world, enemy, shot.burnDamage, shot.burnDuration)
   rootEnemy(enemy, shot.rootDuration)
-  knockBackEnemy(world, enemy, shot.knockbackDistance)
 }
 
 /**

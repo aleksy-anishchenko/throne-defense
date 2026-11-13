@@ -5,8 +5,8 @@
 // У каждой башни своя работа (баланс v4):
 // лучник — дешёвый и частый, огневик — против толпы и лат, Морозко — только замедляет,
 // баллиста — против толстых, Звонарь — ускоряет стреляющих соседей, Казна — приносит золото.
-// Баланс v5: Пушкарь — отбрасывает назад, Ловчий — ловит в сеть, Колдун — проклинает
-// (проклятые получают больше урона ото всех)
+// Баланс v5: Пушкарь — густая толпа издалека (с v7 без отброса), Ловчий — ловит в сеть,
+// Колдун — проклинает (проклятые получают больше урона ото всех)
 
 import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/combat.ts'
 import type { TowerDef } from '../types.ts'
@@ -128,16 +128,17 @@ const ballista: TowerDef = {
 const cannon: TowerDef = {
   id: 'cannon',
   name: 'Пушкарь',
-  description: 'бьёт дальше всех, ядро разбивает толпу и отбрасывает',
+  description: 'бьёт дальше всех, ядро разбивает толпу',
   cost: 140,
   upgradeCosts: [100, 140],
   tiers: [
-    // v6: было ядро в одного (урон 30/50/80, дальность 2,6/2,8/3) — урона на монету в 5–7 раз
-    // меньше других. Теперь — самая дальняя башня, ядро бьёт и отбрасывает всех в круге.
-    // Урон физический: латы его режут — против брони есть баллиста
-    { damage: 21, cooldown: 3.2, range: 3.8, splashRadius: 0.7, knockbackDistance: 0.4 },
-    { damage: 35, cooldown: 3, range: 4.1, splashRadius: 0.8, knockbackDistance: 0.5 },
-    { damage: 56, cooldown: 2.8, range: 4.4, splashRadius: 0.9, knockbackDistance: 0.6 },
+    // Роль — густая толпа издалека: чем плотнее идут враги, тем больше их накрывает взрыв.
+    // Против одиночек (огры, редкие латники) — из худших: стреляет редко.
+    // v7: отброса больше нет — вместе с Морозко и сетями он держал врагов у двери вечно
+    // и отнимал роль у Ловчего. Взамен урон 21/35/56 → 30/50/80, взрыв 0,7/0,8/0,9 → 1/1,15/1,3
+    { damage: 30, cooldown: 3.2, range: 3.8, splashRadius: 1 },
+    { damage: 50, cooldown: 3, range: 4.1, splashRadius: 1.15 },
+    { damage: 80, cooldown: 2.8, range: 4.4, splashRadius: 1.3 },
   ],
   displayStats: ['damage', 'splashRadius', 'range'],
   defaultTargetMode: 'first',
@@ -150,7 +151,6 @@ const cannon: TowerDef = {
       damage: stats.damage,
       damageKind: 'physical',
       splashRadius: stats.splashRadius,
-      knockbackDistance: stats.knockbackDistance,
     }),
 }
 

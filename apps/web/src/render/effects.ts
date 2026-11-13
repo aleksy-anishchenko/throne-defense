@@ -147,10 +147,6 @@ const STEAM_PUFFS: readonly (readonly [number, number, number])[] = [
 ]
 /** Сколько раскрывается и тает упавшая сеть, с */
 const NET_DURATION = 0.45
-/** Сколько расходится облачко пыли, когда ядро отбросило врага, с */
-const KNOCKBACK_DUST_DURATION = 0.35
-/** Цвет пыли от отброса */
-const KNOCKBACK_DUST_RGB = '200,190,170'
 /** Сгоревшая сеть: искры, их цвет, насколько разбегается огненное кольцо (клеток) и сколько, с */
 const NET_BURN_SPARK_COUNT = 8
 const NET_BURN_SPARK_COLOR = '#ffb347'
@@ -504,18 +500,6 @@ export function createEffects(game: Game): Effects {
     }),
     game.on('net', ({ x, y, radius }) =>
       add({ kind: 'net', x, y, radius, timeLeft: NET_DURATION, duration: NET_DURATION }),
-    ),
-    game.on('knockback', (enemy) =>
-      add({
-        kind: 'ring',
-        x: enemy.x,
-        y: enemy.y,
-        startRadius: enemy.def.radius,
-        endRadius: enemy.def.radius + 0.25,
-        rgb: KNOCKBACK_DUST_RGB,
-        timeLeft: KNOCKBACK_DUST_DURATION,
-        duration: KNOCKBACK_DUST_DURATION,
-      }),
     ),
     game.on('heal', ({ x, y, radius }) =>
       add({

@@ -41,8 +41,6 @@ export interface TowerStats {
   curseAmount?: number
   /** Колдун: сколько секунд держится проклятие */
   curseDuration?: number
-  /** Пушкарь: на сколько клеток ядро отбрасывает врага назад по ковру */
-  knockbackDistance?: number
 }
 
 /** Какие характеристики можно показать в панели башни */
@@ -58,7 +56,6 @@ export type StatKey =
   | 'goldPerWave'
   | 'rootDuration'
   | 'curseAmount'
-  | 'knockbackDistance'
 
 /**
  * Кого башня выбирает целью: first — того, кто ближе всех к трону,
@@ -117,8 +114,8 @@ export interface EnemyDef {
   /** Сопротивление замедлению: 0.5 — замедляется вдвое слабее */
   slowResistance?: number
   /**
-   * Устойчивость к сети Ловчего и ядру Пушкаря: 0.7 — сеть держит 30% времени,
-   * ядро отбрасывает на 30% расстояния. Крупных (огр, Горыныч, узурпатор) остановить труднее
+   * Устойчивость к сети Ловчего: 0.7 — сеть держит 30% времени.
+   * Крупных (огр, Горыныч, узурпатор) остановить труднее
    */
   controlResistance?: number
   /** Лечит других врагов рядом (знахарь) */
@@ -299,8 +296,6 @@ export interface Enemy {
    * загорается в сети: горящая сеть держит лишь долю этого времени (NET_ON_FIRE_SHARE)
    */
   rootDuration: number
-  /** Сколько секунд ядро Пушкаря его не отбросит (только что отбросило) */
-  knockbackImmunityLeft: number
   /** Сколько ещё секунд враг проклят Колдуном */
   curseTimeLeft: number
   /** Сила проклятия: 0.3 — получает на 30% больше урона */
@@ -337,8 +332,6 @@ export interface HomingShot {
   burnDuration: number
   /** Сеть: сколько секунд держит всех, кого накрыла; 0 — снаряд не сеть */
   rootDuration: number
-  /** Ядро: на сколько клеток отбрасывает цель назад по ковру; 0 — не отбрасывает */
-  knockbackDistance: number
   /** Снаряд долетел или потерял смысл: его уберут в конце шага */
   isDone: boolean
 }
@@ -459,8 +452,6 @@ export interface GameEvents {
   heal: { x: number; y: number; radius: number }
   /** Сеть Ловчего упала: всех в радиусе — в сеть (кого взяла — видно по rootTimeLeft) */
   net: { x: number; y: number; radius: number }
-  /** Ядро Пушкаря отбросило врага назад */
-  knockback: Enemy
   leak: Enemy
   victory: void
   defeat: void
