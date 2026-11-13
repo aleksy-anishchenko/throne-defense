@@ -6,15 +6,18 @@
 import type { LeaderboardEntry, SubmitRunRequest } from '@throne/contracts'
 import type { DatabaseSync } from 'node:sqlite'
 
-/** Таблица какого уровня и какой версии баланса. levelId: null — все залы вместе (общий топ) */
+/**
+ * Таблица какого уровня и какой версии баланса. null — без отбора: levelId — все залы вместе,
+ * balanceVersion — все версии правил (общий топ игры: рекорды не пропадают при смене баланса)
+ */
 export interface LeaderboardScope {
   levelId: string | null
-  balanceVersion: number
+  balanceVersion: number | null
 }
 
-/** Условие отбора по scope: уровень — только если задан */
+/** Условие отбора по scope: уровень и версия — только если заданы */
 const SCOPE_WHERE =
-  '(:level_id IS NULL OR level_id = :level_id) AND balance_version = :balance_version'
+  '(:level_id IS NULL OR level_id = :level_id) AND (:balance_version IS NULL OR balance_version = :balance_version)'
 
 /** Место в таблице и сколько в ней всего имён */
 export interface PlayerPlace {

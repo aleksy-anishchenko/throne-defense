@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // Экран поверх поля: заставка, поражение, победа, таблица лучших, настройки
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { BALANCE_VERSION } from '@throne/game'
 import { useGameStore } from '@/stores/game'
 import { formatNumber } from '@/utils/format'
 import { shareResult } from '@/utils/share'
@@ -81,8 +80,8 @@ const screenContent = computed(() => {
     case 'leaderboard':
       return {
         title: 'Лучшие результаты',
-        // Версия баланса — в подписи: после её смены таблица начинается заново, и игрок видит почему
-        text: `${store.game.level.def.name}, правила версии ${BALANCE_VERSION}`,
+        // Таблица общая: все залы и все версии правил — зал рекорда указан в каждой строке
+        text: 'Все залы',
         note: '',
         buttons: [{ label: 'Назад', action: store.closeLeaderboard }],
       }

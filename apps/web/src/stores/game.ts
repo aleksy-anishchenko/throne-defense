@@ -242,8 +242,9 @@ export const useGameStore = defineStore('game', () => {
     screen.value = 'leaderboard'
     leaderboard.status = 'loading'
     const number = ++leaderboardRequestNumber
-    // Общий топ по всем залам: в каждой строке — где сыгран рекорд
-    const result = await fetchLeaderboard({ balance: BALANCE_VERSION })
+    // Общий топ по всем залам и всем версиям баланса: рекорды копятся и не пропадают
+    // при смене правил. В каждой строке — где сыгран рекорд
+    const result = await fetchLeaderboard({})
     if (number !== leaderboardRequestNumber) return
     if (result) {
       leaderboard.entries = result.entries

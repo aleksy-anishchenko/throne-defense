@@ -8,7 +8,7 @@ export const HEALTH_PATH = '/api/health'
 /** POST — результат законченной партии в общий топ */
 export const RUNS_PATH = '/api/runs'
 
-/** GET ?level=throne-hall&balance=4 — лучшие для уровня и версии баланса */
+/** GET — лучшие по всем залам и версиям баланса; ?level=… и ?balance=… сужают таблицу */
 export const LEADERBOARD_PATH = '/api/leaderboard'
 
 /** Сколько строк в таблице лучших */

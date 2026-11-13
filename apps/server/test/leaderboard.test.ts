@@ -10,6 +10,7 @@ import type { FastifyInstance } from 'fastify'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../src/app.ts'
 import { IN_MEMORY_DATABASE } from '../src/db/database.ts'
+import { insertRun } from '../src/services/leaderboard.ts'
 
 const LEVEL_ID = 'throne-hall'
 
@@ -44,12 +45,10 @@ describe('общий топ', () => {
       payload: body as object,
       headers: { 'x-forwarded-for': `203.0.113.${++playerIp % 250}` },
     })
-  const leaderboard = async (balance = BALANCE_VERSION) =>
+  /** Таблица одного зала (все версии баланса) */
+  const leaderboard = async () =>
     (
-      await app.inject({
-        method: 'GET',
-        url: `${LEADERBOARD_PATH}?level=${LEVEL_ID}&balance=${balance}`,
-      })
+      await app.inject({ method: 'GET', url: `${LEADERBOARD_PATH}?level=${LEVEL_ID}` })
     ).json<LeaderboardResponse>()
 
   it('первый результат — первое место из одного', async () => {
@@ -102,7 +101,7 @@ describe('общий топ', () => {
     // Лучший результат Василисы — в другом зале: зал в строке — тот, где рекорд
     await submit(run('Василиса', 8000, 10, OTHER_LEVEL_ID))
     const common = (
-      await app.inject({ method: 'GET', url: `${LEADERBOARD_PATH}?balance=${BALANCE_VERSION}` })
+      await app.inject({ method: 'GET', url: LEADERBOARD_PATH })
     ).json<LeaderboardResponse>()
     expect(common.entries.map((entry) => [entry.playerName, entry.score, entry.levelId])).toEqual([
       ['Василиса', 8000, OTHER_LEVEL_ID],
@@ -112,9 +111,22 @@ describe('общий топ', () => {
     expect((await leaderboard()).entries.map((entry) => entry.score)).toEqual([5000])
   })
 
-  it('версии баланса не смешиваются', async () => {
-    await submit(run('Василиса', 5000))
-    expect((await leaderboard(BALANCE_VERSION + 1)).entries).toEqual([])
+  it('рекорды прошлых версий баланса остаются в общем топе; ?balance= отбирает одну версию', async () => {
+    // Прислать результат старой версии нельзя (422 ниже) — такие партии остались с тех пор,
+    // когда эта версия была текущей. Кладём прямо в базу
+    insertRun(app.db, { ...run('Старожил', 9000), balanceVersion: BALANCE_VERSION - 1 })
+    // Место нового игрока — в общей таблице вместе со старыми рекордами
+    expect((await submit(run('Василиса', 5000))).json()).toEqual({ rank: 2, playerCount: 2 })
+
+    const all = (
+      await app.inject({ method: 'GET', url: LEADERBOARD_PATH })
+    ).json<LeaderboardResponse>()
+    expect(all.entries.map((entry) => entry.playerName)).toEqual(['Старожил', 'Василиса'])
+
+    const current = (
+      await app.inject({ method: 'GET', url: `${LEADERBOARD_PATH}?balance=${BALANCE_VERSION}` })
+    ).json<LeaderboardResponse>()
+    expect(current.entries.map((entry) => entry.playerName)).toEqual(['Василиса'])
   })
 
   it('400 на мусор: не те поля и типы', async () => {
@@ -149,12 +161,11 @@ describe('общий топ', () => {
     expect((await leaderboard()).playerCount).toBe(0)
   })
 
-  it('400 на неправильный запрос таблицы: без версии баланса', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: `${LEADERBOARD_PATH}?level=${LEVEL_ID}`,
-    })
-    expect(response.statusCode).toBe(400)
+  it('400 на неправильный запрос таблицы', async () => {
+    for (const query of ['balance=0', 'balance=шесть', 'level=DROP%20TABLE']) {
+      const response = await app.inject({ method: 'GET', url: `${LEADERBOARD_PATH}?${query}` })
+      expect(response.statusCode, query).toBe(400)
+    }
   })
 
   it('больше 10 результатов в минуту с одного адреса — 429', async () => {

@@ -24,7 +24,7 @@ export type SubmitRunRequest = Static<typeof SubmitRunRequestSchema>
 export const SubmitRunResponseSchema = Type.Object({
   /** 1 — первое место. У равных счетов одно место */
   rank: Type.Integer({ minimum: 1 }),
-  /** Сколько разных имён в таблице этого уровня и версии баланса */
+  /** Сколько разных имён в общей таблице (все залы и версии баланса) */
   playerCount: Type.Integer({ minimum: 1 }),
 })
 export type SubmitRunResponse = Static<typeof SubmitRunResponseSchema>

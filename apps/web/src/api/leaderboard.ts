@@ -43,8 +43,12 @@ export function submitRun(run: SubmitRunRequest): Promise<SubmitRunResponse | nu
 }
 
 export function fetchLeaderboard(query: LeaderboardQuery): Promise<LeaderboardResponse | null> {
-  // Без level — общий топ по всем залам
-  const search = new URLSearchParams({ balance: String(query.balance) })
+  // Без level — все залы, без balance — все версии баланса
+  const search = new URLSearchParams()
   if (query.level) search.set('level', query.level)
-  return requestJson<LeaderboardResponse>(`${LEADERBOARD_PATH}?${search}`)
+  if (query.balance) search.set('balance', String(query.balance))
+  const queryString = search.toString()
+  return requestJson<LeaderboardResponse>(
+    queryString ? `${LEADERBOARD_PATH}?${queryString}` : LEADERBOARD_PATH,
+  )
 }

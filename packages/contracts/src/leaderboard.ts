@@ -7,8 +7,9 @@ export const LeaderboardQuerySchema = Type.Object(
   {
     // Нет — общий топ по всем залам (их несколько, карта на партию выпадает случайно)
     level: Type.Optional(Type.String({ pattern: ID_PATTERN })),
-    // Рекорды разных версий баланса не смешиваются: v3 и v4 — разные игры
-    balance: Type.Integer({ minimum: 1 }),
+    // Нет — все версии баланса вместе: рекорды не пропадают, когда меняются правила.
+    // С balance — только эта версия (так спрашивали прежние версии игры)
+    balance: Type.Optional(Type.Integer({ minimum: 1 })),
   },
   { additionalProperties: false },
 )
