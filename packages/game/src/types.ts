@@ -152,9 +152,25 @@ export interface EnemySplit {
 export type WaveGroup = readonly [enemyId: string, count: number, gap: number, delay: number]
 
 /** Описание уровня (карты) */
+/** Что стоит на клетке-препятствии. Строить там нельзя; для игры все виды одинаковы */
+export type PropKind = 'column' | 'statue' | 'brazier' | 'barrel'
+
+/** Препятствие на поле: вид и клетка [столбец, строка] */
+export interface LevelProp {
+  kind: PropKind
+  cell: Point
+}
+
 export interface LevelDef {
   id: string
   name: string
+  /**
+   * Оформление зала (цвета пола и ковра) — только для картинки, игра его не читает.
+   * Нет — обычный «тронный» вид
+   */
+  theme?: string
+  /** Препятствия: колонны, статуи… На их клетках нельзя строить (как на blockedCells) */
+  props?: readonly LevelProp[]
   /** Ширина поля, клеток */
   cols: number
   /** Высота поля, клеток */

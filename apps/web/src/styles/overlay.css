@@ -163,6 +163,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.leaderboard-level {
+  /* Зал рекорда — под именем, мельче и тусклее */
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--parch-dim);
+  font-size: 0.8rem;
+}
 .leaderboard-score {
   font-weight: 800;
   font-variant-numeric: tabular-nums;

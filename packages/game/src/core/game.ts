@@ -27,8 +27,8 @@ export interface Game {
   /** Подписаться на событие игры */
   readonly on: Emitter<GameEvents>['on']
 
-  /** Начать новую партию */
-  reset(): void
+  /** Начать новую партию. levelDef — в другом зале (у залов одно поле, см. levels/hall-base.ts) */
+  reset(levelDef?: LevelDef): void
   /** Идёт ли партия: между волнами (build) или во время волны (wave) */
   isPlaying(): boolean
   /** Лежит ли клетка (столбец, строка) внутри поля. Дробные столбец и строка — не клетка */
@@ -97,7 +97,9 @@ function initialState(level: Level): GameState {
 }
 
 export function createGame(levelDef: LevelDef): Game {
-  const level = createLevel(levelDef)
+  // let: новая партия может начаться в другом зале (reset). Всё ниже читает level при каждом
+  // вызове, а world.level меняется вместе с ним
+  let level = createLevel(levelDef)
   const events = createEmitter<GameEvents>()
   const state = initialState(level)
   const world: World = { state, level, emit: events.emit }
@@ -149,7 +151,9 @@ export function createGame(levelDef: LevelDef): Game {
 
   return {
     state,
-    level,
+    get level() {
+      return level
+    },
     on: events.on,
     isPlaying,
     isInsideField,
@@ -157,7 +161,11 @@ export function createGame(levelDef: LevelDef): Game {
     towerAt,
     step,
 
-    reset() {
+    reset(nextLevelDef) {
+      if (nextLevelDef && nextLevelDef !== level.def) {
+        level = createLevel(nextLevelDef)
+        world.level = level
+      }
       // Скорость — настройка игрока, а не часть партии: сохраняем её
       const { speed } = state
       // Object.assign, а не новый объект: кто держит ссылку на state, увидит новую партию

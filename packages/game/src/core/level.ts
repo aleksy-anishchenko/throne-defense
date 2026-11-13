@@ -49,6 +49,11 @@ function checkBlockedCells(def: LevelDef): void {
       fail(def, `закрытая клетка (${col},${row}) — не целая или за краем поля`)
     }
   }
+  for (const { cell } of def.props ?? []) {
+    if (!isLevelCell(def, cell[0], cell[1])) {
+      fail(def, `препятствие на клетке (${cell}) — не целой или за краем поля`)
+    }
+  }
 }
 
 /** Число, а не NaN или бесконечность, и не меньше min */
@@ -115,13 +120,19 @@ export function createLevel(def: LevelDef): Level {
 
   const path = createPath(def.pathPoints)
   const blockedCellKeys = new Set(def.blockedCells.map(([col, row]) => cellKey(col, row)))
+  const propCellKeys = new Set((def.props ?? []).map(({ cell }) => cellKey(cell[0], cell[1])))
   // Все клетки, по которым проходит ковёр
   for (let distance = 0; distance <= path.length; distance += CARPET_SAMPLE_STEP) {
     const [x, y] = path.positionAt(distance)
     const col = Math.floor(x)
     const row = Math.floor(y)
-    if (isInsideLevelField(def, col, row)) blockedCellKeys.add(cellKey(col, row))
+    if (!isInsideLevelField(def, col, row)) continue
+    // Препятствие на ковре загородило бы дорогу врагам — это опечатка в уровне
+    if (propCellKeys.has(cellKey(col, row)))
+      fail(def, `препятствие на ковре, клетка (${col},${row})`)
+    blockedCellKeys.add(cellKey(col, row))
   }
+  for (const key of propCellKeys) blockedCellKeys.add(key)
 
   return { def, path, blockedCellKeys, waveCount: def.waves.length }
 }

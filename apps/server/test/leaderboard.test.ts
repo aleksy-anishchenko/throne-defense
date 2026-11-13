@@ -13,8 +13,16 @@ import { IN_MEMORY_DATABASE } from '../src/db/database.ts'
 
 const LEVEL_ID = 'throne-hall'
 
-function run(playerName: string, score: number, wavesCleared = 10): SubmitRunRequest {
-  return { playerName, levelId: LEVEL_ID, score, wavesCleared, balanceVersion: BALANCE_VERSION }
+/** Второй зал — для проверок общего топа по всем залам */
+const OTHER_LEVEL_ID = LEVELS.find((def) => def.id !== LEVEL_ID)!.id
+
+function run(
+  playerName: string,
+  score: number,
+  wavesCleared = 10,
+  levelId = LEVEL_ID,
+): SubmitRunRequest {
+  return { playerName, levelId, score, wavesCleared, balanceVersion: BALANCE_VERSION }
 }
 
 describe('общий топ', () => {
@@ -59,8 +67,8 @@ describe('общий топ', () => {
     const table = await leaderboard()
     expect(table.playerCount).toBe(2)
     expect(table.entries).toEqual([
-      { rank: 1, playerName: 'Василиса', score: 9000, wavesCleared: 10 },
-      { rank: 2, playerName: 'Иван', score: 7000, wavesCleared: 10 },
+      { rank: 1, playerName: 'Василиса', score: 9000, wavesCleared: 10, levelId: LEVEL_ID },
+      { rank: 2, playerName: 'Иван', score: 7000, wavesCleared: 10, levelId: LEVEL_ID },
     ])
   })
 
@@ -82,6 +90,26 @@ describe('общий топ', () => {
     expect(table.playerCount).toBe(LEADERBOARD_SIZE + 3)
     expect(table.entries).toHaveLength(LEADERBOARD_SIZE)
     expect(table.entries[0].playerName).toBe(`Игрок ${LEADERBOARD_SIZE + 3}`)
+  })
+
+  it('без level — общий топ по всем залам, у строки — зал рекорда', async () => {
+    await submit(run('Василиса', 5000))
+    // Место — сразу в общем топе: Иван второй, хоть в своём зале он один
+    expect((await submit(run('Иван', 3000, 10, OTHER_LEVEL_ID))).json()).toEqual({
+      rank: 2,
+      playerCount: 2,
+    })
+    // Лучший результат Василисы — в другом зале: зал в строке — тот, где рекорд
+    await submit(run('Василиса', 8000, 10, OTHER_LEVEL_ID))
+    const common = (
+      await app.inject({ method: 'GET', url: `${LEADERBOARD_PATH}?balance=${BALANCE_VERSION}` })
+    ).json<LeaderboardResponse>()
+    expect(common.entries.map((entry) => [entry.playerName, entry.score, entry.levelId])).toEqual([
+      ['Василиса', 8000, OTHER_LEVEL_ID],
+      ['Иван', 3000, OTHER_LEVEL_ID],
+    ])
+    // С level — только этот зал
+    expect((await leaderboard()).entries.map((entry) => entry.score)).toEqual([5000])
   })
 
   it('версии баланса не смешиваются', async () => {
@@ -121,7 +149,7 @@ describe('общий топ', () => {
     expect((await leaderboard()).playerCount).toBe(0)
   })
 
-  it('400 на неправильный запрос таблицы', async () => {
+  it('400 на неправильный запрос таблицы: без версии баланса', async () => {
     const response = await app.inject({
       method: 'GET',
       url: `${LEADERBOARD_PATH}?level=${LEVEL_ID}`,

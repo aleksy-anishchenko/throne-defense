@@ -5,7 +5,8 @@ import { ID_PATTERN } from './paths.ts'
 /** Запрос GET /api/leaderboard */
 export const LeaderboardQuerySchema = Type.Object(
   {
-    level: Type.String({ pattern: ID_PATTERN }),
+    // Нет — общий топ по всем залам (их несколько, карта на партию выпадает случайно)
+    level: Type.Optional(Type.String({ pattern: ID_PATTERN })),
     // Рекорды разных версий баланса не смешиваются: v3 и v4 — разные игры
     balance: Type.Integer({ minimum: 1 }),
   },
@@ -19,6 +20,8 @@ export const LeaderboardEntrySchema = Type.Object({
   playerName: Type.String(),
   score: Type.Integer({ minimum: 0 }),
   wavesCleared: Type.Integer({ minimum: 0 }),
+  /** В каком зале сыграна эта (лучшая) партия */
+  levelId: Type.String(),
 })
 export type LeaderboardEntry = Static<typeof LeaderboardEntrySchema>
 

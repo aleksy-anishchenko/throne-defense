@@ -574,8 +574,9 @@ async function desktop(browser, url) {
     JSON.stringify(snapshot),
   )
   check(
-    'шапка «Волна 2 из 20»',
-    (await page.locator('.hud .wave').textContent()) === 'Волна 2 из 20',
+    'шапка «Волна 2 из 20» и название зала',
+    (await page.locator('.hud .wave-label').textContent()) === 'Волна 2 из 20' &&
+      (await page.locator('.hud .hud-level').textContent()) === 'Тронный зал',
   )
   check(
     'превью следующей волны',
@@ -655,9 +656,10 @@ async function desktop(browser, url) {
   await appears(leaderboardRows.first())
   const rowTexts = await leaderboardRows.allTextContents()
   check(
-    'таблица лучших: строка игрока, выделена',
+    'таблица лучших: строка игрока с залом рекорда, выделена',
     rowTexts.length === 1 &&
       rowTexts[0].includes('Страж 1') &&
+      rowTexts[0].includes('Тронный зал') &&
       (await page.locator('.leaderboard li.is-player').count()) === 1,
     rowTexts.join(' | '),
   )
@@ -711,7 +713,7 @@ async function desktop(browser, url) {
   )
   await page.getByRole('button', { name: 'Играть дальше' }).click()
   await waitForFrames(page)
-  check('бесконечный режим', (await page.locator('.hud .wave').textContent()) === 'Волна 21')
+  check('бесконечный режим', (await page.locator('.hud .wave-label').textContent()) === 'Волна 21')
   await page.getByRole('button', { name: 'Начать волну' }).click()
   await page.waitForFunction(() => window.__throne.game.state.enemies.length > 0)
   check('21-я волна началась, враги вышли', (await readGameSnapshot(page)).phase === 'wave')
@@ -1087,7 +1089,9 @@ const server = await preview({
   // /api — в наш API на временной базе (вместо 3000 из vite.config.ts)
   preview: { port: 4173, proxy: { '/api': `http://127.0.0.1:${API_PORT}` } },
 })
-const url = `${server.resolvedUrls.local[0]}?debug`
+// ?level=throne-hall: проверки ставят башни на конкретные клетки «Тронного зала».
+// Без него зал на партию выпадает случайно
+const url = `${server.resolvedUrls.local[0]}?debug&level=throne-hall`
 const browser = await launchBrowser()
 console.log(`Проверяю ${url}`)
 

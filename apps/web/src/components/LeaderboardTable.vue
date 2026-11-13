@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Таблица лучших: одно имя — одна строка с лучшим результатом
-import { useGameStore } from '@/stores/game'
+// Таблица лучших (общая на все залы): одно имя — одна строка с лучшим результатом и залом
+import { levelName, useGameStore } from '@/stores/game'
 import { formatNumber, plural } from '@/utils/format'
 
 const store = useGameStore()
@@ -27,7 +27,11 @@ const WAVE_FORMS = ['волна', 'волны', 'волн'] as const
         :class="{ 'is-player': entry.playerName === store.playerName }"
       >
         <span class="leaderboard-rank">{{ entry.rank }}</span>
-        <span class="leaderboard-name">{{ entry.playerName }}</span>
+        <span class="leaderboard-name">
+          {{ entry.playerName }}
+          <!-- Топ общий на все залы: где сыгран рекорд -->
+          <small class="leaderboard-level">{{ levelName(entry.levelId) }}</small>
+        </span>
         <span class="leaderboard-score">{{ formatNumber(entry.score) }}</span>
         <span class="leaderboard-waves">
           {{ entry.wavesCleared }} {{ plural(entry.wavesCleared, WAVE_FORMS) }}

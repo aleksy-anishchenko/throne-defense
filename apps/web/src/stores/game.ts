@@ -8,7 +8,15 @@
 // в реактивный объект hud (функция syncHud). Vue перерисует только то, что реально поменялось.
 
 import { isValidPlayerName, normalizePlayerName, type LeaderboardEntry } from '@throne/contracts'
-import { BALANCE_VERSION, LEVELS, MAX_SPEED, TOWERS, createGame, type Phase } from '@throne/game'
+import {
+  BALANCE_VERSION,
+  LEVELS,
+  MAX_SPEED,
+  TOWERS,
+  createGame,
+  type LevelDef,
+  type Phase,
+} from '@throne/game'
 import { defineStore } from 'pinia'
 import { markRaw, nextTick, reactive, ref, watch } from 'vue'
 import { fetchLeaderboard, submitRun } from '@/api/leaderboard'
@@ -40,14 +48,36 @@ type SubmissionStatus =
   /** Нет сети или сервер не ответил — игра идёт как раньше, просто без топа */
   | 'failed'
 
+/**
+ * ?level=throne-hall в адресе — всегда этот зал: для проверок в браузере (e2e) и чтобы
+ * позвать друга в тот же зал. Нет или нет такого — зал на партию выпадает случайно
+ */
+const forcedLevel: LevelDef | undefined =
+  typeof location === 'undefined'
+    ? undefined
+    : LEVELS.find((level) => level.id === new URLSearchParams(location.search).get('level'))
+
+/** Случайный зал, кроме exceptId — чтобы два раза подряд не выпал один и тот же */
+function randomLevel(exceptId?: string): LevelDef {
+  const candidates = LEVELS.filter((level) => level.id !== exceptId)
+  return candidates[Math.floor(Math.random() * candidates.length)]
+}
+
+/** Название зала по id (для таблицы лучших); неизвестный id — как есть */
+export const levelName = (levelId: string): string =>
+  LEVELS.find((level) => level.id === levelId)?.name ?? levelId
+
 export const useGameStore = defineStore('game', () => {
-  // markRaw — «Vue, не трогай этот объект»
-  const game = markRaw(createGame(LEVELS[0]))
+  // markRaw — «Vue, не трогай этот объект».
+  // Зал под меню — тот, в котором начнётся первая партия
+  const game = markRaw(createGame(forcedLevel ?? randomLevel()))
   const state = game.state
 
   // ---------------------------------------------------------------- Снимок для интерфейса
 
   const hud = reactive({
+    /** Название зала этой партии — в шапке */
+    levelName: game.level.def.name,
     phase: state.phase as Phase,
     wave: state.wave,
     waveCount: game.level.waveCount,
@@ -212,7 +242,8 @@ export const useGameStore = defineStore('game', () => {
     screen.value = 'leaderboard'
     leaderboard.status = 'loading'
     const number = ++leaderboardRequestNumber
-    const result = await fetchLeaderboard({ level: game.level.def.id, balance: BALANCE_VERSION })
+    // Общий топ по всем залам: в каждой строке — где сыгран рекорд
+    const result = await fetchLeaderboard({ balance: BALANCE_VERSION })
     if (number !== leaderboardRequestNumber) return
     if (result) {
       leaderboard.entries = result.entries
@@ -268,8 +299,15 @@ export const useGameStore = defineStore('game', () => {
    */
   const runCount = ref(0)
 
+  /** Была ли уже партия: первая начинается в зале, который виден под меню */
+  let hasPlayed = false
+
   function newGame() {
-    game.reset()
+    // Каждая следующая партия — в новом случайном зале (не в том же, что сейчас)
+    const nextLevel = forcedLevel ?? (hasPlayed ? randomLevel(game.level.def.id) : game.level.def)
+    hasPlayed = true
+    game.reset(nextLevel)
+    hud.levelName = game.level.def.name
     runCount.value++
     forgetFinishedRun()
     isNewBest.value = false

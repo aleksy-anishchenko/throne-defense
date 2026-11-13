@@ -43,6 +43,10 @@ const waveLabel = computed(() =>
       </svg>
       <span class="visually-hidden">Золото:</span><span>{{ store.hud.gold }}</span>
     </span>
-    <span class="wave">{{ waveLabel }}</span>
+    <span class="wave">
+      <span class="wave-label">{{ waveLabel }}</span>
+      <!-- Зал выпадает на партию случайно — его название под номером волны -->
+      <small class="hud-level">{{ store.hud.levelName }}</small>
+    </span>
   </header>
 </template>

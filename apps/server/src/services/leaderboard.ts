@@ -6,11 +6,15 @@
 import type { LeaderboardEntry, SubmitRunRequest } from '@throne/contracts'
 import type { DatabaseSync } from 'node:sqlite'
 
-/** Таблица какого уровня и какой версии баланса */
+/** Таблица какого уровня и какой версии баланса. levelId: null — все залы вместе (общий топ) */
 export interface LeaderboardScope {
-  levelId: string
+  levelId: string | null
   balanceVersion: number
 }
+
+/** Условие отбора по scope: уровень — только если задан */
+const SCOPE_WHERE =
+  '(:level_id IS NULL OR level_id = :level_id) AND balance_version = :balance_version'
 
 /** Место в таблице и сколько в ней всего имён */
 export interface PlayerPlace {
@@ -23,12 +27,12 @@ export interface PlayerPlace {
 // :level_id и :balance_version подставляет SQLite (параметры запроса) — так в SQL нельзя
 // ничего подсунуть через имя или id уровня
 const BEST_PER_PLAYER = `
-  SELECT id, player_name, score, waves_cleared
+  SELECT id, player_name, score, waves_cleared, level_id
   FROM (
-    SELECT id, player_name, score, waves_cleared,
+    SELECT id, player_name, score, waves_cleared, level_id,
       ROW_NUMBER() OVER (PARTITION BY player_name ORDER BY score DESC, id ASC) AS position
     FROM runs
-    WHERE level_id = :level_id AND balance_version = :balance_version
+    WHERE ${SCOPE_WHERE}
   )
   WHERE position = 1
 `
@@ -56,7 +60,7 @@ export function topPlayers(
 ): LeaderboardEntry[] {
   const rows = database
     .prepare(
-      `SELECT RANK() OVER (ORDER BY score DESC) AS rank, player_name, score, waves_cleared
+      `SELECT RANK() OVER (ORDER BY score DESC) AS rank, player_name, score, waves_cleared, level_id
        FROM (${BEST_PER_PLAYER})
        ORDER BY score DESC, id ASC
        LIMIT :limit`,
@@ -66,12 +70,14 @@ export function topPlayers(
     player_name: string
     score: number
     waves_cleared: number
+    level_id: string
   }[]
   return rows.map((row) => ({
     rank: row.rank,
     playerName: row.player_name,
     score: row.score,
     wavesCleared: row.waves_cleared,
+    levelId: row.level_id,
   }))
 }
 
@@ -79,7 +85,7 @@ export function countPlayers(database: DatabaseSync, scope: LeaderboardScope): n
   const row = database
     .prepare(
       `SELECT count(DISTINCT player_name) AS count FROM runs
-       WHERE level_id = :level_id AND balance_version = :balance_version`,
+       WHERE ${SCOPE_WHERE}`,
     )
     .get(scopeParameters(scope)) as { count: number }
   return row.count
@@ -97,8 +103,7 @@ export function playerPlace(
   const best = database
     .prepare(
       `SELECT max(score) AS score FROM runs
-       WHERE level_id = :level_id AND balance_version = :balance_version
-         AND player_name = :player_name`,
+       WHERE ${SCOPE_WHERE} AND player_name = :player_name`,
     )
     .get({ ...scopeParameters(scope), player_name: playerName }) as { score: number | null }
   if (best.score === null) return null

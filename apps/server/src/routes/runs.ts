@@ -39,9 +39,10 @@ export async function runsRoutes(app: FastifyInstance): Promise<void> {
       }
 
       insertRun(app.db, run)
+      // Место — в общем топе по всем залам: его и показывает игра
       const place = playerPlace(
         app.db,
-        { levelId: run.levelId, balanceVersion: run.balanceVersion },
+        { levelId: null, balanceVersion: run.balanceVersion },
         run.playerName,
       )
       // Только что записали — место есть всегда; проверка — для TypeScript

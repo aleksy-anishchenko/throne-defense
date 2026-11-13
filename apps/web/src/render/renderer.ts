@@ -62,6 +62,7 @@ export interface Renderer {
 
 export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer {
   const ctx = canvas.getContext('2d')!
+  // Размер поля и трон у всех залов одни (levels/hall-base.ts, проверяет тест) — читаем один раз
   const { cols, rows, throne } = game.level.def
   const effects = createEffects(game)
 
@@ -69,6 +70,8 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   let pixelRatio = 1 // сколько настоящих пикселей экрана в одном CSS-пикселе
   let cellDevicePx = INITIAL_CELL_CSS_PX // размер клетки в настоящих пикселях
   let hallLayer: HTMLCanvasElement | null = null
+  /** Для какого зала нарисован hallLayer: новая партия может начаться в другом зале */
+  let hallLevel = game.level
   let lastGameTime = 0
   /** «Отпечаток» прошлого нарисованного кадра, см. frameFingerprint */
   let lastFingerprint = ''
@@ -83,6 +86,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     if (effects.shakeTime > 0 || effects.throneHurtTime > 0) return null
     const state = game.state
     return [
+      game.level.def.id,
       state.time,
       state.phase,
       state.gold,
@@ -297,12 +301,18 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       canvas.width = Math.round(cols * cellCssPx * pixelRatio)
       canvas.height = Math.round(rows * cellCssPx * pixelRatio)
       cellDevicePx = canvas.width / cols
-      hallLayer = buildHall(game.level, canvas.width, canvas.height, cellDevicePx)
+      hallLevel = game.level
+      hallLayer = buildHall(hallLevel, canvas.width, canvas.height, cellDevicePx)
       // Смена размера canvas стирает его — следующий кадр нужно нарисовать обязательно
       lastFingerprint = ''
     },
 
     draw(realDt, boardView) {
+      // Новая партия в другом зале — фон зала рисуем заново (поле у всех залов одного размера)
+      if (game.level !== hallLevel && hallLayer) {
+        hallLevel = game.level
+        hallLayer = buildHall(hallLevel, canvas.width, canvas.height, cellDevicePx)
+      }
       const fingerprint = frameFingerprint(boardView)
       if (fingerprint !== null && fingerprint === lastFingerprint) return
       lastFingerprint = fingerprint ?? ''

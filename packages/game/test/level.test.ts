@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LEVELS, createLevel, type LevelDef, type WaveGroup } from '../src/index.ts'
+import { LEVELS, createGame, createLevel, type LevelDef, type WaveGroup } from '../src/index.ts'
 import { throneHall } from '../src/levels/throne-hall.ts'
 
 const withWaves = (waves: WaveGroup[][]): LevelDef => ({ ...throneHall, waves })
@@ -69,6 +69,16 @@ describe('проверка уровня при загрузке', () => {
       message: 'не число',
     },
     {
+      name: 'препятствие на ковре',
+      patch: { props: [{ kind: 'column', cell: [4, 12] }] },
+      message: 'препятствие на ковре, клетка (4,12)',
+    },
+    {
+      name: 'препятствие за краем поля',
+      patch: { props: [{ kind: 'statue', cell: [9, 3] }] },
+      message: 'препятствие на клетке (9,3)',
+    },
+    {
       name: 'опечатка в бесконечном режиме',
       patch: {
         endlessWaveGroups: (waveNumber) =>
@@ -83,4 +93,47 @@ describe('проверка уровня при загрузке', () => {
       expect(() => createLevel({ ...throneHall, ...patch })).toThrow(message)
     })
   }
+})
+
+describe('залы', () => {
+  const hallLevels = LEVELS.map(createLevel)
+  const throne = createLevel(throneHall)
+
+  it('id и названия не повторяются', () => {
+    expect(new Set(LEVELS.map((level) => level.id)).size).toBe(LEVELS.length)
+    expect(new Set(LEVELS.map((level) => level.name)).size).toBe(LEVELS.length)
+  })
+
+  it('у всех одно поле и трон в одном месте — на это рассчитана отрисовка', () => {
+    for (const { def } of hallLevels) {
+      expect([def.cols, def.rows, ...def.throne], def.id).toEqual([
+        throneHall.cols,
+        throneHall.rows,
+        ...throneHall.throne,
+      ])
+    }
+  })
+
+  it('ковёр у всех одной длины — иначе по времени под обстрелом нечестно', () => {
+    for (const level of hallLevels) {
+      expect(level.path.length, level.def.id).toBeCloseTo(throne.path.length)
+    }
+  })
+
+  it('на препятствии строить нельзя', () => {
+    const [withProps] = hallLevels.filter((level) => level.def.props?.length)
+    const [col, row] = withProps.def.props![0].cell
+    expect(withProps.blockedCellKeys.has(`${col},${row}`)).toBe(true)
+  })
+
+  it('новая партия может начаться в другом зале: другой ковёр, свободные клетки', () => {
+    const game = createGame(throneHall)
+    game.reset()
+    const other = LEVELS.find((level) => level.id !== throneHall.id)!
+    game.reset(other)
+    expect(game.level.def.id).toBe(other.id)
+    const [col, row] = other.props![0].cell
+    expect(game.isCellFree(col, row)).toBe(false)
+    expect(game.build('archer', col, row)).toBeNull()
+  })
 })

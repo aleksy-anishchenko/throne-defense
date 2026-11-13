@@ -55,6 +55,14 @@
   margin-left: auto;
   font-weight: 700;
   font-size: 1.05rem;
+  text-align: right;
+}
+.hud-level {
+  display: block;
+  color: var(--parch-dim);
+  font-weight: 500;
+  font-size: 0.8rem;
+  line-height: 1.1;
 }
 
 /* Поле */

@@ -43,6 +43,8 @@ export function submitRun(run: SubmitRunRequest): Promise<SubmitRunResponse | nu
 }
 
 export function fetchLeaderboard(query: LeaderboardQuery): Promise<LeaderboardResponse | null> {
-  const search = new URLSearchParams({ level: query.level, balance: String(query.balance) })
+  // Без level — общий топ по всем залам
+  const search = new URLSearchParams({ balance: String(query.balance) })
+  if (query.level) search.set('level', query.level)
   return requestJson<LeaderboardResponse>(`${LEADERBOARD_PATH}?${search}`)
 }
