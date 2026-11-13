@@ -68,6 +68,49 @@ function drawFireball(ctx: Canvas2D, shot: Shot) {
   ctx.fill()
 }
 
+/** Ядро: радиус, клеток */
+const CANNONBALL_RADIUS = 0.125
+/** Клубы дыма за ядром: [на сколько позади — в долях радиуса, размер — в долях радиуса, прозрачность] */
+const CANNON_SMOKE_PUFFS: readonly (readonly [number, number, number])[] = [
+  [1.6, 0.75, 0.5],
+  [2.8, 0.6, 0.35],
+  [3.9, 0.45, 0.2],
+]
+
+/**
+ * Ядро Пушкаря: чугунный шар со светлой обводкой (на тёмном полу не теряется), бликом
+ * и клубами дыма позади. Повёрнуто по направлению полёта, как фаербол
+ */
+function drawCannonball(ctx: Canvas2D, shot: Shot) {
+  const radius = CANNONBALL_RADIUS
+  ctx.translate(shot.x, shot.y)
+  ctx.rotate(shot.angle)
+  // Дым позади — клубы чуть колышутся поперёк полёта
+  const phase = shot.x * 9 + shot.y * 9
+  CANNON_SMOKE_PUFFS.forEach(([behind, size, alpha], i) => {
+    const sway = prefersReducedMotion ? 0 : Math.sin(phase + i * 1.9) * radius * 0.25
+    ctx.fillStyle = `rgba(205,198,185,${alpha})`
+    circle(ctx, -behind * radius, sway, size * radius)
+    ctx.fill()
+  })
+  // Шар: тёмный чугун, светлая обводка
+  ctx.fillStyle = '#515767'
+  ctx.strokeStyle = 'rgba(214,220,232,.85)'
+  ctx.lineWidth = 0.02
+  circle(ctx, 0, 0, radius)
+  ctx.fill()
+  ctx.stroke()
+  // Тень снизу и блик сверху — шар выглядит объёмным. Блик не крутится вместе с ядром
+  ctx.rotate(-shot.angle)
+  ctx.fillStyle = 'rgba(10,11,16,.45)'
+  ctx.beginPath()
+  ctx.arc(0, 0, radius * 0.85, 0.15 * Math.PI, 0.85 * Math.PI)
+  ctx.fill()
+  ctx.fillStyle = 'rgba(255,255,255,.55)'
+  circle(ctx, -radius * 0.35, -radius * 0.35, radius * 0.28)
+  ctx.fill()
+}
+
 const SHOT_ART: Record<string, (ctx: Canvas2D, shot: Shot) => void> = {
   arrow: (ctx, shot) => drawStreak(ctx, shot, 0.24, PARCHMENT, 0.035),
   bolt: (ctx, shot) => drawStreak(ctx, shot, BOLT_LENGTH, BOLT_COLOR, BOLT_WIDTH),
@@ -87,16 +130,8 @@ const SHOT_ART: Record<string, (ctx: Canvas2D, shot: Shot) => void> = {
     const spin = prefersReducedMotion ? 0 : shot.x * 4 + shot.y * 4
     drawNet(ctx, shot.x, shot.y, 0.17, spin, '#a9b4c6')
   },
-  // Ядро Пушкаря: тёмный шар с бликом и дымным следом
-  cannonball(ctx, shot) {
-    drawStreak(ctx, shot, 0.3, 'rgba(200,195,185,.45)', 0.08)
-    ctx.fillStyle = '#23252f'
-    circle(ctx, shot.x, shot.y, 0.085)
-    ctx.fill()
-    ctx.fillStyle = 'rgba(255,255,255,.35)'
-    circle(ctx, shot.x - 0.025, shot.y - 0.025, 0.03)
-    ctx.fill()
-  },
+  // Пушкарь: чугунное ядро с дымным следом
+  cannonball: drawCannonball,
   // Огневик: фаербол — огненный шар с языками пламени, тянущимися назад
   orb: drawFireball,
 }
