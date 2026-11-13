@@ -2,7 +2,7 @@
 // Меню башни на телефоне: название, характеристики, цель, «Улучшить» и «Продать».
 // Открывается само, когда нажали на башню; закрыли — выбор с башни снят. Если башня стоит в нижней половине поля, меню — сверху,
 // чтобы не закрывать саму башню и её дальность. С боковой панелью меню скрыто (там TowerInfo)
-import { computed, useTemplateRef } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import {
   TARGET_MODE_HINTS,
   TARGET_MODE_LABELS,
@@ -23,6 +23,15 @@ const isOnTop = computed(() => {
 })
 
 useMenuFocus(() => selection.isTowerMenuOpen, drawerElement)
+
+// Нажатие мимо меню закрывает его, только если палец (мышь) и опустили, и подняли на затемнении.
+// Меню открывается, пока палец ещё на башне, и «щелчок» от того же касания мог прийти
+// сюда — меню закрывалось само (так бывало на iPhone)
+const isBackdropPressed = ref(false)
+function onBackdropClick() {
+  if (isBackdropPressed.value) selection.closeMenu()
+  isBackdropPressed.value = false
+}
 </script>
 
 <template>
@@ -31,7 +40,11 @@ useMenuFocus(() => selection.isTowerMenuOpen, drawerElement)
     class="shop-drawer tower-drawer"
     :class="{ top: isOnTop }"
   >
-    <div class="shop-drawer-backdrop" @click="selection.closeMenu"></div>
+    <div
+      class="shop-drawer-backdrop"
+      @pointerdown="isBackdropPressed = true"
+      @click="onBackdropClick"
+    ></div>
     <div
       ref="drawerElement"
       class="shop-drawer-body"

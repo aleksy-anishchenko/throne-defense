@@ -979,6 +979,11 @@ async function phone(browser, url) {
   )
   const towerMenu = page.getByRole('dialog', { name: /Башня: Огневик/ })
   check('нажатие на башню сразу открыло её меню', await towerMenu.isVisible())
+  // Так ведёт себя Safari на iPhone: «щелчок» от того же касания приходит уже в затемнение
+  // под пальцем. Он не должен закрывать только что открытое меню
+  await page.locator('.tower-drawer .shop-drawer-backdrop').dispatchEvent('click')
+  await waitForFrames(page)
+  check('«щелчок» от касания, открывшего меню, его не закрыл', await towerMenu.isVisible())
   check(
     'кнопки «Действие» нет: слева по-прежнему «Стражи»',
     (await page.getByRole('button', { name: 'Действия с башней' }).count()) === 0 &&
