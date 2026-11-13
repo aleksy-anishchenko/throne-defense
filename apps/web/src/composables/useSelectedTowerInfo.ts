@@ -31,9 +31,15 @@ export function useSelectedTowerInfo() {
     const tier = selection.selected.tier
     const nextStats = def.tiers[tier + 1]
     const upgradeCost = nextStats ? def.upgradeCosts[tier] : null
+    const lines = def.displayStats.map((statKey) =>
+      formatStatLine(statKey, def.tiers[tier], nextStats),
+    )
+    // Звонарь рядом — видно, что башня стреляет быстрее и насколько
+    const bonus = selection.selected.fireRateBonus
+    if (bonus > 0) lines.push(`Звонарь: стреляет на ${Math.round(bonus * 100)}% чаще`)
     return {
       title: `${def.name} ${toRoman(tier)}`,
-      lines: def.displayStats.map((statKey) => formatStatLine(statKey, def.tiers[tier], nextStats)),
+      lines,
       upgradeCost,
       canAfford: upgradeCost !== null && store.hud.gold >= upgradeCost,
       refund: selection.selected.refund,

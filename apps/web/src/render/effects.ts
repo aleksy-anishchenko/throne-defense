@@ -1,10 +1,10 @@
 // Визуальные эффекты: искры, всплывающее «+6», кольца мороза, взрывы, тряска экрана.
 // Логика игры про них ничего не знает — эффекты появляются в ответ на её события.
 
-import type { Enemy, Game, Tower } from '@throne/game'
+import { fireRateBonusOf, towerStats, type Enemy, type Game, type Tower } from '@throne/game'
 import { getEnemyArt } from './enemies'
 import { GOLD, circle, drawNet, prefersReducedMotion, type Canvas2D } from './shapes'
-import { FIRE_RGB } from './statuses'
+import { BELL_SWING_SPEED, BUFF_RGB, FIRE_RGB } from './statuses'
 import { TOWER_ART } from './towers'
 
 interface TextEffect {
@@ -186,8 +186,8 @@ interface MoteLook {
   /** Цвет в начале жизни и к концу */
   youngColor: string
   oldColor: string
-  /** Точка или снежинка-крестик */
-  shape: 'dot' | 'flake'
+  /** Точка, снежинка-крестик или нотка (у башен под Звонарём) */
+  shape: 'dot' | 'flake' | 'note'
   /** Размер в начале, клеток */
   size: number
 }
@@ -233,6 +233,18 @@ const STATUS_PARTICLES: readonly StatusParticles[] = [
     lifetime: [0.6, 0.9],
   },
 ]
+
+/** Нотка над башней, которую ускоряет Звонарь: золотая, медленно всплывает */
+const NOTE_LOOK: MoteLook = { youngColor: GOLD, oldColor: '#f2d48a', shape: 'note', size: 0.1 }
+/** Сколько ноток в секунду над ускоренной башней (в среднем) */
+const NOTE_RATE = 0.8
+/** Скорость нотки вверх, клеток/с, и сколько она живёт, с */
+const NOTE_RISE = 0.35
+const NOTE_LIFETIME = 1.1
+/** Золотая волна от колокола: раз за полный размах; сколько расходится, с */
+const BELL_WAVE_DURATION = 0.7
+/** С какого радиуса начинается волна колокола, клеток */
+const BELL_WAVE_START_RADIUS = 0.3
 
 /** Случайное число в промежутке [from, to] */
 const randomBetween = ([from, to]: readonly [number, number]) => from + Math.random() * (to - from)
@@ -322,7 +334,41 @@ export function createEffects(game: Game): Effects {
     const { look } = mote
     const size = look.size * (0.4 + 0.6 * lifeShare)
     ctx.globalAlpha = Math.min(1, lifeShare * 1.6)
-    if (look.shape === 'dot') {
+    if (look.shape === 'note') {
+      // нотка ♪: головка-овал, штиль вверх и флажок. Сначала тёмный «контур» потолще,
+      // потом золото поверх — видно и на полу, и на ковре
+      const color = lifeShare > 0.3 ? look.youngColor : look.oldColor
+      ctx.lineCap = 'round'
+      for (const [strokeColor, extra] of [
+        ['rgba(8,9,18,.7)', size * 0.18],
+        [color, 0],
+      ] as const) {
+        ctx.fillStyle = strokeColor
+        ctx.strokeStyle = strokeColor
+        ctx.lineWidth = size * 0.26 + extra
+        ctx.beginPath()
+        ctx.ellipse(
+          mote.x,
+          mote.y,
+          size * 0.55 + extra / 2,
+          size * 0.4 + extra / 2,
+          -0.4,
+          0,
+          Math.PI * 2,
+        )
+        ctx.fill()
+        ctx.beginPath()
+        ctx.moveTo(mote.x + size * 0.48, mote.y - size * 0.1)
+        ctx.lineTo(mote.x + size * 0.48, mote.y - size * 1.5)
+        ctx.quadraticCurveTo(
+          mote.x + size * 1.1,
+          mote.y - size * 1.2,
+          mote.x + size,
+          mote.y - size * 0.6,
+        )
+        ctx.stroke()
+      }
+    } else if (look.shape === 'dot') {
       ctx.fillStyle = lifeShare > 0.3 ? look.youngColor : look.oldColor
       circle(ctx, mote.x, mote.y, size)
       ctx.fill()
@@ -361,6 +407,54 @@ export function createEffects(game: Game): Effects {
           duration: timeLeft,
         })
       }
+    }
+  }
+
+  /** Номер последнего «удара» каждого Звонаря — чтобы волна шла раз за размах */
+  const bellStrikes = new WeakMap<Tower, number>()
+
+  /**
+   * Звонарь и его соседи: от колокола раз за размах расходится золотая волна до края радиуса,
+   * над ускоренными башнями всплывают нотки. Только если Звонарь кого-то ускоряет
+   */
+  function spawnBellEffects(simDt: number) {
+    if (prefersReducedMotion || simDt <= 0) return
+    const towers = game.state.towers
+    const buffed = towers.filter((tower) => fireRateBonusOf(towers, tower) > 0)
+    if (buffed.length === 0) return
+    const strike = Math.floor((gameTime() * BELL_SWING_SPEED) / (Math.PI * 2))
+    for (const tower of towers) {
+      const range = towerStats(tower).range
+      if (!(towerStats(tower).fireRateBonus ?? 0)) continue
+      if (bellStrikes.get(tower) === strike) continue
+      bellStrikes.set(tower, strike)
+      const reachesSomeone = buffed.some(
+        (other) => (other.x - tower.x) ** 2 + (other.y - tower.y) ** 2 <= range ** 2,
+      )
+      if (!reachesSomeone) continue
+      add({
+        kind: 'ring',
+        x: tower.x,
+        y: tower.y,
+        startRadius: BELL_WAVE_START_RADIUS,
+        endRadius: range,
+        rgb: BUFF_RGB,
+        timeLeft: BELL_WAVE_DURATION,
+        duration: BELL_WAVE_DURATION,
+      })
+    }
+    for (const tower of buffed) {
+      if (Math.random() >= NOTE_RATE * simDt) continue
+      add({
+        kind: 'mote',
+        look: NOTE_LOOK,
+        x: tower.x + (Math.random() - 0.5) * 0.4,
+        y: tower.y - 0.25,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: -NOTE_RISE,
+        timeLeft: NOTE_LIFETIME,
+        duration: NOTE_LIFETIME,
+      })
     }
   }
 
@@ -495,6 +589,7 @@ export function createEffects(game: Game): Effects {
         }
       }
       spawnStatusParticles(simDt)
+      spawnBellEffects(simDt)
       if (
         (activeEffects.length && activeEffects[0].timeLeft <= 0) ||
         activeEffects.length > COMPACTION_THRESHOLD

@@ -8,7 +8,15 @@
 // Постройка — один сценарий: выбрал стража в магазине → нажал на свободную плиту.
 // После постройки страж из «руки» убирается: нажатие на плиту «просто посмотреть» ничего не строит.
 
-import { ENEMIES, TARGET_MODES, TOWERS, isFullRefund, refundFor, upgradeCost } from '@throne/game'
+import {
+  ENEMIES,
+  TARGET_MODES,
+  TOWERS,
+  fireRateBonusOf,
+  isFullRefund,
+  refundFor,
+  upgradeCost,
+} from '@throne/game'
 import type { TargetMode, Tower } from '@throne/game'
 import { defineStore } from 'pinia'
 import { computed, reactive, ref, watch } from 'vue'
@@ -61,6 +69,8 @@ export const useSelectionStore = defineStore('selection', () => {
     refund: 0,
     /** Вернут ли всё вложенное: башня ещё не была в бою */
     isFullRefund: false,
+    /** Насколько её ускоряет Звонарь рядом: 0.2 — на 20%, 0 — не ускоряет */
+    fireRateBonus: 0,
   })
 
   const selectedTower = (): Tower | undefined =>
@@ -80,6 +90,7 @@ export const useSelectionStore = defineStore('selection', () => {
     selected.targetMode = tower ? tower.targetMode : 'first'
     selected.refund = tower ? refundFor(tower) : 0
     selected.isFullRefund = tower ? isFullRefund(tower) : false
+    selected.fireRateBonus = tower ? fireRateBonusOf(game.state.towers, tower) : 0
 
     const hover = hoverCell.value
     isBoardClickable.value =

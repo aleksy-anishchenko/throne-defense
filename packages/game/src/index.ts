@@ -23,6 +23,7 @@ export {
   TARGET_MODES,
   investedGold,
   isFullRefund,
+  fireRateBonusOf,
   refundFor,
   towerStats,
   upgradeCost,

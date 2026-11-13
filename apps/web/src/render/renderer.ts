@@ -1,6 +1,13 @@
 // Рисует поле каждый кадр. Ничего не меняет в игре — только смотрит на game.state.
 
-import { TOWERS, towerStats, type Game, type Tower, type TowerDef } from '@throne/game'
+import {
+  TOWERS,
+  fireRateBonusOf,
+  towerStats,
+  type Game,
+  type Tower,
+  type TowerDef,
+} from '@throne/game'
 import type { BoardView, Cell } from '@/types'
 import { createEffects } from './effects'
 import { drawEnemy, drawEnemyHealthBar, getEnemyArt } from './enemies'
@@ -15,6 +22,7 @@ import {
   prefersReducedMotion,
 } from './shapes'
 import { drawShot } from './shots'
+import { drawBuffRing } from './statuses'
 import { drawTower } from './towers'
 
 /** Больше стольких настоящих пикселей на один CSS-пиксель не рисуем (иначе тяжело) */
@@ -122,9 +130,12 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   }
 
   function drawTowers(time: number, selectedTower: Tower | null | undefined) {
-    for (const tower of game.state.towers) {
+    const towers = game.state.towers
+    for (const tower of towers) {
       ctx.save()
       ctx.translate(tower.x, tower.y)
+      // Ускорена Звонарём — золотое кольцо у основания (до «подпрыгивания»: кольцо на полу)
+      if (fireRateBonusOf(towers, tower) > 0) drawBuffRing(ctx, time)
       const popTimeLeft = effects.popTimeLeft(tower)
       if (popTimeLeft > 0 && !prefersReducedMotion) {
         ctx.scale(1 + popTimeLeft * POP_SCALE, 1 + popTimeLeft * POP_SCALE)

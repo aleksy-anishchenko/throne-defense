@@ -274,3 +274,32 @@ function drawFlames(ctx: Canvas2D, radius: number, time: number) {
     )
   })
 }
+
+// ——— Баффы наших башен ———
+
+/** Цвет «нашего» эффекта — золото (RGB для прозрачности) */
+export const BUFF_RGB = '227,178,74'
+/** Радиус золотого кольца у ускоренной башни, клеток: снаружи основания (кольцо выбора — 0,41, сплошное) */
+const BUFF_RING_RADIUS = 0.47
+/** Как быстро качается колокол Звонаря, рад/с: кольцо пульсирует в такт (см. towers.ts) */
+export const BELL_SWING_SPEED = 3
+
+/**
+ * Башня, которую ускоряет Звонарь: золотое свечение у основания и пунктирное кольцо,
+ * пульсирующее в такт колоколу. Пунктир — чтобы не спутать со сплошным кольцом выбора.
+ * (0, 0) — центр башни; рисуется до самой башни
+ */
+export function drawBuffRing(ctx: Canvas2D, time: number) {
+  const pulse = prefersReducedMotion ? 0.6 : 0.5 + 0.5 * Math.abs(Math.sin(time * BELL_SWING_SPEED))
+  ctx.fillStyle = `rgba(${BUFF_RGB},${0.08 + 0.1 * pulse})`
+  circle(ctx, 0, 0, BUFF_RING_RADIUS)
+  ctx.fill()
+  ctx.strokeStyle = `rgba(${BUFF_RGB},${0.45 + 0.5 * pulse})`
+  ctx.lineWidth = RING_WIDTH
+  ctx.setLineDash([0.05, 0.05])
+  ctx.lineDashOffset = prefersReducedMotion ? 0 : -time * 0.15
+  circle(ctx, 0, 0, BUFF_RING_RADIUS)
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.lineDashOffset = 0
+}

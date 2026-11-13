@@ -74,10 +74,22 @@ function fireRateBonusFor(tower: Tower, bells: readonly Tower[]): number {
   return bonus
 }
 
+/** Звонари среди башен: у кого есть бонус к скорострельности соседей */
+const bellsAmong = (towers: readonly Tower[]) =>
+  towers.filter((tower) => (towerStats(tower).fireRateBonus ?? 0) > 0)
+
+/**
+ * Насколько Звонари рядом ускоряют башню: 0.2 — стреляет на 20% быстрее, 0 — не ускорена
+ * (нет Звонаря рядом или её Звонарь не ускоряет). Для интерфейса и отрисовки
+ */
+export function fireRateBonusOf(towers: readonly Tower[], tower: Tower): number {
+  return tower.def.takesFireRateBonus ? fireRateBonusFor(tower, bellsAmong(towers)) : 0
+}
+
 /** Каждая башня, у которой прошла перезарядка, стреляет в свою цель (см. findTarget) */
 export function updateTowers(world: World, dt: number): void {
   const towers = world.state.towers
-  const bells = towers.filter((tower) => (towerStats(tower).fireRateBonus ?? 0) > 0)
+  const bells = bellsAmong(towers)
 
   for (const tower of towers) {
     // Звонарь и Казна не стреляют

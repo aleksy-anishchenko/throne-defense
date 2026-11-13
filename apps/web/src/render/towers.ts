@@ -14,6 +14,7 @@ import {
 } from './shapes'
 import type { Canvas2D } from './shapes'
 import { TWIN_BOLT_OFFSET } from './shots'
+import { BELL_SWING_SPEED } from './statuses'
 
 export interface TowerArt {
   /**
@@ -637,7 +638,7 @@ export const TOWER_ART: Record<string, TowerArt> = {
   bell: {
     body(ctx, _aimAngle, time, _isReady, tier) {
       // Колокол чуть качается — видно, что он «звонит»
-      ctx.rotate(prefersReducedMotion ? 0 : Math.sin(time * 3) * 0.12)
+      ctx.rotate(prefersReducedMotion ? 0 : Math.sin(time * BELL_SWING_SPEED) * 0.12)
       // перекладина: на III — шире, под маленькие колокольчики
       const beamHalfLength = tier >= TIER_III ? 0.27 : 0.2
       ctx.strokeStyle = '#8a5d30'

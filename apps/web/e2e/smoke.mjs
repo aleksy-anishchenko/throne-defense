@@ -436,6 +436,24 @@ async function desktop(browser, url) {
 
   check('у лучника выбора цели нет', (await page.locator('.tower-info .target-mode').count()) === 0)
 
+  // Звонарь рядом: в панели лучника видно, насколько он ускорен. Потом всё как было
+  const goldBeforeBell = await page.evaluate(() => {
+    const { game } = window.__throne
+    const gold = game.state.gold
+    game.state.gold += 1000
+    game.build('bell', 6, 11)
+    return gold
+  })
+  await waitForFrames(page)
+  const bellLine = (await page.locator('.tower-info .tower-stats span').allTextContents()).at(-1)
+  check('панель: лучник ускорен Звонарём', bellLine === 'Звонарь: стреляет на 15% чаще', bellLine)
+  await page.evaluate((gold) => {
+    const { game } = window.__throne
+    game.sell(6, 11)
+    game.state.gold = gold
+  }, goldBeforeBell)
+  await waitForFrames(page)
+
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
