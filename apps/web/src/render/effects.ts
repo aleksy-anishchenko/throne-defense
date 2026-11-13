@@ -74,7 +74,19 @@ interface SteamEffect {
   duration: number
 }
 
-export type Effect = TextEffect | SparkEffect | RingEffect | BoomEffect | SteamEffect | NetEffect
+/** Искорка над горящим врагом: летит вверх и гаснет (без тяжести, в отличие от искр) */
+interface EmberEffect {
+  kind: 'ember'
+  x: number
+  y: number
+  vx: number
+  vy: number
+  timeLeft: number
+  duration: number
+}
+
+export type Effect =
+  TextEffect | SparkEffect | RingEffect | BoomEffect | SteamEffect | NetEffect | EmberEffect
 
 export interface EffectSink {
   add(effect: Effect): void
@@ -159,6 +171,19 @@ const TEXT_FONT_SHARE = 0.34
 /** Сдвиг тени надписи, px */
 const TEXT_SHADOW_OFFSET_PX = 1
 
+/** Сколько искорок в секунду летит от горящего врага (от «мокрого» — вдвое меньше) */
+const EMBER_RATE = 10
+/** Сколько живёт искорка, с: самое малое и разброс */
+const EMBER_MIN_LIFETIME = 0.45
+const EMBER_LIFETIME_SPREAD = 0.3
+/** Скорость искорки вверх, клеток/с: самая малая и разброс */
+const EMBER_MIN_RISE = 0.45
+const EMBER_RISE_SPREAD = 0.35
+/** Размах качания искорки вбок, клеток/с */
+const EMBER_DRIFT = 0.25
+/** Размер искорки в начале, клеток */
+const EMBER_SIZE = 0.06
+
 /** Упавшая сеть: за первую треть жизни раскрывается до полного радиуса, потом тает */
 function drawNetLanding(ctx: Canvas2D, effect: NetEffect, lifeShare: number) {
   const openShare = Math.min(1, (1 - lifeShare) * 3)
@@ -237,6 +262,39 @@ export function createEffects(game: Game): Effects {
     ctx.fillStyle = spark.color
     ctx.fillRect(spark.x - 0.035, spark.y - 0.035, 0.07, 0.07)
     ctx.globalAlpha = 1
+  }
+
+  /** Искорка гаснет и уменьшается; жёлтая в начале, оранжевая к концу */
+  function drawEmber(ctx: Canvas2D, ember: EmberEffect, lifeShare: number) {
+    ctx.globalAlpha = Math.min(1, lifeShare * 1.6)
+    ctx.fillStyle = lifeShare > 0.3 ? '#fff0a8' : '#ffb347'
+    circle(ctx, ember.x, ember.y, EMBER_SIZE * (0.4 + 0.6 * lifeShare))
+    ctx.fill()
+    ctx.globalAlpha = 1
+  }
+
+  /**
+   * От каждого горящего врага поднимаются искорки: движение глаз замечает раньше цвета.
+   * Случайно, в среднем EMBER_RATE в секунду — так они не вылетают все разом
+   */
+  function spawnEmbers(simDt: number) {
+    if (prefersReducedMotion || simDt <= 0) return
+    for (const enemy of game.state.enemies) {
+      if (enemy.burnTimeLeft <= 0 || enemy.isDead) continue
+      const rate = enemy.slowTimeLeft > 0 ? EMBER_RATE / 2 : EMBER_RATE
+      if (Math.random() >= rate * simDt) continue
+      const radius = enemy.def.radius
+      const timeLeft = EMBER_MIN_LIFETIME + Math.random() * EMBER_LIFETIME_SPREAD
+      add({
+        kind: 'ember',
+        x: enemy.x + (Math.random() - 0.5) * radius * 1.4,
+        y: enemy.y - radius * (0.6 + Math.random() * 0.6),
+        vx: (Math.random() - 0.5) * EMBER_DRIFT,
+        vy: -(EMBER_MIN_RISE + Math.random() * EMBER_RISE_SPREAD),
+        timeLeft,
+        duration: timeLeft,
+      })
+    }
   }
 
   const unsubscribers = [
@@ -338,10 +396,14 @@ export function createEffects(game: Game): Effects {
           effect.x += effect.vx * simDt
           effect.y += effect.vy * simDt
           effect.vy += SPARK_GRAVITY * simDt
+        } else if (effect.kind === 'ember') {
+          effect.x += effect.vx * simDt
+          effect.y += effect.vy * simDt
         } else if (effect.kind === 'text') {
           effect.y -= TEXT_RISE_SPEED * simDt
         }
       }
+      spawnEmbers(simDt)
       if (
         (activeEffects.length && activeEffects[0].timeLeft <= 0) ||
         activeEffects.length > COMPACTION_THRESHOLD
@@ -376,6 +438,8 @@ export function createEffects(game: Game): Effects {
           drawSteam(ctx, effect, lifeShare)
         } else if (effect.kind === 'net') {
           drawNetLanding(ctx, effect, lifeShare)
+        } else if (effect.kind === 'ember') {
+          drawEmber(ctx, effect, lifeShare)
         }
       }
     },

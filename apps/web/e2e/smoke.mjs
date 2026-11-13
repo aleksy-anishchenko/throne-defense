@@ -113,6 +113,8 @@ async function clickCell(page, col, row, button = 'left') {
 const PIXEL_CHANGE_THRESHOLD = 30
 /** Враг нарисован, если без него поменялась хотя бы такая доля пикселей в квадрате вокруг него */
 const ENEMY_MIN_CHANGED_SHARE = 0.2
+/** Значок огня виден, если над врагом после поджога поменялась хотя бы такая доля пикселей */
+const BURN_ICON_MIN_CHANGED_SHARE = 0.1
 
 /**
  * Нарисован ли враг. Тесты состояния этого не видят: при чистке кода обычные враги
@@ -155,6 +157,57 @@ const compareEnemyPixels = (page, pixelChangeThreshold) =>
       if (difference > threshold) changed++
     }
     return { side, changedShare: changed / (side * side) }
+  }, pixelChangeThreshold)
+
+/**
+ * Значок огня над горящим врагом: сравниваем полосу над врагом до поджога и после.
+ * Игра на паузе; чтобы кадр перерисовался, убираем врагов на пару кадров и возвращаем
+ * (на паузе renderer рисует кадр, только если что-то поменялось — например, число врагов)
+ */
+const compareBurnIconPixels = (page, pixelChangeThreshold) =>
+  page.evaluate(async (threshold) => {
+    const { game } = window.__throne
+    const canvas = document.querySelector('#board')
+    const ctx = canvas.getContext('2d')
+    const nextFrames = () =>
+      new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    const redraw = async () => {
+      const enemies = game.state.enemies
+      game.state.enemies = []
+      await nextFrames()
+      game.state.enemies = enemies
+      await nextFrames()
+    }
+    const wasPaused = game.state.isPaused
+    game.setPaused(true)
+    const enemy = game.state.enemies.find((candidate) => candidate.def.id === 'rebel')
+    const saved = { burnTimeLeft: enemy.burnTimeLeft, burnDamageLeft: enemy.burnDamageLeft }
+    enemy.burnTimeLeft = 0
+    enemy.burnDamageLeft = 0
+    const cellPx = canvas.width / game.level.def.cols
+    // Полоса над врагом: шириной в 0,6 клетки, от макушки на 0,6 клетки вверх
+    const width = Math.round(0.6 * cellPx)
+    const height = Math.round(0.6 * cellPx)
+    const left = Math.round(enemy.x * cellPx - width / 2)
+    const top = Math.round((enemy.y - enemy.def.radius) * cellPx - height)
+    const readArea = () => ctx.getImageData(left, top, width, height).data
+    await redraw()
+    const before = readArea()
+    enemy.burnTimeLeft = 5
+    enemy.burnDamageLeft = 1
+    await redraw()
+    const after = readArea()
+    Object.assign(enemy, saved)
+    game.setPaused(wasPaused)
+    let changed = 0
+    for (let i = 0; i < before.length; i += 4) {
+      const difference =
+        Math.abs(before[i] - after[i]) +
+        Math.abs(before[i + 1] - after[i + 1]) +
+        Math.abs(before[i + 2] - after[i + 2])
+      if (difference > threshold) changed++
+    }
+    return { width, height, changedShare: changed / (width * height) }
   }, pixelChangeThreshold)
 
 /** Кнопка «Начать волну» целиком внутри окна (а не за краем экрана) */
@@ -486,6 +539,12 @@ async function desktop(browser, url) {
     'враг нарисован на поле',
     enemyPixels.changedShare >= ENEMY_MIN_CHANGED_SHARE,
     JSON.stringify(enemyPixels),
+  )
+  const burnIconPixels = await compareBurnIconPixels(page, PIXEL_CHANGE_THRESHOLD)
+  check(
+    'над горящим врагом виден значок огня',
+    burnIconPixels.changedShare >= BURN_ICON_MIN_CHANGED_SHARE,
+    JSON.stringify(burnIconPixels),
   )
   await page.waitForFunction(() => window.__throne.game.state.phase === 'build', null, {
     timeout: 60_000,
