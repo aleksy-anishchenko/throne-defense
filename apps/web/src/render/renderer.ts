@@ -3,7 +3,7 @@
 import { TOWERS, towerStats, type Game, type Tower, type TowerDef } from '@throne/game'
 import type { BoardView, Cell } from '@/types'
 import { createEffects } from './effects'
-import { drawEnemy, drawEnemyHud, getEnemyArt } from './enemies'
+import { drawEnemy, drawEnemyHealthBar, getEnemyArt } from './enemies'
 import { buildHall, drawThrone } from './hall'
 import {
   CELL_CENTER,
@@ -154,10 +154,10 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     }
   }
 
-  /** Полоски здоровья и значки эффектов — поверх всех врагов, искр и снарядов */
-  function drawEnemyHuds(time: number) {
+  /** Полоски здоровья — поверх всех врагов, искр и снарядов */
+  function drawHealthBars(time: number) {
     for (const enemy of game.state.enemies) {
-      drawEnemyHud(ctx, enemy, time, effects.bobPhase(enemy), cellCssPx)
+      drawEnemyHealthBar(ctx, enemy, time, effects.bobPhase(enemy))
     }
   }
 
@@ -272,7 +272,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
 
       for (const shot of state.shots) drawShot(ctx, shot)
       effects.draw(ctx)
-      drawEnemyHuds(time)
+      drawHealthBars(time)
 
       const ghostCell =
         isPlaying && boardView.armedTowerId ? (boardView.hoverCell ?? boardView.cursorCell) : null

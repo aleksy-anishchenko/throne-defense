@@ -864,166 +864,51 @@ export function drawEnemy(
   ctx.restore()
 }
 
-/** Какие эффекты сейчас на враге — по порядку значков над ним */
-export type EnemyStatus = 'burn' | 'frost' | 'net' | 'curse'
-
-export function enemyStatuses(enemy: Enemy): EnemyStatus[] {
-  const statuses: EnemyStatus[] = []
-  if (enemy.burnTimeLeft > 0) statuses.push('burn')
-  if (enemy.slowTimeLeft > 0) statuses.push('frost')
-  if (enemy.rootTimeLeft > 0) statuses.push('net')
-  if (enemy.curseTimeLeft > 0) statuses.push('curse')
-  return statuses
-}
-
-/** Значок эффекта не мельче стольких CSS-пикселей — чтобы читался на телефоне */
-const STATUS_ICON_MIN_CSS_PX = 11
-/** …и не мельче такой доли клетки — на большом экране */
-const STATUS_ICON_MIN_CELLS = 0.22
-/** Промежуток между значками, в долях значка */
-const STATUS_ICON_GAP_SHARE = 0.12
-/** Зазор между полоской здоровья и значками, клеток */
-const STATUS_ICON_BAR_GAP = 0.03
-
-/** Цвет каёмки значка — цвет самого эффекта */
-const STATUS_BORDER: Record<EnemyStatus, string> = {
-  burn: '#ff8a2a',
-  frost: '#aae6ff',
-  net: '#d9c08a',
-  curse: '#be78ff',
-}
-
-/** Рисунок внутри значка. Значок — круг радиусом 1 с центром в (0, 0) */
-function drawStatusGlyph(ctx: Canvas2D, status: EnemyStatus) {
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  if (status === 'burn') {
-    drawFlame(ctx, 0, 0.42, 0.95, 1.25, 0, 0.1)
-  } else if (status === 'frost') {
-    // снежинка: три палочки через 60° с «рожками» на концах
-    ctx.strokeStyle = '#d9f4ff'
-    ctx.lineWidth = 0.17
-    ctx.beginPath()
-    for (let i = 0; i < 6; i++) {
-      const angle = (i * Math.PI) / 3 - Math.PI / 2
-      const endX = Math.cos(angle) * 0.62
-      const endY = Math.sin(angle) * 0.62
-      ctx.moveTo(0, 0)
-      ctx.lineTo(endX, endY)
-    }
-    ctx.stroke()
-  } else if (status === 'net') {
-    ctx.save()
-    circle(ctx, 0, 0, 0.62)
-    ctx.clip()
-    ctx.strokeStyle = '#f0dca6'
-    ctx.lineWidth = 0.13
-    ctx.beginPath()
-    for (const offset of [-0.32, 0, 0.32]) {
-      ctx.moveTo(offset, -0.7)
-      ctx.lineTo(offset, 0.7)
-      ctx.moveTo(-0.7, offset)
-      ctx.lineTo(0.7, offset)
-    }
-    ctx.stroke()
-    ctx.restore()
-    ctx.strokeStyle = '#c9a25e'
-    ctx.lineWidth = 0.14
-    circle(ctx, 0, 0, 0.62)
-    ctx.stroke()
-  } else {
-    // проклятие — фиолетовый «дурной глаз»
-    ctx.fillStyle = `rgb(${CURSE_RGB})`
-    ctx.beginPath()
-    ctx.moveTo(-0.68, 0)
-    ctx.quadraticCurveTo(0, -0.62, 0.68, 0)
-    ctx.quadraticCurveTo(0, 0.62, -0.68, 0)
-    ctx.closePath()
-    ctx.fill()
-    ctx.fillStyle = '#1c0f2e'
-    circle(ctx, 0, 0, 0.22)
-    ctx.fill()
-  }
-}
-
-/** Значок эффекта: тёмный кружок с цветной каёмкой. x, y — центр, size — диаметр, клеток */
-function drawStatusIcon(ctx: Canvas2D, status: EnemyStatus, x: number, y: number, size: number) {
-  ctx.save()
-  ctx.translate(x, y)
-  ctx.scale(size / 2, size / 2)
-  ctx.fillStyle = 'rgba(8,9,18,.88)'
-  ctx.strokeStyle = STATUS_BORDER[status]
-  ctx.lineWidth = 0.16
-  circle(ctx, 0, 0, 0.92)
-  ctx.fill()
-  ctx.stroke()
-  drawStatusGlyph(ctx, status)
-  ctx.restore()
-}
-
 /** Высота полоски здоровья с подложкой, клеток */
 const HEALTH_BAR_HEIGHT = 0.055
 const HEALTH_BAR_PADDING = 0.015
 
 /**
- * Над врагом: полоска здоровья и значки эффектов. Рисуется отдельным проходом — после всех
- * врагов, чтобы соседний враг не закрыл. Значки — в CSS-пикселях не мельче заданного:
- * на телефоне клетка маленькая, и значок «в клетках» превратился бы в точку
+ * Полоска здоровья над раненым врагом. Рисуется отдельным проходом — после всех врагов,
+ * чтобы соседний враг её не закрыл. Оранжевый хвост — сколько ещё догорит
  */
-export function drawEnemyHud(
+export function drawEnemyHealthBar(
   ctx: Canvas2D,
   enemy: Enemy,
   time: number,
   bobPhase: number,
-  cellCssPx: number,
 ): void {
+  if (enemy.hp >= enemy.maxHp) return
   const art = getEnemyArt(enemy.def.id)
   const radius = enemy.def.radius
-  const statuses = enemyStatuses(enemy)
-  const hasBar = enemy.hp < enemy.maxHp
-  if (!hasBar && statuses.length === 0) return
+  const barY = -radius - (art.healthBarOffset ?? DEFAULT_HEALTH_BAR_OFFSET)
+  const barWidth = Math.max(MIN_HEALTH_BAR_WIDTH, radius * 2)
+  const left = -barWidth / 2
+  const hp = Math.max(0, enemy.hp)
+  const healthFraction = hp / enemy.maxHp
 
   ctx.save()
   ctx.translate(enemy.x, enemy.y + bobOffset(enemy, time, bobPhase))
-  const barY = -radius - (art.healthBarOffset ?? DEFAULT_HEALTH_BAR_OFFSET)
-
-  if (hasBar) {
-    const barWidth = Math.max(MIN_HEALTH_BAR_WIDTH, radius * 2)
-    const left = -barWidth / 2
-    const hp = Math.max(0, enemy.hp)
-    const healthFraction = hp / enemy.maxHp
-    ctx.fillStyle = 'rgba(8,9,18,.75)'
+  ctx.fillStyle = 'rgba(8,9,18,.75)'
+  ctx.fillRect(
+    left - HEALTH_BAR_PADDING,
+    barY - HEALTH_BAR_PADDING,
+    barWidth + HEALTH_BAR_PADDING * 2,
+    HEALTH_BAR_HEIGHT + HEALTH_BAR_PADDING * 2,
+  )
+  ctx.fillStyle = healthBarColor(healthFraction)
+  ctx.fillRect(left, barY, barWidth * healthFraction, HEALTH_BAR_HEIGHT)
+  // Сколько ещё догорит (проклятие усиливает и огонь)
+  if (enemy.burnDamageLeft > 0) {
+    const curseMultiplier = enemy.curseTimeLeft > 0 ? 1 + enemy.curseAmount : 1
+    const burnFraction = Math.min(hp, enemy.burnDamageLeft * curseMultiplier) / enemy.maxHp
+    ctx.fillStyle = BURN_PREVIEW_COLOR
     ctx.fillRect(
-      left - HEALTH_BAR_PADDING,
-      barY - HEALTH_BAR_PADDING,
-      barWidth + HEALTH_BAR_PADDING * 2,
-      HEALTH_BAR_HEIGHT + HEALTH_BAR_PADDING * 2,
+      left + barWidth * (healthFraction - burnFraction),
+      barY,
+      barWidth * burnFraction,
+      HEALTH_BAR_HEIGHT,
     )
-    ctx.fillStyle = healthBarColor(healthFraction)
-    ctx.fillRect(left, barY, barWidth * healthFraction, HEALTH_BAR_HEIGHT)
-    // Сколько ещё догорит (проклятие усиливает и огонь) — оранжевый хвост полоски
-    if (enemy.burnDamageLeft > 0) {
-      const curseMultiplier = enemy.curseTimeLeft > 0 ? 1 + enemy.curseAmount : 1
-      const burnFraction = Math.min(hp, enemy.burnDamageLeft * curseMultiplier) / enemy.maxHp
-      ctx.fillStyle = BURN_PREVIEW_COLOR
-      ctx.fillRect(
-        left + barWidth * (healthFraction - burnFraction),
-        barY,
-        barWidth * burnFraction,
-        HEALTH_BAR_HEIGHT,
-      )
-    }
-  }
-
-  if (statuses.length > 0) {
-    const size = Math.max(STATUS_ICON_MIN_CELLS, STATUS_ICON_MIN_CSS_PX / cellCssPx)
-    const gap = size * STATUS_ICON_GAP_SHARE
-    const rowWidth = statuses.length * size + (statuses.length - 1) * gap
-    const centerY = barY - HEALTH_BAR_PADDING - STATUS_ICON_BAR_GAP - size / 2
-    statuses.forEach((status, i) => {
-      const centerX = -rowWidth / 2 + size / 2 + i * (size + gap)
-      drawStatusIcon(ctx, status, centerX, centerY, size)
-    })
   }
   ctx.restore()
 }

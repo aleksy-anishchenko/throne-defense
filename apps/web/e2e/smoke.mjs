@@ -113,8 +113,8 @@ async function clickCell(page, col, row, button = 'left') {
 const PIXEL_CHANGE_THRESHOLD = 30
 /** Враг нарисован, если без него поменялась хотя бы такая доля пикселей в квадрате вокруг него */
 const ENEMY_MIN_CHANGED_SHARE = 0.2
-/** Значок огня виден, если над врагом после поджога поменялась хотя бы такая доля пикселей */
-const BURN_ICON_MIN_CHANGED_SHARE = 0.1
+/** Огонь виден, если вокруг врага после поджога поменялась хотя бы такая доля пикселей */
+const BURN_MIN_CHANGED_SHARE = 0.1
 
 /**
  * Нарисован ли враг. Тесты состояния этого не видят: при чистке кода обычные враги
@@ -160,11 +160,11 @@ const compareEnemyPixels = (page, pixelChangeThreshold) =>
   }, pixelChangeThreshold)
 
 /**
- * Значок огня над горящим врагом: сравниваем полосу над врагом до поджога и после.
+ * Огонь на враге: сравниваем квадрат вокруг врага до поджога и после (пламя, кольцо, отсвет).
  * Игра на паузе; чтобы кадр перерисовался, убираем врагов на пару кадров и возвращаем
  * (на паузе renderer рисует кадр, только если что-то поменялось — например, число врагов)
  */
-const compareBurnIconPixels = (page, pixelChangeThreshold) =>
+const compareBurnPixels = (page, pixelChangeThreshold) =>
   page.evaluate(async (threshold) => {
     const { game } = window.__throne
     const canvas = document.querySelector('#board')
@@ -185,11 +185,11 @@ const compareBurnIconPixels = (page, pixelChangeThreshold) =>
     enemy.burnTimeLeft = 0
     enemy.burnDamageLeft = 0
     const cellPx = canvas.width / game.level.def.cols
-    // Полоса над врагом: шириной в 0,6 клетки, от макушки на 0,6 клетки вверх
-    const width = Math.round(0.6 * cellPx)
-    const height = Math.round(0.6 * cellPx)
+    // Квадрат с центром во враге: со стороной в два радиуса и ещё по 0,15 клетки — с кольцом у ног
+    const width = Math.round((enemy.def.radius + 0.15) * 2 * cellPx)
+    const height = width
     const left = Math.round(enemy.x * cellPx - width / 2)
-    const top = Math.round((enemy.y - enemy.def.radius) * cellPx - height)
+    const top = Math.round(enemy.y * cellPx - height / 2)
     const readArea = () => ctx.getImageData(left, top, width, height).data
     await redraw()
     const before = readArea()
@@ -540,11 +540,11 @@ async function desktop(browser, url) {
     enemyPixels.changedShare >= ENEMY_MIN_CHANGED_SHARE,
     JSON.stringify(enemyPixels),
   )
-  const burnIconPixels = await compareBurnIconPixels(page, PIXEL_CHANGE_THRESHOLD)
+  const burnPixels = await compareBurnPixels(page, PIXEL_CHANGE_THRESHOLD)
   check(
-    'над горящим врагом виден значок огня',
-    burnIconPixels.changedShare >= BURN_ICON_MIN_CHANGED_SHARE,
-    JSON.stringify(burnIconPixels),
+    'горящего врага видно: пламя и огненное кольцо',
+    burnPixels.changedShare >= BURN_MIN_CHANGED_SHARE,
+    JSON.stringify(burnPixels),
   )
   await page.waitForFunction(() => window.__throne.game.state.phase === 'build', null, {
     timeout: 60_000,
