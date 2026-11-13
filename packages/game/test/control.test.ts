@@ -35,6 +35,41 @@ describe('Ловчий', () => {
     expect(enemy.rootImmunityLeft - enemy.rootTimeLeft).toBeCloseTo(ROOT_IMMUNITY_SECONDS)
   })
 
+  it('горящего сеть не ловит — сгорает', () => {
+    const game = newGame()
+    game.build('trapper', 5, 11)
+    const enemy = placeEnemy(game, 'rebel', 1.5)
+    enemy.burnDamageLeft = 1
+    enemy.burnTimeLeft = 100
+    let burntNets = 0
+    game.on('netBurn', () => burntNets++)
+    stepUntil(game, () => burntNets > 0, 10)
+    expect(enemy.rootTimeLeft).toBe(0)
+    // Сеть его не взяла — значит, и рвать следующие сети он не начал
+    expect(enemy.rootImmunityLeft).toBe(0)
+  })
+
+  it('загоревшись в сети, враг сжигает её и идёт дальше', () => {
+    const game = newGame()
+    const trapper = game.build('trapper', 5, 11) as Tower
+    const enemy = placeEnemy(game, 'rebel', 1.5)
+    stepUntil(game, () => enemy.rootTimeLeft > 0, 10)
+    let burntNets = 0
+    game.on('netBurn', () => burntNets++)
+    // Огненный снаряд — когда враг уже в сети
+    shootHoming(worldOf(game), trapper, enemy, {
+      look: 'fireball',
+      speed: 50,
+      damage: 1,
+      damageKind: 'magic',
+      burnDamage: 5,
+      burnDuration: 1,
+    })
+    stepUntil(game, () => enemy.burnTimeLeft > 0, 5)
+    expect(enemy.rootTimeLeft).toBe(0)
+    expect(burntNets).toBe(1)
+  })
+
   it('узурпатора сеть держит только 30% времени', () => {
     const game = newGame()
     game.build('trapper', 5, 11)

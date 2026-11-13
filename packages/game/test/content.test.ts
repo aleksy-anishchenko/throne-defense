@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ENEMIES, SIMULATION_STEP, TOWERS, waveBonus, type TargetMode } from '../src/index.ts'
-import { STEAM_DAMAGE_MULTIPLIER, WET_BURN_MULTIPLIER, damageEnemy } from '../src/systems/combat.ts'
+import { STEAM_DAMAGE_MULTIPLIER, damageEnemy } from '../src/systems/combat.ts'
 import { newGame, placeEnemy, stepUntil, worldOf } from './helpers.ts'
 
 // Выбор цели, знахарь, Змей Горыныч, Звонарь и Казна (баланс v4)
@@ -192,15 +192,19 @@ describe('огневик: горение', () => {
     expect(rebel.burnTimeLeft).toBeCloseTo(stats.burnDuration!, 1)
   })
 
-  it('«мокрый» (замедленный) враг загорается хуже', () => {
+  it('огонь растапливает лёд: замедление снято, враг горит в полную силу', () => {
     const game = newGame()
     game.build('mage', 5, 11)
     const rebel = placeEnemy(game, 'rebel', 2)
     rebel.slowTimeLeft = 10
     rebel.slowFactor = 0.01 // почти не замедляем, чтобы враг не ушёл из радиуса раньше времени
+    let thawed = 0
+    game.on('thaw', () => thawed++)
     stepUntil(game, () => rebel.burnTimeLeft > 0, 5)
     const burn = TOWERS['mage'].tiers[0].burnDamage!
-    expect(rebel.burnDamageLeft).toBeCloseTo(burn * WET_BURN_MULTIPLIER)
+    expect(rebel.burnDamageLeft).toBeCloseTo(burn)
+    expect(rebel.slowTimeLeft).toBe(0)
+    expect(thawed).toBe(1)
   })
 
   it('весь запас огня догорает к сроку — урон не теряется и не удваивается', () => {

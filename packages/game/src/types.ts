@@ -399,6 +399,10 @@ export interface GameEvents {
   splash: { x: number; y: number; radius: number }
   /** Волна холода потушила горящего врага: весь запас огня — сразу (см. STEAM_DAMAGE_MULTIPLIER) */
   steam: { x: number; y: number; damage: number }
+  /** Огонь растопил лёд: замедление с врага снято */
+  thaw: Enemy
+  /** Сеть на враге сгорела: он загорелся в сети или сеть упала на горящего */
+  netBurn: Enemy
   /** Знахарь лечит соседей */
   heal: { x: number; y: number; radius: number }
   /** Сеть Ловчего упала: всех в радиусе — в сеть (кого взяла — видно по rootTimeLeft) */

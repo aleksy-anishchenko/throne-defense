@@ -7,17 +7,15 @@ import { queueSplit } from './enemies.ts'
 /** Какая доля брони врага всё ещё режет пробивающий урон (0.5 = половина брони; физический урон режется всей бронёй, магический — не режется вовсе) */
 const PIERCING_ARMOR_FACTOR = 0.5
 
-// Огонь и лёд мешают друг другу в любом порядке — их выгодно разводить по ковру.
-// Зато по отдельности огневик и Морозко сильные (см. data/towers.ts)
+// Огонь и лёд не уживаются: холод тушит горящего (пар), огонь растапливает лёд (замедление
+// снимается). Их выгодно разводить по ковру. Зато по отдельности огневик и Морозко сильные
+// (см. data/towers.ts). Огонь и сеть — тоже: загоревшийся враг сжигает сеть, горящего она не ловит
 
 /**
  * «Пар»: волна холода тушит горящего врага, и оставшийся запас огня он получает сразу,
  * но не весь — огонь не догорел: 0.75 = три четверти
  */
 export const STEAM_DAMAGE_MULTIPLIER = 0.75
-
-/** «Мокрый» враг (под замедлением Морозко) загорается хуже: поджог даёт эту долю огня */
-export const WET_BURN_MULTIPLIER = 0.5
 
 /** Запас на попадание для снаряда, летящего по прямой (болт баллисты), в клетках: чуть щедрее радиуса врага */
 const LINE_SHOT_HIT_MARGIN = 0.1
@@ -194,9 +192,16 @@ export function cursePulse(world: World, tower: Tower, stats: TowerStats): void 
 /** Насколько враг поддаётся сети и ядру: 1 — полностью, 0.3 — на 30% (см. controlResistance) */
 const controlShare = (enemy: Enemy) => 1 - (enemy.def.controlResistance ?? 0)
 
-/** Поймать врага в сеть на duration секунд — если он не рвёт сети после прошлой */
-function rootEnemy(enemy: Enemy, duration: number): void {
+/**
+ * Поймать врага в сеть на duration секунд — если он не рвёт сети после прошлой.
+ * Горящего сеть не ловит: сгорает сразу (рвать новые сети он после этого не начинает)
+ */
+function rootEnemy(world: World, enemy: Enemy, duration: number): void {
   if (enemy.isDead || duration <= 0 || enemy.rootImmunityLeft > 0) return
+  if (enemy.burnTimeLeft > 0) {
+    world.emit('netBurn', enemy)
+    return
+  }
   const rootTime = duration * controlShare(enemy)
   enemy.rootTimeLeft = rootTime
   enemy.rootImmunityLeft = rootTime + ROOT_IMMUNITY_SECONDS
@@ -316,19 +321,28 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
 function hitWithShot(world: World, shot: HomingShot, enemy: Enemy): void {
   // Сеть не ранит: без этой проверки броня превратила бы урон 0 в 1 (Math.max(1, …))
   if (shot.damage > 0) damageEnemy(world, enemy, shot.damage, shot.damageKind)
-  igniteEnemy(enemy, shot.burnDamage, shot.burnDuration)
-  rootEnemy(enemy, shot.rootDuration)
+  igniteEnemy(world, enemy, shot.burnDamage, shot.burnDuration)
+  rootEnemy(world, enemy, shot.rootDuration)
   knockBackEnemy(world, enemy, shot.knockbackDistance)
 }
 
 /**
  * Поджечь врага: добавить burnDamage в запас огня. Догорает весь запас за burnDuration
- * (если враг уже горит дольше — за оставшееся время). Замедленный — «мокрый» — горит хуже
+ * (если враг уже горит дольше — за оставшееся время).
+ * Огонь растапливает лёд (замедление снимается) и сжигает сеть (враг идёт дальше)
  */
-function igniteEnemy(enemy: Enemy, burnDamage: number, burnDuration: number): void {
+function igniteEnemy(world: World, enemy: Enemy, burnDamage: number, burnDuration: number): void {
   if (enemy.isDead || burnDamage <= 0 || burnDuration <= 0) return
-  const isWet = enemy.slowTimeLeft > 0
-  enemy.burnDamageLeft += isWet ? burnDamage * WET_BURN_MULTIPLIER : burnDamage
+  if (enemy.slowTimeLeft > 0) {
+    enemy.slowTimeLeft = 0
+    enemy.slowFactor = 0
+    world.emit('thaw', enemy)
+  }
+  if (enemy.rootTimeLeft > 0) {
+    enemy.rootTimeLeft = 0
+    world.emit('netBurn', enemy)
+  }
+  enemy.burnDamageLeft += burnDamage
   enemy.burnTimeLeft = Math.max(enemy.burnTimeLeft, burnDuration)
 }
 
