@@ -245,10 +245,11 @@ const NOTE_RATE = 0.8
 /** Скорость нотки вверх, клеток/с, и сколько она живёт, с */
 const NOTE_RISE = 0.35
 const NOTE_LIFETIME = 1.1
-/** Золотая волна от колокола: раз за полный размах; сколько расходится, с */
-const BELL_WAVE_DURATION = 0.7
-/** С какого радиуса начинается волна колокола, клеток */
-const BELL_WAVE_START_RADIUS = 0.3
+/** Звон дошёл до башни: золотое кольцо раз за полный размах колокола — сколько длится, с */
+const BELL_CHIME_DURATION = 0.5
+/** Кольцо звона расходится от края основания башни, клеток */
+const BELL_CHIME_START_RADIUS = 0.4
+const BELL_CHIME_END_RADIUS = 0.62
 
 /** Случайное число в промежутке [from, to] */
 const randomBetween = ([from, to]: readonly [number, number]) => from + Math.random() * (to - from)
@@ -429,8 +430,9 @@ export function createEffects(game: Game): Effects {
   const bellStrikes = new WeakMap<Tower, number>()
 
   /**
-   * Звонарь и его соседи: от колокола раз за размах расходится золотая волна до края радиуса,
-   * над ускоренными башнями всплывают нотки. Только если Звонарь кого-то ускоряет
+   * Звонарь и его соседи: раз за размах колокола на каждой башне, до которой он достаёт,
+   * вспыхивает золотое кольцо — «звон дошёл»; над ускоренными башнями всплывают нотки.
+   * Не волна от колокола до края радиуса: круг обманывал — Звонарь действует на клетки, а не круг
    */
   function spawnBellEffects(simDt: number) {
     if (prefersReducedMotion || simDt <= 0) return
@@ -443,20 +445,19 @@ export function createEffects(game: Game): Effects {
       if (!(towerStats(tower).fireRateBonus ?? 0)) continue
       if (bellStrikes.get(tower) === strike) continue
       bellStrikes.set(tower, strike)
-      const reachesSomeone = buffed.some(
-        (other) => (other.x - tower.x) ** 2 + (other.y - tower.y) ** 2 <= range ** 2,
-      )
-      if (!reachesSomeone) continue
-      add({
-        kind: 'ring',
-        x: tower.x,
-        y: tower.y,
-        startRadius: BELL_WAVE_START_RADIUS,
-        endRadius: range,
-        rgb: BUFF_RGB,
-        timeLeft: BELL_WAVE_DURATION,
-        duration: BELL_WAVE_DURATION,
-      })
+      for (const other of buffed) {
+        if ((other.x - tower.x) ** 2 + (other.y - tower.y) ** 2 > range ** 2) continue
+        add({
+          kind: 'ring',
+          x: other.x,
+          y: other.y,
+          startRadius: BELL_CHIME_START_RADIUS,
+          endRadius: BELL_CHIME_END_RADIUS,
+          rgb: BUFF_RGB,
+          timeLeft: BELL_CHIME_DURATION,
+          duration: BELL_CHIME_DURATION,
+        })
+      }
     }
     for (const tower of buffed) {
       if (Math.random() >= NOTE_RATE * simDt) continue

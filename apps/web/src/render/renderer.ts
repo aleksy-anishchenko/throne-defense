@@ -7,6 +7,7 @@ import {
   type Game,
   type Tower,
   type TowerDef,
+  type TowerStats,
 } from '@throne/game'
 import type { BoardView, Cell } from '@/types'
 import { createEffects } from './effects'
@@ -24,6 +25,7 @@ import {
 import { drawShot } from './shots'
 import { drawBuffRing } from './statuses'
 import { drawTower } from './towers'
+import { isAuraTower } from '@/utils/towerStats'
 
 /** Больше стольких настоящих пикселей на один CSS-пиксель не рисуем (иначе тяжело) */
 const MAX_PIXEL_RATIO = 3
@@ -117,6 +119,63 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     ctx.setLineDash([])
   }
 
+  /** Отступ подсветки клетки ауры от краёв плиты, клеток */
+  const AURA_CELL_INSET = 0.07
+
+  /**
+   * Дальность Звонаря — не круг, а клетки: он ускоряет башни, а башни стоят в центрах клеток,
+   * и круг обманывал («пунктир заходит на башню, а она не ускорена»). Подсвечены плиты пола
+   * (не ковёр), до центра которых он достаёт; бледной рамкой — те, что добавятся на высшей ступени.
+   * x, y — центр Звонаря; isAllowed и maxRange — как у drawRange
+   */
+  function drawAuraCells(
+    x: number,
+    y: number,
+    range: number,
+    isAllowed: boolean,
+    maxRange = range,
+  ) {
+    const ownCol = Math.floor(x)
+    const ownRow = Math.floor(y)
+    const size = 1 - AURA_CELL_INSET * 2
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const distanceSquared = (col - ownCol) ** 2 + (row - ownRow) ** 2
+        if (distanceSquared === 0 || distanceSquared > maxRange ** 2) continue
+        // Только плиты, где может стоять башня: ковёр и трон Звонарю ускорять нечего
+        if (!game.isCellFree(col, row) && !game.towerAt(col, row)) continue
+        const left = col + AURA_CELL_INSET
+        const top = row + AURA_CELL_INSET
+        if (distanceSquared <= range ** 2) {
+          ctx.fillStyle = isAllowed ? 'rgba(227,178,74,.16)' : 'rgba(240,90,70,.12)'
+          ctx.fillRect(left, top, size, size)
+          ctx.strokeStyle = isAllowed ? 'rgba(227,178,74,.7)' : 'rgba(240,110,80,.75)'
+          ctx.lineWidth = 0.03
+          ctx.strokeRect(left, top, size, size)
+        } else {
+          ctx.strokeStyle = isAllowed ? 'rgba(227,178,74,.3)' : 'rgba(240,110,80,.3)'
+          ctx.lineWidth = 0.025
+          ctx.setLineDash([0.04, 0.1])
+          ctx.strokeRect(left, top, size, size)
+          ctx.setLineDash([])
+        }
+      }
+    }
+  }
+
+  /** Дальность башни: у Звонаря — клетками, у остальных — кругом */
+  function drawReach(
+    stats: TowerStats,
+    x: number,
+    y: number,
+    range: number,
+    isAllowed: boolean,
+    maxRange = range,
+  ) {
+    if (isAuraTower(stats)) drawAuraCells(x, y, range, isAllowed, maxRange)
+    else drawRange(x, y, range, isAllowed, maxRange)
+  }
+
   /** Точки на свободных плитах, когда выбираем, куда ставить */
   function drawFreeCellDots() {
     ctx.fillStyle = 'rgba(227,178,74,.3)'
@@ -176,7 +235,8 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   function drawGhostTower(armedTowerId: string, ghostCell: Cell, time: number) {
     const def = TOWERS[armedTowerId]
     const canAfford = game.state.gold >= def.cost
-    drawRange(
+    drawReach(
+      def.tiers[0],
       ghostCell.col + CELL_CENTER,
       ghostCell.row + CELL_CENTER,
       def.tiers[0].range,
@@ -274,7 +334,8 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       if (selectedTower) {
         // Выбранная башня: подсветка всегда обычная (не красная)
         // Только то, что есть по факту: максимум нужен, пока стража выбирают для постройки
-        drawRange(selectedTower.x, selectedTower.y, towerStats(selectedTower).range, true)
+        const stats = towerStats(selectedTower)
+        drawReach(stats, selectedTower.x, selectedTower.y, stats.range, true)
       }
 
       drawThrone(ctx, throne, time, hurtIntensity())
