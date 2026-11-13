@@ -17,6 +17,12 @@ const PIERCING_ARMOR_FACTOR = 0.5
  */
 export const STEAM_DAMAGE_MULTIPLIER = 0.75
 
+/**
+ * Огонь по замороженному: часть силы уходит на то, чтобы растопить лёд — поджог даёт
+ * эту долю огня. Зеркально пару: столкнулись огонь и лёд — огонь теряет четверть
+ */
+export const THAW_BURN_MULTIPLIER = 0.75
+
 /** Запас на попадание для снаряда, летящего по прямой (болт баллисты), в клетках: чуть щедрее радиуса врага */
 const LINE_SHOT_HIT_MARGIN = 0.1
 
@@ -329,20 +335,23 @@ function hitWithShot(world: World, shot: HomingShot, enemy: Enemy): void {
 /**
  * Поджечь врага: добавить burnDamage в запас огня. Догорает весь запас за burnDuration
  * (если враг уже горит дольше — за оставшееся время).
- * Огонь растапливает лёд (замедление снимается) и сжигает сеть (враг идёт дальше)
+ * Огонь растапливает лёд (замедление снимается, а огня — меньше, см. THAW_BURN_MULTIPLIER)
+ * и сжигает сеть (враг идёт дальше)
  */
 function igniteEnemy(world: World, enemy: Enemy, burnDamage: number, burnDuration: number): void {
   if (enemy.isDead || burnDamage <= 0 || burnDuration <= 0) return
+  let burnShare = 1
   if (enemy.slowTimeLeft > 0) {
     enemy.slowTimeLeft = 0
     enemy.slowFactor = 0
+    burnShare = THAW_BURN_MULTIPLIER
     world.emit('thaw', enemy)
   }
   if (enemy.rootTimeLeft > 0) {
     enemy.rootTimeLeft = 0
     world.emit('netBurn', enemy)
   }
-  enemy.burnDamageLeft += burnDamage
+  enemy.burnDamageLeft += burnDamage * burnShare
   enemy.burnTimeLeft = Math.max(enemy.burnTimeLeft, burnDuration)
 }
 

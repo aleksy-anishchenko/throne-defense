@@ -7,7 +7,11 @@ import {
   waveBonus,
   type TargetMode,
 } from '../src/index.ts'
-import { STEAM_DAMAGE_MULTIPLIER, damageEnemy } from '../src/systems/combat.ts'
+import {
+  STEAM_DAMAGE_MULTIPLIER,
+  THAW_BURN_MULTIPLIER,
+  damageEnemy,
+} from '../src/systems/combat.ts'
 import { newGame, placeEnemy, stepUntil, worldOf } from './helpers.ts'
 
 // Выбор цели, знахарь, Змей Горыныч, Звонарь и Казна (баланс v4)
@@ -211,7 +215,7 @@ describe('огневик: горение', () => {
     expect(rebel.burnTimeLeft).toBeCloseTo(stats.burnDuration!, 1)
   })
 
-  it('огонь растапливает лёд: замедление снято, враг горит в полную силу', () => {
+  it('огонь растапливает лёд: замедление снято, но часть огня ушла на таяние', () => {
     const game = newGame()
     game.build('mage', 5, 11)
     const rebel = placeEnemy(game, 'rebel', 2)
@@ -221,7 +225,7 @@ describe('огневик: горение', () => {
     game.on('thaw', () => thawed++)
     stepUntil(game, () => rebel.burnTimeLeft > 0, 5)
     const burn = TOWERS['mage'].tiers[0].burnDamage!
-    expect(rebel.burnDamageLeft).toBeCloseTo(burn)
+    expect(rebel.burnDamageLeft).toBeCloseTo(burn * THAW_BURN_MULTIPLIER)
     expect(rebel.slowTimeLeft).toBe(0)
     expect(thawed).toBe(1)
   })
