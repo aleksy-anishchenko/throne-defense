@@ -455,6 +455,38 @@ async function desktop(browser, url) {
   }, goldBeforeBell)
   await waitForFrames(page)
 
+  // Колдун: ослабление лечения видно отдельно и растёт при улучшении.
+  const goldBeforeWarlock = await page.evaluate(() => {
+    const { game } = window.__throne
+    const gold = game.state.gold
+    game.state.gold += 1000
+    game.build('warlock', 6, 11)
+    return gold
+  })
+  await clickCell(page, 6, 11)
+  check(
+    'Колдун I: показано ослабление лечения 35% → 50%',
+    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −35% → −50%'),
+  )
+  await page.getByRole('button', { name: /Улучшить/ }).click()
+  await waitForFrames(page)
+  check(
+    'Колдун II: показано ослабление лечения 50% → 65%',
+    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −50% → −65%'),
+  )
+  await page.getByRole('button', { name: /Улучшить/ }).click()
+  await waitForFrames(page)
+  check(
+    'Колдун III: показано ослабление лечения 65%',
+    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −65%'),
+  )
+  await page.evaluate((gold) => {
+    const { game } = window.__throne
+    game.sell(6, 11)
+    game.state.gold = gold
+  }, goldBeforeWarlock)
+  await clickCell(page, 5, 11)
+
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
@@ -948,6 +980,12 @@ async function phone(browser, url) {
     'в меню до покупки есть описание и характеристики',
     drawerText.includes('Поджигает толпу') && /урон \d/.test(drawerText),
     drawerText.slice(0, 200),
+  )
+  check(
+    'Колдун: на телефоне ослабление лечения видно до покупки',
+    (await drawer.getByRole('button', { name: /^Колдун/ }).innerText()).includes(
+      'получаемое лечение −35%',
+    ),
   )
   await page.keyboard.press('Escape')
   await waitForFrames(page)

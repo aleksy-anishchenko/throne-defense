@@ -37,7 +37,7 @@ export interface TowerStats {
   goldPerWave?: number
   /** Ловчий: сколько секунд враги стоят в сети */
   rootDuration?: number
-  /** Колдун: насколько больше урона получает проклятый враг (0.2 — на 20% больше) */
+  /** Колдун: сила проклятия (0.2 — урон по врагу +20%, получаемое лечение −20%) */
   curseAmount?: number
   /** Колдун: сколько секунд держится проклятие */
   curseDuration?: number
@@ -56,6 +56,8 @@ export type StatKey =
   | 'goldPerWave'
   | 'rootDuration'
   | 'curseAmount'
+  /** Вычисляется из curseAmount: сила снижения лечения равна силе проклятия */
+  | 'healingReduction'
 
 /**
  * Кого башня выбирает целью: first — того, кто ближе всех к трону,
@@ -300,7 +302,7 @@ export interface Enemy {
   rootDuration: number
   /** Сколько ещё секунд враг проклят Колдуном */
   curseTimeLeft: number
-  /** Сила проклятия: 0.3 — получает на 30% больше урона */
+  /** Сила проклятия: 0.3 — получает на 30% больше урона и на 30% меньше лечения */
   curseAmount: number
   /** Убит: такого врага уберут из списка в конце шага */
   isDead: boolean

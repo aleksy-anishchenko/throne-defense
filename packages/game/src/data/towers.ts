@@ -6,7 +6,7 @@
 // лучник — дешёвый и частый, огневик — против толпы и лат, Морозко — только замедляет,
 // баллиста — против толстых, Звонарь — ускоряет стреляющих соседей, Казна — приносит золото.
 // Баланс v5: Пушкарь — густая толпа издалека (с v7 без отброса), Ловчий — ловит в сеть,
-// Колдун — проклинает (проклятые получают больше урона ото всех)
+// Колдун — проклинает (проклятые получают больше урона и меньше лечения)
 
 import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/combat.ts'
 import type { TowerDef } from '../types.ts'
@@ -192,7 +192,9 @@ const trapper: TowerDef = {
 const warlock: TowerDef = {
   id: 'warlock',
   name: 'Колдун',
-  description: 'проклятые враги получают больше урона',
+  description: 'проклятые получают больше урона и меньше лечения',
+  interactionHint:
+    'Проклятие ослабляет лечение самого проклятого врага. Несколько Колдунов не складываются — действует сильнейшее проклятие.',
   cost: 100,
   upgradeCosts: [80, 120],
   tiers: [
@@ -200,7 +202,7 @@ const warlock: TowerDef = {
     { damage: 0, cooldown: 1.5, range: 2.4, curseAmount: 0.5, curseDuration: 2.5 },
     { damage: 0, cooldown: 1.5, range: 2.6, curseAmount: 0.65, curseDuration: 3 },
   ],
-  displayStats: ['curseAmount', 'range'],
+  displayStats: ['curseAmount', 'healingReduction', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   // Как у Морозко: проклятие держится дольше паузы между волнами проклятия — ускорять нечего

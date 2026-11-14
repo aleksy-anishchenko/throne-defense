@@ -1,6 +1,7 @@
 // Как показывать характеристики башни: и в панели выбранной башни, и в меню выбора стража.
 
 import type { StatKey, TowerDef, TowerStats } from '@throne/game'
+import { displayStatValue } from '@throne/game'
 import { formatDecimal, formatPercent } from './format'
 
 /** Как подписывать и показывать каждую характеристику */
@@ -16,6 +17,7 @@ export const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: numb
   goldPerWave: { label: 'доход за волну', format: String },
   rootDuration: { label: 'держит в сети', format: (value) => `${formatDecimal(value)} с` },
   curseAmount: { label: 'урон по проклятым', format: (value) => `+${formatPercent(value)}` },
+  healingReduction: { label: 'получаемое лечение', format: (value) => `−${formatPercent(value)}` },
 }
 
 /**
@@ -51,8 +53,8 @@ export function formatStatLine(
 ): string {
   const { label, format } =
     statKey === 'range' && isAuraTower(currentStats) ? AURA_RANGE_DISPLAY : STAT_DISPLAY[statKey]
-  const currentText = format(currentStats[statKey] ?? 0)
-  const nextText = nextStats ? format(nextStats[statKey] ?? 0) : null
+  const currentText = format(displayStatValue(currentStats, statKey) ?? 0)
+  const nextText = nextStats ? format(displayStatValue(nextStats, statKey) ?? 0) : null
   return nextText === null || nextText === currentText
     ? `${label} ${currentText}`
     : `${label} ${currentText} → ${nextText}`

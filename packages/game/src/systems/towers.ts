@@ -1,9 +1,13 @@
 // Стража: выбор цели и выстрел. Сами башни — в data/towers.ts.
 
 import { REFUND_RATE } from '../data/balance.ts'
-import type { Enemy, TargetMode, Tower, TowerDef, TowerStats, World } from '../types.ts'
+import type { Enemy, StatKey, TargetMode, Tower, TowerDef, TowerStats, World } from '../types.ts'
 
 export const towerStats = (tower: Tower): TowerStats => tower.def.tiers[tower.tier]
+
+/** Снижение лечения — второе действие той же силы проклятия, отдельного числа в балансе нет. */
+export const displayStatValue = (stats: TowerStats, key: StatKey): number | undefined =>
+  key === 'healingReduction' ? stats.curseAmount : stats[key]
 
 /** Все способы выбрать цель, в том порядке, в каком их перебирает кнопка в панели башни */
 export const TARGET_MODES: readonly TargetMode[] = ['first', 'strongest']

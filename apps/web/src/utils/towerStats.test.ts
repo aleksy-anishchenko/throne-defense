@@ -23,6 +23,16 @@ describe('Звонарь: дальность — числом клеток', () 
 })
 
 describe('describeNewTowerStats', () => {
+  it('Колдун показывает ослабление лечения до покупки и при улучшении', () => {
+    const warlock = TOWERS['warlock']
+    expect(describeNewTowerStats(warlock)).toContain('получаемое лечение −35%')
+    expect(formatStatLine('healingReduction', warlock.tiers[0], warlock.tiers[1])).toBe(
+      'получаемое лечение −35% → −50%',
+    )
+    expect(formatStatLine('healingReduction', warlock.tiers[2], undefined)).toBe(
+      'получаемое лечение −65%',
+    )
+  })
   it('у каждой башни есть непустая строка характеристик без «NaN» и «undefined»', () => {
     for (const def of TOWER_LIST) {
       const text = describeNewTowerStats(def)

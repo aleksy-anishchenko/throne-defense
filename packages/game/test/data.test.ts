@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TOWER_LIST } from '../src/index.ts'
+import { TOWER_LIST, displayStatValue } from '../src/index.ts'
 
 // Целостность данных: опечатка в башне или волне должна ронять тест, а не игру посреди партии
 
@@ -12,7 +12,10 @@ describe('данные башен', () => {
     it(`${def.name}: у каждой показываемой характеристики есть значение на каждой ступени`, () => {
       for (const [tier, stats] of def.tiers.entries()) {
         for (const statKey of def.displayStats) {
-          expect(Number.isFinite(stats[statKey]), `${statKey}, ступень ${tier}`).toBe(true)
+          expect(
+            Number.isFinite(displayStatValue(stats, statKey)),
+            `${statKey}, ступень ${tier}`,
+          ).toBe(true)
         }
       }
     })

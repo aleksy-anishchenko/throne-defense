@@ -26,6 +26,7 @@ export {
   fireRateBonusOf,
   refundFor,
   towerStats,
+  displayStatValue,
   upgradeCost,
 } from './systems/towers.ts'
 // Для сервера: проверка правдоподобия присланного счёта

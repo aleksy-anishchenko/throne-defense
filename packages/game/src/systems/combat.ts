@@ -174,7 +174,8 @@ export function frostPulse(world: World, tower: Tower, stats: TowerStats): void 
 }
 
 /**
- * Проклятие Колдуна: все в радиусе башни какое-то время получают больше урона.
+ * Проклятие Колдуна: все в радиусе башни какое-то время получают больше урона
+ * и на ту же долю меньше лечения (см. updateHealers).
  * Несколько Колдунов не складываются — действует самое сильное проклятие (как у Звонаря)
  */
 export function cursePulse(world: World, tower: Tower, stats: TowerStats): void {

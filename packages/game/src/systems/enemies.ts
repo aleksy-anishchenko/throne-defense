@@ -101,7 +101,10 @@ function canHeal(healer: Enemy, other: Enemy, radius: number): boolean {
   )
 }
 
-/** Знахари лечат соседей (себя — нет: поэтому их и выгодно убивать первыми) */
+/**
+ * Знахари лечат соседей (себя — нет). Проклятие ослабляет получаемое лечение:
+ * важен статус получателя, а не знахаря. Сила уже выбрана по сильнейшему Колдуну.
+ */
 export function updateHealers(world: World, dt: number): void {
   const enemies = world.state.enemies
   for (const healer of enemies) {
@@ -113,7 +116,9 @@ export function updateHealers(world: World, dt: number): void {
 
     const amount = healer.maxHp * heal.amount
     for (const other of enemies) {
-      if (canHeal(healer, other, heal.radius)) other.hp = Math.min(other.maxHp, other.hp + amount)
+      if (!canHeal(healer, other, heal.radius)) continue
+      const healingShare = other.curseTimeLeft > 0 ? Math.max(0, 1 - other.curseAmount) : 1
+      other.hp = Math.min(other.maxHp, other.hp + amount * healingShare)
     }
     world.emit('heal', { x: healer.x, y: healer.y, radius: heal.radius })
   }
