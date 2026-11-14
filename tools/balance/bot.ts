@@ -5,6 +5,7 @@ import {
   SIMULATION_STEP,
   TOWERS,
   createGame,
+  investedGold,
   upgradeCost,
   type Game,
   type LevelDef,
@@ -22,6 +23,8 @@ export interface Strategy {
   name: string
   opening: StrategyStep[]
   loop: StrategyStep[]
+  /** coverage — старый бот, compatible — разводит огонь с холодом и сетями */
+  placement?: 'coverage' | 'compatible'
 }
 
 export interface WaveReport {
@@ -31,6 +34,8 @@ export interface WaveReport {
   gold: number
   towers: number
   score: number
+  /** Деньги плюс стоимость башен: позволяет увидеть отдачу Казны без зависимости от покупок */
+  wealth: number
 }
 
 export interface BotResult {
@@ -38,6 +43,7 @@ export interface BotResult {
   outcome: 'won' | 'lost' | 'stuck'
   waves: WaveReport[]
   score: number
+  wavesCleared: number
 }
 
 /** Шаг, с которым проверяем путь врагов при подсчёте покрытия, в клетках */
@@ -48,6 +54,9 @@ const MAX_SPEND_STEPS = 100
 
 /** Волна не может длиться дольше 10 минут игрового времени: 10 × 60 с × 60 шагов в секунду */
 export const MAX_WAVE_STEPS = 36_000
+
+/** Между волнами игрок может дождаться готовности башен; бот получает те же шесть секунд. */
+const INTERMISSION_STEPS = Math.ceil(6 / SIMULATION_STEP)
 
 /** Сколько клеток ковра простреливается с клетки (col, row) при дальности range */
 export function pathCoverage(game: Game, col: number, row: number, range: number): number {
@@ -121,10 +130,61 @@ function findCellAwayFromPath(game: Game): Cell | null {
   return bestCell
 }
 
+/**
+ * Огонь, холод и сети разводим по участкам дороги. Колдуну полезно накрывать тот же
+ * участок, что и союзникам. Это только выбор клетки ботом, правила игры не меняются.
+ */
+export function findCompatibleCell(game: Game, def: TowerDef): Cell | null {
+  const range = def.tiers[0].range
+  const isControl = (id: string) => id === 'frost' || id === 'trapper'
+  const conflicts = game.state.towers.filter((tower) =>
+    def.id === 'mage' ? isControl(tower.def.id) : isControl(def.id) && tower.def.id === 'mage',
+  )
+  const allies =
+    def.id === 'warlock'
+      ? game.state.towers.filter((tower) => tower.def.tiers[tower.tier].damage > 0)
+      : []
+  if (!conflicts.length && !allies.length) return findBestCell(game, range)
+  const samples: { x: number; y: number; weight: number }[] = []
+  for (let distance = 0; distance <= game.level.path.length; distance += COVERAGE_SAMPLE_STEP) {
+    const [x, y] = game.level.path.positionAt(distance)
+    const covers = (tower: Tower) =>
+      (tower.x - x) ** 2 + (tower.y - y) ** 2 <= tower.def.tiers[tower.tier].range ** 2
+    const weight = conflicts.some(covers)
+      ? 0.2
+      : 1 + Math.min(2, allies.filter(covers).length) * 0.5
+    samples.push({ x, y, weight })
+  }
+  let best: Cell | null = null
+  let bestScore = 0
+  for (let row = 0; row < game.level.def.rows; row++) {
+    for (let col = 0; col < game.level.def.cols; col++) {
+      if (!game.isCellFree(col, row)) continue
+      let score = 0
+      for (const sample of samples) {
+        if ((sample.x - col - 0.5) ** 2 + (sample.y - row - 0.5) ** 2 <= range ** 2)
+          score += sample.weight
+      }
+      if (score > bestScore) {
+        best = { col, row }
+        bestScore = score
+      }
+    }
+  }
+  return best
+}
+
 /** Куда бот ставит башню: стреляющую — к ковру, Звонаря — к башням, Казну — подальше от ковра */
-function findCellFor(game: Game, def: TowerDef): Cell | null {
+export function findCellFor(
+  game: Game,
+  def: TowerDef,
+  strategy: Pick<Strategy, 'placement'> = {},
+): Cell | null {
   const stats = def.tiers[0]
-  if (def.fire) return findBestCell(game, stats.range)
+  if (def.fire)
+    return strategy.placement === 'coverage'
+      ? findBestCell(game, stats.range)
+      : findCompatibleCell(game, def)
   if (stats.fireRateBonus) return findCellNearTowers(game, stats.range)
   return findCellAwayFromPath(game)
 }
@@ -162,7 +222,7 @@ function spendGold(game: Game, strategy: Strategy, stepIndex: number): number {
 
     const def = TOWERS[strategyStep]
     if (!def) throw new Error(`Стратегия «${strategy.name}»: неизвестная башня «${strategyStep}»`)
-    const cell = findCellFor(game, def)
+    const cell = findCellFor(game, def, strategy)
     if (!cell) {
       stepIndex++ // некуда ставить
       continue
@@ -186,10 +246,12 @@ export function playBot(level: LevelDef, strategy: Strategy, maxWaves = Infinity
     outcome,
     waves,
     score: game.state.score,
+    wavesCleared: game.state.wavesCleared,
   })
 
   while (game.state.wave <= maxWaves) {
     stepIndex = spendGold(game, strategy, stepIndex)
+    for (let i = 0; i < INTERMISSION_STEPS; i++) game.step(SIMULATION_STEP)
     const wave = game.state.wave
     const livesBefore = game.state.lives
     game.startWave()
@@ -207,6 +269,9 @@ export function playBot(level: LevelDef, strategy: Strategy, maxWaves = Infinity
       gold: state.gold,
       towers: state.towers.length,
       score: state.score,
+      wealth:
+        state.gold +
+        state.towers.reduce((sum, tower) => sum + investedGold(tower.def, tower.tier), 0),
     })
     if (state.phase === 'lost' || state.phase === 'won') {
       return makeResult(state.phase === 'won' ? 'won' : 'lost')
@@ -217,9 +282,22 @@ export function playBot(level: LevelDef, strategy: Strategy, maxWaves = Infinity
 
 export const STRATEGIES: Strategy[] = [
   {
+    name: 'Экономика и поддержка',
+    opening: ['archer', 'archer', 'treasury', 'ballista', 'frost'],
+    loop: ['upgrade', 'mage', 'upgrade', 'treasury', 'upgrade', 'ballista', 'warlock', 'bell'],
+  },
+  {
     name: 'Только лучники',
     opening: ['archer', 'archer', 'archer'],
     loop: ['upgrade', 'archer'],
+  },
+  { name: 'Только огневики', opening: ['mage', 'mage'], loop: ['upgrade', 'mage'] },
+  { name: 'Только пушкари', opening: ['cannon'], loop: ['upgrade', 'cannon'] },
+  {
+    name: 'Смешанная (старый бот)',
+    opening: ['archer', 'archer', 'mage', 'frost', 'ballista'],
+    loop: ['upgrade', 'mage', 'upgrade', 'ballista', 'upgrade', 'archer', 'frost'],
+    placement: 'coverage',
   },
   {
     name: 'Смешанная',

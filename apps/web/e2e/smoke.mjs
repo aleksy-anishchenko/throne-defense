@@ -446,7 +446,7 @@ async function desktop(browser, url) {
   })
   await waitForFrames(page)
   const bellLine = (await page.locator('.tower-info .tower-stats span').allTextContents()).at(-1)
-  check('панель: лучник ускорен Звонарём', bellLine === 'Звонарь: стреляет на 15% чаще', bellLine)
+  check('панель: лучник ускорен Звонарём', bellLine === 'Звонарь: стреляет на 25% чаще', bellLine)
   await page.evaluate((gold) => {
     const { game } = window.__throne
     game.sell(6, 11)

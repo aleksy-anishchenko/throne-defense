@@ -30,7 +30,7 @@ const archer: TowerDef = {
   tiers: [
     { damage: 7, cooldown: 0.4, range: 2.4 },
     { damage: 12, cooldown: 0.36, range: 2.6 },
-    { damage: 19, cooldown: 0.3, range: 2.9 },
+    { damage: 19, cooldown: 0.24, range: 2.9 },
   ],
   displayStats: ['damage', 'range'],
   defaultTargetMode: 'first',
@@ -158,7 +158,7 @@ const trapper: TowerDef = {
   id: 'trapper',
   name: 'Ловчий',
   description: 'ловит врагов в сеть, они стоят на месте',
-  cost: 110,
+  cost: 80,
   upgradeCosts: [70, 100],
   tiers: [
     // Радиус сети — splashRadius. Вырвавшийся из сети пару секунд рвёт новые (ROOT_IMMUNITY_SECONDS),
@@ -212,9 +212,9 @@ const bell: TowerDef = {
     // Каждая ступень достаёт новые клетки (центры клеток — на расстоянии 1; 1,41; 2; 2,24 …):
     // 1,5 — восемь соседних; 2,05 — ещё четыре через одну по прямой; 2,3 — ещё восемь «ходом коня».
     // До v6 на I и II было 1,5 — улучшение радиус не меняло
-    { damage: 0, cooldown: 0, range: 1.5, fireRateBonus: 0.15 },
-    { damage: 0, cooldown: 0, range: 2.05, fireRateBonus: 0.25 },
-    { damage: 0, cooldown: 0, range: 2.3, fireRateBonus: 0.35 },
+    { damage: 0, cooldown: 0, range: 1.5, fireRateBonus: 0.25 },
+    { damage: 0, cooldown: 0, range: 2.05, fireRateBonus: 0.4 },
+    { damage: 0, cooldown: 0, range: 2.3, fireRateBonus: 0.55 },
   ],
   displayStats: ['fireRateBonus', 'range'],
   defaultTargetMode: 'first',
@@ -229,9 +229,9 @@ const treasury: TowerDef = {
   cost: 80,
   upgradeCosts: [70, 100],
   tiers: [
-    { damage: 0, cooldown: 0, range: 0, goldPerWave: 12 },
-    { damage: 0, cooldown: 0, range: 0, goldPerWave: 22 },
-    { damage: 0, cooldown: 0, range: 0, goldPerWave: 35 },
+    { damage: 0, cooldown: 0, range: 0, goldPerWave: 20 },
+    { damage: 0, cooldown: 0, range: 0, goldPerWave: 38 },
+    { damage: 0, cooldown: 0, range: 0, goldPerWave: 63 },
   ],
   displayStats: ['goldPerWave'],
   defaultTargetMode: 'first',
