@@ -19,5 +19,9 @@ export {
   LeaderboardResponseSchema,
 } from './leaderboard.ts'
 export type { LeaderboardEntry, LeaderboardQuery, LeaderboardResponse } from './leaderboard.ts'
-export { SubmitRunRequestSchema, SubmitRunResponseSchema } from './runs.ts'
-export type { SubmitRunRequest, SubmitRunResponse } from './runs.ts'
+export {
+  SubmitRunRequestSchema,
+  SubmitRunResponseSchema,
+  SubmitRunRejectionSchema,
+} from './runs.ts'
+export type { SubmitRunRequest, SubmitRunResponse, SubmitRunRejection } from './runs.ts'

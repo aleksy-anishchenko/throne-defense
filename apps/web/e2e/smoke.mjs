@@ -51,14 +51,15 @@ async function launchBrowser() {
 
 /** ignore — какие ошибки здесь ожидаемы (например, «не удалось загрузить» без сервера) */
 function watchErrors(page, label, ignore = null) {
-  page.on(
-    'console',
-    (message) =>
-      message.type() === 'error' &&
-      !ignore?.test(message.text()) &&
-      errors.push(`${label}: ${message.text()}`),
-  )
+  const expected = []
+  page.on('console', (message) => {
+    if (message.type() !== 'error' || ignore?.test(message.text())) return
+    const index = expected.findIndex((pattern) => pattern.test(message.text()))
+    if (index >= 0) expected.splice(index, 1)
+    else errors.push(`${label}: ${message.text()}`)
+  })
   page.on('pageerror', (error) => errors.push(`${label}: ${error.message}`))
+  return (pattern) => expected.push(pattern)
 }
 
 /** Состояние игры коротко */
@@ -300,7 +301,7 @@ async function checkShopCardsVisible(page) {
 async function desktop(browser, url) {
   console.log('\nКомпьютер')
   const page = await browser.newPage({ viewport: { width: 1280, height: 860 } })
-  watchErrors(page, 'компьютер')
+  const expectConsoleError = watchErrors(page, 'компьютер')
   const playButton = page.getByRole('button', { name: 'Играть' })
 
   await page.goto(url)
@@ -668,6 +669,26 @@ async function desktop(browser, url) {
     'Esc на «Лучших» возвращает к итогам партии',
     await appears(page.getByRole('heading', { name: 'Трон пал' }), 2000),
   )
+  // Как вкладка старой версии после деплоя: запрос проходит в настоящий API,
+  // только номер баланса подменён. Отказ должен объяснять обновление, без вечного повтора.
+  await page.route('**/api/runs', (route) => {
+    const body = route.request().postDataJSON()
+    body.balanceVersion--
+    return route.continue({ postData: JSON.stringify(body) })
+  })
+  await page.getByRole('button', { name: 'Сменить имя' }).click()
+  expectConsoleError(/status of 422/)
+  await page.getByRole('button', { name: 'Сохранить' }).click()
+  check(
+    'старый баланс: есть объяснение и кнопка обновления',
+    (await appears(page.getByRole('button', { name: 'Обновить игру' }))) &&
+      (await page.locator('.run-place').innerText()).includes('Правила игры обновились'),
+  )
+  check(
+    'старый баланс: повторная отправка не предлагается',
+    (await page.getByRole('button', { name: 'Отправить ещё раз' }).count()) === 0,
+  )
+  await page.unroute('**/api/runs')
   await page.getByRole('button', { name: 'Сыграть ещё раз' }).click()
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
@@ -1053,6 +1074,11 @@ async function phone(browser, url) {
   await page.setViewportSize({ width: 932, height: 430 }) // iPhone Plus/Max набок
   await waitForFrames(page)
   await checkStartButtonVisible(page)
+  await checkShopCardsVisible(page)
+  await page.setViewportSize({ width: 667, height: 375 }) // небольшой телефон набок
+  await waitForFrames(page)
+  await checkStartButtonVisible(page)
+  await checkControlsFit(page)
   await checkShopCardsVisible(page)
   // Почти квадратное окно: по бокам поля пусто — там боковая панель с карточками, а не меню
   await page.setViewportSize({ width: 983, height: 987 })

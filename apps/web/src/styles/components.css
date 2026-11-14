@@ -25,6 +25,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.tower-interaction {
+  margin: 6px 0;
+  color: var(--parch-dim);
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
 /* «цель: первый» — кнопка-строчка среди характеристик: нажатие меняет, кого бьёт башня */
 .tower-info .target-mode {
   display: block;
@@ -315,6 +321,7 @@
     'ico nm cost'
     'ico ds ds'
     'ico st st'
+    'ico ht ht'
     'ico poor poor';
   column-gap: 12px;
   row-gap: 2px;
@@ -374,6 +381,12 @@
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--ember);
+}
+.drawer-card-interaction {
+  grid-area: ht;
+  font-size: 0.88rem;
+  line-height: 1.25;
+  color: var(--parch-dim);
 }
 .drawer-card.poor .drawer-card-cost {
   color: var(--parch-dim);

@@ -22,6 +22,9 @@ onMounted(() => drawTowerIcon(iconCanvas.value!, props.def.id))
     class="card"
     :class="{ poor: isUnaffordable }"
     :aria-pressed="isArmed"
+    :title="def.interactionHint"
+    :aria-label="`${def.name}, цена ${def.cost}`"
+    :aria-description="`${def.description}. ${def.interactionHint ?? ''}`"
     @click="emit('pick')"
   >
     <canvas ref="iconCanvas" width="96" height="96" aria-hidden="true"></canvas>

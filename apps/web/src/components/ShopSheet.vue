@@ -46,6 +46,8 @@ useMenuFocus(() => selection.isShopOpen, drawerElement)
             class="drawer-card"
             :class="{ poor: store.hud.gold < towerDef.cost }"
             :aria-pressed="selection.armedTowerId === towerDef.id"
+            :aria-label="`${towerDef.name}, цена ${towerDef.cost}`"
+            :aria-description="`${towerDef.description}. ${describeNewTowerStats(towerDef)}. ${towerDef.interactionHint ?? ''}`"
             @click="selection.chooseShopTower(towerDef.id)"
           >
             <TowerIcon :tower-id="towerDef.id" class="drawer-card-icon" />
@@ -58,6 +60,9 @@ useMenuFocus(() => selection.isShopOpen, drawerElement)
             </span>
             <span class="drawer-card-description">{{ towerDef.description }}</span>
             <span class="drawer-card-stats">{{ describeNewTowerStats(towerDef) }}</span>
+            <span v-if="towerDef.interactionHint" class="drawer-card-interaction">{{
+              towerDef.interactionHint
+            }}</span>
             <span v-if="store.hud.gold < towerDef.cost" class="drawer-card-poor">
               не хватает {{ towerDef.cost - store.hud.gold }}
             </span>

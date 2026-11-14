@@ -49,6 +49,8 @@ const mage: TowerDef = {
   id: 'mage',
   name: 'Огневик',
   description: 'поджигает толпу, огонь прожигает латы',
+  interactionHint:
+    'Огонь снимает замедление и быстро сжигает сети. Разводите Огневика с Морозко и Ловчим по дороге.',
   cost: 90,
   upgradeCosts: [80, 130],
   tiers: [
@@ -79,6 +81,8 @@ const frost: TowerDef = {
   id: 'frost',
   name: 'Морозко',
   description: 'замедляет всех вокруг, сам почти не ранит',
+  interactionHint:
+    'Холод тушит огонь без урона. Ставьте Морозко и Огневика на разных участках дороги.',
   cost: 70,
   upgradeCosts: [60, 100],
   tiers: [
@@ -158,6 +162,8 @@ const trapper: TowerDef = {
   id: 'trapper',
   name: 'Ловчий',
   description: 'ловит врагов в сеть, они стоят на месте',
+  interactionHint:
+    'На горящих врагах сеть держится в пять раз меньше. Используйте Ловчего рядом с Лучниками, Баллистами и Пушкарями.',
   cost: 80,
   upgradeCosts: [70, 100],
   tiers: [

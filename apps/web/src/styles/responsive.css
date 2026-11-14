@@ -251,6 +251,37 @@
     width: 44px;
   }
 }
+/* Небольшой телефон набок: кнопки остаются внизу, прокручивается только содержимое.
+   При 667×375 девять обычных карточек вытесняли «Начать волну» за нижний край. */
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 400px) {
+  .panel {
+    grid-template-rows: auto minmax(0, 1fr) 0 auto;
+  }
+  .shop {
+    min-height: 0;
+    overflow-y: auto;
+    gap: 4px;
+    grid-auto-rows: minmax(40px, 1fr);
+  }
+  .card {
+    grid-template-columns: 26px minmax(0, 1fr);
+    padding: 2px 6px 2px 4px;
+  }
+  .card canvas {
+    width: 26px;
+    height: 26px;
+  }
+  .card .card-name {
+    font-size: 0.9rem;
+  }
+  .card .cost {
+    font-size: 0.85rem;
+  }
+  .tower-info {
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
 /* Низкий экран без боковой панели (узкое окно на компьютере) */
 @media (max-height: 640px) and (max-width: 639px) {
   .btn {

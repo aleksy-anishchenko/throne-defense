@@ -2,12 +2,13 @@ import {
   RUNS_PATH,
   SubmitRunRequestSchema,
   SubmitRunResponseSchema,
+  SubmitRunRejectionSchema,
   type SubmitRunRequest,
   type SubmitRunResponse,
 } from '@throne/contracts'
 import type { FastifyInstance } from 'fastify'
 import { insertRun, playerPlace } from '../services/leaderboard.ts'
-import { implausibilityReason } from '../services/plausibility.ts'
+import { runRejection } from '../services/plausibility.ts'
 
 /**
  * Строже общего ограничения: игра шлёт один результат за партию, а партия идёт минуты.
@@ -23,19 +24,20 @@ export async function runsRoutes(app: FastifyInstance): Promise<void> {
     RUNS_PATH,
     {
       // Тело запроса Fastify проверит по схеме сам: не то — ответит 400, не дойдя до кода ниже
-      schema: { body: SubmitRunRequestSchema, response: { 200: SubmitRunResponseSchema } },
+      schema: {
+        body: SubmitRunRequestSchema,
+        response: { 200: SubmitRunResponseSchema, 422: SubmitRunRejectionSchema },
+      },
       bodyLimit: BODY_LIMIT_BYTES,
       config: { rateLimit: { max: RUNS_PER_MINUTE, timeWindow: '1 minute' } },
     },
-    async (request): Promise<SubmitRunResponse> => {
+    async (request, reply) => {
       const run = request.body
-      const reason = implausibilityReason(run)
-      if (reason !== null) {
+      const rejection = runRejection(run)
+      if (rejection !== null) {
         // В журнал — чтобы видеть попытки подделки; в базу такое не попадает
-        request.log.warn({ run, reason }, 'результат отклонён')
-        // Ошибку со statusCode Fastify превратит в ответ { statusCode, error, message }.
-        // 422: запрос составлен правильно (схема его пропустила), но такого в игре не бывает
-        throw Object.assign(new Error(reason), { statusCode: 422 })
+        request.log.warn({ run, rejection }, 'результат отклонён')
+        return reply.code(422).send(rejection)
       }
 
       insertRun(app.db, run)
@@ -43,7 +45,7 @@ export async function runsRoutes(app: FastifyInstance): Promise<void> {
       const place = playerPlace(app.db, { levelId: null, balanceVersion: null }, run.playerName)
       // Только что записали — место есть всегда; проверка — для TypeScript
       if (place === null) throw new Error('Результат записан, но не найден')
-      return place
+      return place satisfies SubmitRunResponse
     },
   )
 }

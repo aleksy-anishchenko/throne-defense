@@ -69,6 +69,8 @@ export interface TowerDef {
   name: string
   /** Короткое описание для магазина, с маленькой буквы */
   description: string
+  /** Подсказка о взаимодействии с другими башнями — до и после покупки */
+  interactionHint?: string
   /** Цена постройки, золота */
   cost: number
   /** Цена улучшений, золота: upgradeCosts[0] — с I на II ступень, upgradeCosts[1] — со II на III и т.д. */

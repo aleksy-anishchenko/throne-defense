@@ -27,6 +27,8 @@ function placeText(): string {
   if (playerCount === 1) return `${store.playerName}, вы первым попали в таблицу лучших.`
   return `${store.playerName}, вы на ${rank}-м месте из ${playerCount}.`
 }
+
+const refreshGame = () => window.location.reload()
 </script>
 
 <template>
@@ -62,8 +64,15 @@ function placeText(): string {
       {{ placeText() }}
       <button class="link-button" type="button" @click="store.changePlayerName">Сменить имя</button>
     </template>
+    <template v-else-if="store.submission.status === 'outdated'">
+      {{ store.submission.message }}
+      <button class="link-button" type="button" @click="refreshGame">Обновить игру</button>
+    </template>
+    <template v-else-if="store.submission.status === 'rejected'">{{
+      store.submission.message
+    }}</template>
     <template v-else>
-      Таблица лучших сейчас недоступна.
+      {{ store.submission.message }}
       <button class="link-button" type="button" @click="store.retrySubmission">
         Отправить ещё раз
       </button>

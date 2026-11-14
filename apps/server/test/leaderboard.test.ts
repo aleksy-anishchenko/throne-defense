@@ -168,6 +168,18 @@ describe('общий топ', () => {
     }
   })
 
+  it('старая версия возвращает отдельный код и не записывает результат', async () => {
+    const response = await submit({ ...run('Василиса', 5000), balanceVersion: BALANCE_VERSION - 1 })
+    expect(response.statusCode).toBe(422)
+    expect(response.json()).toEqual({
+      code: 'outdated-balance',
+      message: expect.stringContaining('Обновите страницу'),
+    })
+    expect((await leaderboard()).playerCount).toBe(0)
+    const invalid = await submit(run('Василиса', 0))
+    expect(invalid.json().code).toBe('invalid-run')
+  })
+
   it('больше 10 результатов в минуту с одного адреса — 429', async () => {
     const fromOnePlayer = () =>
       app.inject({

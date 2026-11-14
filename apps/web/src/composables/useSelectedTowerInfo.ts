@@ -40,6 +40,7 @@ export function useSelectedTowerInfo() {
     return {
       title: `${def.name} ${toRoman(tier)}`,
       lines,
+      interactionHint: def.interactionHint,
       upgradeCost,
       canAfford: upgradeCost !== null && store.hud.gold >= upgradeCost,
       refund: selection.selected.refund,

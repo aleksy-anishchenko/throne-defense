@@ -47,6 +47,8 @@ type SubmissionStatus =
   | 'sent'
   /** Нет сети или сервер не ответил — игра идёт как раньше, просто без топа */
   | 'failed'
+  | 'outdated'
+  | 'rejected'
 
 /**
  * ?level=throne-hall в адресе — всегда этот зал: для проверок в браузере (e2e) и чтобы
@@ -158,7 +160,12 @@ export const useGameStore = defineStore('game', () => {
   // ---------------------------------------------------------------- Общий топ
 
   const playerName = ref<string | null>(loadPlayerName())
-  const submission = reactive({ status: 'idle' as SubmissionStatus, rank: 0, playerCount: 0 })
+  const submission = reactive({
+    status: 'idle' as SubmissionStatus,
+    rank: 0,
+    playerCount: 0,
+    message: '',
+  })
   const leaderboard = reactive({
     status: 'idle' as 'idle' | 'loading' | 'loaded' | 'failed',
     entries: [] as LeaderboardEntry[],
@@ -178,7 +185,7 @@ export const useGameStore = defineStore('game', () => {
     if (!finishedRun || !playerName.value) return
     const number = ++submissionNumber
     submission.status = 'sending'
-    const place = await submitRun({
+    const result = await submitRun({
       playerName: playerName.value,
       levelId: game.level.def.id,
       score: finishedRun.score,
@@ -186,12 +193,19 @@ export const useGameStore = defineStore('game', () => {
       balanceVersion: BALANCE_VERSION,
     })
     if (number !== submissionNumber) return
-    if (place) {
+    if (result.ok) {
       submission.status = 'sent'
-      submission.rank = place.rank
-      submission.playerCount = place.playerCount
+      submission.rank = result.data.rank
+      submission.playerCount = result.data.playerCount
+      submission.message = ''
     } else {
-      submission.status = 'failed'
+      submission.status =
+        result.code === 'outdated-balance'
+          ? 'outdated'
+          : result.code === 'invalid-run'
+            ? 'rejected'
+            : 'failed'
+      submission.message = result.message
     }
   }
 
