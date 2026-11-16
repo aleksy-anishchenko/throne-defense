@@ -92,7 +92,7 @@ jobs:
         run: >
           rsync -av -r --files-from=deploy/server/upload-paths.txt
           --delete --delay-updates --no-owner --no-group
-          --exclude=.env --exclude=node_modules/ --exclude=.DS_Store
+          --exclude=.env --exclude=node_modules/ --exclude=.DS_Store --exclude=/apps/server/data/
           -e "ssh -i ~/.ssh/api_deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=deploy/known_hosts"
           . "$DEPLOY_API_USER@$DEPLOY_HOST:/"
 

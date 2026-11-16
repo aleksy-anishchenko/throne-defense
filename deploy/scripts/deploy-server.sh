@@ -53,6 +53,7 @@ RSYNC_OPTIONS=(
   --exclude=.env
   --exclude=node_modules/
   --exclude=.DS_Store
+  --exclude=/apps/server/data/
   --exclude='*.db'
   --exclude='*.db-wal'
   --exclude='*.db-shm'

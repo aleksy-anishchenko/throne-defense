@@ -25,6 +25,7 @@ afterEach(async () => {
 const appSource = `
 import { createServer } from 'node:http'
 import { DatabaseSync } from 'node:sqlite'
+import { BALANCE_VERSION } from '../../../packages/game/src/core/game.ts'
 export function buildApp({databasePath, releaseId}) {
   const db = new DatabaseSync(databasePath)
   const server = createServer((req, res) => {
@@ -32,7 +33,7 @@ export function buildApp({databasePath, releaseId}) {
     if (releaseId === 'bad-probe') res.statusCode = 503
     res.end(JSON.stringify(req.url === '/api/leaderboard'
       ? {entries: db.prepare('SELECT * FROM runs').all()}
-      : {ok: releaseId !== 'bad-probe', releaseId}))
+      : {ok: releaseId !== 'bad-probe', releaseId, balanceVersion: BALANCE_VERSION}))
   })
   return {
     listen: ({host, port}) => new Promise((accept) => server.listen(port, host, () =>
@@ -61,8 +62,20 @@ async function fixture(id = 'new-release') {
   ]) {
     await mkdir(join(directory, 'apps/server/src/db/migrations'), { recursive: true })
     await mkdir(join(directory, 'deploy/server'), { recursive: true })
+    await mkdir(join(directory, 'apps/server/data'), { recursive: true })
+    await mkdir(join(directory, 'packages/game/src/core'), { recursive: true })
+    await mkdir(join(directory, 'packages/game/src/data'), { recursive: true })
     await writeFile(join(directory, 'package.json'), '{"type":"module"}')
     await writeFile(join(directory, 'apps/server/src/app.ts'), appSource)
+    await writeFile(join(directory, 'apps/server/data/local.db'), 'do not copy')
+    await writeFile(
+      join(directory, 'packages/game/src/core/game.ts'),
+      "export { BALANCE_VERSION } from '../data/balance.ts'\n",
+    )
+    await writeFile(
+      join(directory, 'packages/game/src/data/balance.ts'),
+      'export const BALANCE_VERSION = 9\n',
+    )
     await writeFile(
       join(directory, 'apps/server/src/db/migrations/001-runs.sql'),
       'CREATE TABLE runs (score INTEGER);',
@@ -162,6 +175,12 @@ it('успешное переключение и ручной откат сох�
   expect(await readlink(join(f.root, 'current'))).toBe(candidate)
   expect(await readlink(join(f.root, 'previous'))).toBe(f.previous)
   await f.verify('', 'new-release')
+  expect(await readFile(join(candidate, 'packages/game/src/data/balance.ts'), 'utf8')).toContain(
+    'BALANCE_VERSION = 9',
+  )
+  await expect(readFile(join(candidate, 'apps/server/data/local.db'))).rejects.toMatchObject({
+    code: 'ENOENT',
+  })
   const db = new DatabaseSync(join(f.root, 'live.db'))
   db.exec('INSERT INTO runs VALUES (99)')
   db.close()

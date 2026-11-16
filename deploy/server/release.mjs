@@ -11,7 +11,7 @@ import {
   stat,
   symlink,
 } from 'node:fs/promises'
-import { basename, isAbsolute, join, resolve } from 'node:path'
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { parseEnv } from 'node:util'
 import { fileURLToPath } from 'node:url'
@@ -155,9 +155,17 @@ export async function deployRelease({
     candidate = await mkdtemp(join(root, 'releases', `${id}-`))
     await cp(source, candidate, {
       recursive: true,
-      filter: (path) =>
-        !['node_modules', '.env', '.git', 'data'].includes(basename(path)) &&
-        !/\.(db|db-wal|db-shm)$/.test(path),
+      filter: (path) => {
+        const relativePath = relative(source, path)
+        const serverData = join('apps', 'server', 'data')
+        const isServerData =
+          relativePath === serverData || relativePath.startsWith(`${serverData}${sep}`)
+        return (
+          !['node_modules', '.env', '.git'].includes(basename(path)) &&
+          !isServerData &&
+          !/\.(db|db-wal|db-shm)$/.test(path)
+        )
+      },
     })
     await run('npm', ['ci', '--omit=dev', '--no-audit', '--no-fund'], { cwd: candidate })
   }
