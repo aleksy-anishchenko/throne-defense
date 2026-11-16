@@ -180,6 +180,14 @@ describe('общий топ', () => {
     expect(invalid.json().code).toBe('invalid-run')
   })
 
+  it('клиент новее API: временный 503, Retry-After, результат не записан', async () => {
+    const response = await submit({ ...run('Василиса', 5000), balanceVersion: BALANCE_VERSION + 1 })
+    expect(response.statusCode).toBe(503)
+    expect(response.headers['retry-after']).toBe('30')
+    expect(response.json().code).toBe('server-updating')
+    expect((await leaderboard()).playerCount).toBe(0)
+  })
+
   it('больше 10 результатов в минуту с одного адреса — 429', async () => {
     const fromOnePlayer = () =>
       app.inject({

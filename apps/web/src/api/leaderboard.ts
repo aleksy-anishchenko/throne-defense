@@ -38,6 +38,13 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<Req
     try {
       const response = await fetch(path, { ...init, signal: controller.signal })
       if (!response.ok) {
+        if (response.status === 503) {
+          return {
+            ...unavailable,
+            message:
+              'Сервер временно недоступен или обновляется. Попробуйте отправить результат позже.',
+          }
+        }
         if (response.status === 422) {
           const body: unknown = await response.json()
           if (

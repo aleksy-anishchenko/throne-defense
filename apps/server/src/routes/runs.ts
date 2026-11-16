@@ -26,7 +26,11 @@ export async function runsRoutes(app: FastifyInstance): Promise<void> {
       // Тело запроса Fastify проверит по схеме сам: не то — ответит 400, не дойдя до кода ниже
       schema: {
         body: SubmitRunRequestSchema,
-        response: { 200: SubmitRunResponseSchema, 422: SubmitRunRejectionSchema },
+        response: {
+          200: SubmitRunResponseSchema,
+          422: SubmitRunRejectionSchema,
+          503: SubmitRunRejectionSchema,
+        },
       },
       bodyLimit: BODY_LIMIT_BYTES,
       config: { rateLimit: { max: RUNS_PER_MINUTE, timeWindow: '1 minute' } },
@@ -37,6 +41,9 @@ export async function runsRoutes(app: FastifyInstance): Promise<void> {
       if (rejection !== null) {
         // В журнал — чтобы видеть попытки подделки; в базу такое не попадает
         request.log.warn({ run, rejection }, 'результат отклонён')
+        if (rejection.code === 'server-updating') {
+          return reply.header('Retry-After', '30').code(503).send(rejection)
+        }
         return reply.code(422).send(rejection)
       }
 

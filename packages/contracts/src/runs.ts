@@ -29,9 +29,13 @@ export const SubmitRunResponseSchema = Type.Object({
 })
 export type SubmitRunResponse = Static<typeof SubmitRunResponseSchema>
 
-/** 422 — повторная отправка без изменения данных не поможет. */
+/** 422 — окончательный отказ; 503 server-updating — временное несовпадение версий. */
 export const SubmitRunRejectionSchema = Type.Object({
-  code: Type.Union([Type.Literal('outdated-balance'), Type.Literal('invalid-run')]),
+  code: Type.Union([
+    Type.Literal('outdated-balance'),
+    Type.Literal('invalid-run'),
+    Type.Literal('server-updating'),
+  ]),
   message: Type.String(),
 })
 export type SubmitRunRejection = Static<typeof SubmitRunRejectionSchema>

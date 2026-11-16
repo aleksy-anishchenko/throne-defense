@@ -1,8 +1,46 @@
-import { HEALTH_PATH } from '@throne/contracts'
+import { HEALTH_PATH, READY_PATH } from '@throne/contracts'
 import { afterAll, describe, expect, it } from 'vitest'
 import { buildApp, RATE_LIMIT_PER_MINUTE } from '../src/app.ts'
 import { IN_MEMORY_DATABASE } from '../src/db/database.ts'
 import { loadConfig } from '../src/config.ts'
+import { loadMigrations } from '../src/db/migrate.ts'
+
+describe('GET /api/ready', () => {
+  it('пустой рейтинг готов, ответ содержит метку именно запущенного релиза', async () => {
+    const app = buildApp({ databasePath: IN_MEMORY_DATABASE, releaseId: 'release-test' })
+    try {
+      const response = await app.inject(READY_PATH)
+      expect(response.statusCode).toBe(200)
+      expect(response.headers['cache-control']).toBe('no-store')
+      expect(response.json()).toEqual({
+        ok: true,
+        releaseId: 'release-test',
+        schemaVersion: loadMigrations().length,
+      })
+    } finally {
+      await app.close()
+    }
+  })
+
+  it.each([
+    'DROP TABLE runs',
+    'ALTER TABLE runs RENAME COLUMN score TO broken_score',
+    'PRAGMA user_version = 999',
+    'PRAGMA user_version = 0',
+  ])('повреждение схемы даёт 503, процесс остаётся жив: %s', async (sql) => {
+    const app = buildApp({ databasePath: IN_MEMORY_DATABASE })
+    try {
+      await app.ready()
+      app.db.exec(sql)
+      const response = await app.inject(READY_PATH)
+      expect(response.statusCode).toBe(503)
+      expect(response.json().ok).toBe(false)
+      expect((await app.inject(HEALTH_PATH)).statusCode).toBe(200)
+    } finally {
+      await app.close()
+    }
+  })
+})
 
 describe('GET /api/health', () => {
   const app = buildApp({ databasePath: IN_MEMORY_DATABASE })

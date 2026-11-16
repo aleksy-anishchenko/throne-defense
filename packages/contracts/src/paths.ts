@@ -5,6 +5,9 @@
 /** GET — «сервер жив» */
 export const HEALTH_PATH = '/api/health'
 
+/** GET — готовность рейтинга и версия запущенного релиза */
+export const READY_PATH = '/api/ready'
+
 /** POST — результат законченной партии в общий топ */
 export const RUNS_PATH = '/api/runs'
 

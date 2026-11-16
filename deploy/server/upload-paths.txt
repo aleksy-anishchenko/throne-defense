@@ -1,4 +1,4 @@
-# Что из репозитория едет на сервер API (/srv/throne-defense/app). Пути — от корня репозитория.
+# Что едет в staging API (/srv/throne-defense/incoming). Пути — от корня репозитория.
 # Один список на двоих: ручную выкладку (deploy/scripts/deploy-server.sh) и автодеплой (deploy.yml),
 # rsync читает его через --files-from. Сайт (apps/web) и инструменты (tools) сюда не входят.
 apps/server

@@ -10,7 +10,7 @@
 # На сервере пользователь deploy может только rsync в /var/www/throne-defense (rrsync),
 # поэтому путь назначения — «/»: для rrsync это корень папки игры.
 # Ключ API у пользователя throne умеет ровно две вещи (deploy/server/deploy-command.sh):
-# rsync в /srv/throne-defense/app (тоже через rrsync, путь «/») и команду after-upload.
+# rsync в /srv/throne-defense/incoming, проверку deployment-ready и команду after-upload.
 
 name: Деплой
 
@@ -55,7 +55,7 @@ jobs:
       - run: npm run check
       - run: npm run e2e
 
-      # Предохранитель: пустая сборка не должна стереть работающий сайт (rsync --delete)
+      # Предохранитель: пустую сборку не публикуем
       - name: Сборка не пустая
         run: test -s apps/web/dist/index.html
 
@@ -69,18 +69,7 @@ jobs:
           # Понятная ошибка, если секрет не задан или вставился не целиком
           ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null || { echo "Секрет DEPLOY_SSH_KEY пустой или испорчен"; exit 1; }
 
-      # Опции те же, что в deploy/scripts/deploy-web.sh — меняешь здесь, поменяй и там
-      - name: Выложить на сервер
-        run: >
-          rsync -av --delete --delay-updates --no-owner --no-group
-          -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=deploy/known_hosts"
-          apps/web/dist/ "$DEPLOY_USER@$DEPLOY_HOST:/"
-
-      - name: Сайт отвечает
-        run: curl --fail --silent --show-error --output /dev/null https://throne-defense.ru/
-
-      # API выкладывается после сайта. Сайт от этого не зависит: если API не поднимется,
-      # игра уже выложена и работает, а деплой станет красным — смотреть журнал этого шага
+      # API проверяем до публикации HTML.
       - name: Ключ для API
         env:
           DEPLOY_API_SSH_KEY: ${{ secrets.DEPLOY_API_SSH_KEY }}
@@ -89,8 +78,16 @@ jobs:
           chmod 600 ~/.ssh/api_deploy_key
           ssh-keygen -y -f ~/.ssh/api_deploy_key > /dev/null || { echo "Секрет DEPLOY_API_SSH_KEY пустой или испорчен"; exit 1; }
 
+      - name: Сервер подготовлен к релизной выкладке
+        run: >
+          ssh -i ~/.ssh/api_deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=deploy/known_hosts
+          "$DEPLOY_API_USER@$DEPLOY_HOST" deployment-ready
+
       # Что едет — deploy/server/upload-paths.txt (общий с deploy/scripts/deploy-server.sh).
       # .env и node_modules на сервере --delete не трогает: они исключены
+      - name: Идентификатор релиза API
+        run: printf '%s\n' "$GITHUB_SHA" > deploy/server/release-id
+
       - name: Выложить API
         run: >
           rsync -av -r --files-from=deploy/server/upload-paths.txt
@@ -99,7 +96,7 @@ jobs:
           -e "ssh -i ~/.ssh/api_deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=deploy/known_hosts"
           . "$DEPLOY_API_USER@$DEPLOY_HOST:/"
 
-      # npm ci → pm2 startOrReload → pm2 save → проверка изнутри сервера (deploy/server/after-upload.sh)
+      # Отдельный релиз → установка → пробный запуск → переключение с откатом.
       - name: Перезапустить API
         run: >
           ssh -i ~/.ssh/api_deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=deploy/known_hosts
@@ -107,4 +104,12 @@ jobs:
 
       # А это — снаружи, через интернет и nginx, как его видит игра
       - name: API отвечает
-        run: curl --fail --silent --show-error https://throne-defense.ru/api/health
+        run: node deploy/server/check-ready.mjs https://throne-defense.ru "$GITHUB_SHA"
+
+      - name: Опубликовать ресурсы, затем HTML
+        env:
+          THRONE_RSYNC_SSH: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=deploy/known_hosts
+        run: bash deploy/scripts/upload-web.sh apps/web/dist "$DEPLOY_USER@$DEPLOY_HOST:/"
+
+      - name: Сайт отвечает
+        run: curl --fail --silent --show-error --output /dev/null https://throne-defense.ru/

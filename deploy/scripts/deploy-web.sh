@@ -25,23 +25,17 @@ fi
 
 npm run build
 
-# Предохранитель: если сборка получилась пустой, rsync --delete стёр бы работающий сайт
+# Предохранитель: пустую сборку не публикуем
 if [[ ! -s apps/web/dist/index.html ]]; then
   echo "Сборка пустая (нет apps/web/dist/index.html) — ничего не выкладываю" >&2
   exit 1
 fi
 
-# / в конце dist/ — «содержимое папки», а не сама папка.
-# --delete удаляет на сервере файлы, которых больше нет в сборке (старые index-XXXX.js).
-# --delay-updates подменяет файлы разом в конце; --no-owner --no-group не переносят владельца с Mac.
-# Те же опции — в .github/workflows/deploy.yml
-RSYNC_OPTIONS=(-av --delete --delay-updates --no-owner --no-group)
-
 if [[ "${1:-}" == "--apply" ]]; then
-  rsync "${RSYNC_OPTIONS[@]}" apps/web/dist/ "$DEPLOY_USER@$DEPLOY_HOST:/"
+  bash deploy/scripts/upload-web.sh apps/web/dist "$DEPLOY_USER@$DEPLOY_HOST:/"
   echo "Готово: игра выложена"
 else
-  rsync "${RSYNC_OPTIONS[@]}" --dry-run apps/web/dist/ "$DEPLOY_USER@$DEPLOY_HOST:/"
+  bash deploy/scripts/upload-web.sh apps/web/dist "$DEPLOY_USER@$DEPLOY_HOST:/" --dry-run
   echo
   echo "Это была проверка (--dry-run): на сервере ничего не изменилось."
   echo "Если список выглядит разумно: deploy/scripts/deploy-web.sh --apply"

@@ -8,20 +8,12 @@
 //
 // Нужен установленный Google Chrome. Если его нет: `npx playwright-core install chromium`.
 
-import { spawn } from 'node:child_process'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 import { preview } from 'vite'
+import { startApi, withResources } from './resources.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
-const serverRoot = fileURLToPath(new URL('../../server', import.meta.url))
-// Не 3000: там может работать npm run dev:server со своей базой
-const API_PORT = 3101
-/** Сколько ждать, пока API поднимется */
-const API_START_TIMEOUT_MS = 15_000
 // Размер поля в клетках (как в уровне «Тронный зал»)
 const COLS = 9
 const ROWS = 13
@@ -41,10 +33,9 @@ async function launchBrowser() {
     try {
       return await chromium.launch({ headless: true })
     } catch {
-      console.error(
+      throw new Error(
         'Не найден браузер. Установи Google Chrome или выполни: npx playwright-core install chromium',
       )
-      process.exit(1)
     }
   }
 }
@@ -701,6 +692,25 @@ async function desktop(browser, url) {
     'Esc на «Лучших» возвращает к итогам партии',
     await appears(page.getByRole('heading', { name: 'Трон пал' }), 2000),
   )
+  // Новая страница при ещё старом API: результат остаётся доступен для повтора.
+  await page.route('**/api/runs', (route) => {
+    const body = route.request().postDataJSON()
+    body.balanceVersion++
+    return route.continue({ postData: JSON.stringify(body) })
+  })
+  await page.getByRole('button', { name: 'Сменить имя' }).click()
+  expectConsoleError(/status of 503/)
+  await page.getByRole('button', { name: 'Сохранить' }).click()
+  check(
+    'API ещё не обновлён: результат можно отправить повторно',
+    await appears(page.getByRole('button', { name: 'Отправить ещё раз' })),
+  )
+  await page.unroute('**/api/runs')
+  await page.getByRole('button', { name: 'Отправить ещё раз' }).click()
+  check(
+    'после обновления API повторная отправка успешна',
+    await appears(page.locator('.run-place').filter({ hasText: 'Страж 1, вы первым' })),
+  )
   // Как вкладка старой версии после деплоя: запрос проходит в настоящий API,
   // только номер баланса подменён. Отказ должен объяснять обновление, без вечного повтора.
   await page.route('**/api/runs', (route) => {
@@ -1138,67 +1148,31 @@ async function phone(browser, url) {
   await page.close()
 }
 
-/** Настоящий API на временной базе — как на сайте, только у себя */
-async function startApi() {
-  const databaseDirectory = await mkdtemp(join(tmpdir(), 'throne-e2e-'))
-  const api = spawn(process.execPath, ['src/main.ts'], {
-    cwd: serverRoot,
-    env: {
-      ...process.env,
-      PORT: String(API_PORT),
-      DATABASE_PATH: join(databaseDirectory, 'e2e.db'),
-    },
-    // Журнал запросов не нужен, а ошибки запуска — нужны
-    stdio: ['ignore', 'ignore', 'inherit'],
-  })
-  const deadline = Date.now() + API_START_TIMEOUT_MS
-  while (Date.now() < deadline) {
-    const isUp = await fetch(`http://127.0.0.1:${API_PORT}/api/health`).then(
-      (response) => response.ok,
-      () => false,
-    )
-    if (isUp) {
-      return {
-        async stop() {
-          api.kill('SIGTERM')
-          await rm(databaseDirectory, { recursive: true, force: true })
-        },
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
-  api.kill('SIGTERM')
-  console.error(`API не поднялось за ${API_START_TIMEOUT_MS / 1000} с`)
-  process.exit(1)
-}
-
-const api = await startApi()
-const server = await preview({
-  root,
-  logLevel: 'silent',
-  // /api — в наш API на временной базе (вместо 3000 из vite.config.ts)
-  preview: { port: 4173, proxy: { '/api': `http://127.0.0.1:${API_PORT}` } },
-})
-// ?level=throne-hall: проверки ставят башни на конкретные клетки «Тронного зала».
-// Без него зал на партию выпадает случайно
-const url = `${server.resolvedUrls.local[0]}?debug&level=throne-hall`
-const browser = await launchBrowser()
-console.log(`Проверяю ${url}`)
-
 try {
-  await desktop(browser, url)
-  await phone(browser, url)
-  await offline(browser, url)
-  console.log('\nКонсоль браузера')
-  check('нет ошибок', errors.length === 0, errors.join('\n'))
+  await withResources(async (cleanup) => {
+    const api = await startApi()
+    cleanup(() => api.stop())
+    const server = await preview({
+      root,
+      logLevel: 'silent',
+      preview: { port: 0, proxy: { '/api': api.address } },
+    })
+    cleanup(() => server.close())
+    // Фиксированный зал: проверки ставят башни на конкретные клетки.
+    const url = `${server.resolvedUrls.local[0]}?debug&level=throne-hall`
+    const browser = await launchBrowser()
+    cleanup(() => browser.close())
+    console.log(`Проверяю ${url}`)
+    await desktop(browser, url)
+    await phone(browser, url)
+    await offline(browser, url)
+    console.log('\nКонсоль браузера')
+    check('нет ошибок', errors.length === 0, errors.join('\n'))
+  })
 } catch (error) {
   console.error('\nПроверка прервалась:', error.message)
   failed++
-} finally {
-  await browser.close()
-  await server.close()
-  await api.stop()
 }
 
 console.log(failed ? `\n✗ Не прошло проверок: ${failed}` : '\n✓ Все проверки прошли')
-process.exit(failed ? 1 : 0)
+process.exitCode = failed ? 1 : 0

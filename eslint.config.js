@@ -11,6 +11,15 @@ export default defineConfig([
   tseslint.configs.recommended,
   pluginVue.configs['flat/recommended'],
   {
+    files: ['deploy/**/*.mjs'],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    // pm2 загружает ecosystem через CommonJS.
+    files: ['deploy/pm2/*.cjs'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
     // TypeScript внутри <script setup lang="ts">
     files: ['**/*.vue'],
     languageOptions: { parserOptions: { parser: tseslint.parser } },

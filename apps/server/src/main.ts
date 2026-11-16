@@ -9,7 +9,11 @@ import { loadConfig } from './config.ts'
 const HOST = '127.0.0.1'
 
 const config = loadConfig()
-const app = buildApp({ databasePath: config.databasePath, logger: true })
+const app = buildApp({
+  databasePath: config.databasePath,
+  logger: true,
+  releaseId: process.env['RELEASE_ID'] || 'development',
+})
 
 // pm2 при перезапуске (выкладка) и Ctrl+C в npm run dev:server просят процесс завершиться.
 // Закрываемся аккуратно: доотвечаем на начатые запросы и закрываем базу

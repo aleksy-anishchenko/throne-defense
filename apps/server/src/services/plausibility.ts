@@ -18,7 +18,7 @@ export const MAX_WAVES_CLEARED = 100
 /** Уровни по id. createLevel проверяет описание уровня — делаем это один раз при запуске */
 const LEVELS_BY_ID = new Map<string, Level>(LEVELS.map((def) => [def.id, createLevel(def)]))
 
-/** null — результат правдоподобен, иначе — код и объяснение для ответа 422 и журнала */
+/** null — результат правдоподобен, иначе — код и объяснение отказа (422 или временный 503). */
 export function runRejection(run: SubmitRunRequest): SubmitRunRejection | null {
   const invalid = (message: string): SubmitRunRejection => ({ code: 'invalid-run', message })
   if (!isValidPlayerName(run.playerName)) {
@@ -28,7 +28,14 @@ export function runRejection(run: SubmitRunRequest): SubmitRunRejection | null {
   if (!level) return invalid(`Нет уровня «${run.levelId}»`)
   // Старая вкладка после обновления баланса присылает результат прошлой версии.
   // Таблицы прошлых версий закрыты: в них уже не играют
-  if (run.balanceVersion !== BALANCE_VERSION) {
+  if (run.balanceVersion > BALANCE_VERSION) {
+    return {
+      code: 'server-updating',
+      message:
+        'Сервер ещё не обновился. Результат сохранён на этом экране; попробуйте отправить его позже.',
+    }
+  }
+  if (run.balanceVersion < BALANCE_VERSION) {
     return {
       code: 'outdated-balance',
       message:

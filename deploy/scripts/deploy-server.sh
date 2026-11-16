@@ -5,12 +5,12 @@
 #   deploy/scripts/deploy-server.sh --apply  — выложить по-настоящему
 #
 # Заливаем от root (твой личный ключ), файлы сразу отдаём пользователю throne (--chown).
-# Потом от throne запускается deploy/server/after-upload.sh: npm ci, pm2, проверка /api/health.
+# Потом от throne запускается deploy/server/after-upload.sh: npm ci, pm2, проверка релиза.
 
 set -euo pipefail
 
 DEPLOY_HOST="${DEPLOY_HOST:-77.91.113.61}"
-APP_DIR=/srv/throne-defense/app
+APP_DIR=/srv/throne-defense/incoming
 
 # Нужен настоящий rsync (--chown), а не openrsync от Apple: brew install rsync
 if rsync --version 2>&1 | grep -q openrsync; then
@@ -28,6 +28,13 @@ fi
 npm run lint
 npm run typecheck
 npm test
+
+# Ручная выкладка копирует и незакоммиченные файлы: помечаем такую сборку отдельно.
+release_id="$(git rev-parse HEAD)"
+if [[ -n "$(git status --porcelain)" ]]; then
+  release_id="$release_id-dirty-$(date -u +%Y%m%dT%H%M%SZ)"
+fi
+printf '%s\n' "$release_id" > deploy/server/release-id
 
 # Что едет — список в deploy/server/upload-paths.txt (общий с автодеплоем в deploy.yml).
 # --files-from сохраняет пути как есть: apps/server → $APP_DIR/apps/server; -r — с вложенными папками.
@@ -52,11 +59,14 @@ RSYNC_OPTIONS=(
 )
 
 if [[ "${1:-}" == "--apply" ]]; then
+  ssh "root@$DEPLOY_HOST" "su - throne -c 'test -L /srv/throne-defense/current && test -f /srv/throne-defense/shared/server.env && test -w /srv/throne-defense/deploy.lock'"
+  # Та же блокировка, что у ограниченного ключа CI и after-upload.
+  RSYNC_OPTIONS+=(--rsync-path="flock -n /srv/throne-defense/deploy.lock rsync")
   rsync "${RSYNC_OPTIONS[@]}" . "root@$DEPLOY_HOST:$APP_DIR/"
   # su - throne: команды от throne, с его окружением (его pm2, его папка ~/.npm)
   ssh "root@$DEPLOY_HOST" "su - throne -c 'bash $APP_DIR/deploy/server/after-upload.sh'"
   echo
-  echo "Готово. Проверка снаружи: curl https://throne-defense.ru/api/health"
+  node deploy/server/check-ready.mjs https://throne-defense.ru "$release_id"
 else
   rsync "${RSYNC_OPTIONS[@]}" --dry-run . "root@$DEPLOY_HOST:$APP_DIR/"
   echo

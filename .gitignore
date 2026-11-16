@@ -9,3 +9,6 @@ dist/
 
 # База SQLite для npm run dev:server (DATABASE_PATH по умолчанию — apps/server/data/throne.db)
 apps/server/data/
+
+# Метка сборки создаётся перед выкладкой и передаётся процессу через pm2
+deploy/server/release-id

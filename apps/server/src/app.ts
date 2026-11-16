@@ -36,6 +36,8 @@ export interface BuildAppOptions {
   databasePath: string
   /** Писать ли журнал запросов. В тестах выключен, чтобы не засорять вывод */
   logger?: boolean
+  /** Идентификатор сборки; локальный запуск не выдаём за production-релиз */
+  releaseId?: string
 }
 
 /**
@@ -64,7 +66,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     }),
   })
 
-  app.register(healthRoutes)
+  app.register(healthRoutes, { releaseId: options.releaseId ?? 'development' })
   app.register(runsRoutes)
   app.register(leaderboardRoutes)
   return app
