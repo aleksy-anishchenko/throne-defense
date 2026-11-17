@@ -9,6 +9,7 @@
 // Колдун — проклинает (проклятые получают больше урона и меньше лечения)
 
 import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/combat.ts'
+import { towerAspect } from '../systems/towers.ts'
 import type { TowerDef } from '../types.ts'
 
 /** Болт баллисты летит дальше её радиуса обстрела: дальность полёта = range × 1.15 (множитель) */
@@ -28,9 +29,9 @@ const archer: TowerDef = {
   // Баланс v4: было 45/85 — улучшенный лучник давал меньше урона на монету, чем новый
   upgradeCosts: [40, 70],
   tiers: [
-    { damage: 7, cooldown: 0.4, range: 2.4 },
-    { damage: 12, cooldown: 0.36, range: 2.6 },
-    { damage: 19, cooldown: 0.24, range: 2.9 },
+    { damage: 7, cooldown: 0.4, range: 1.9 },
+    { damage: 12, cooldown: 0.36, range: 2.1 },
+    { damage: 19, cooldown: 0.3, range: 2.3 },
   ],
   displayStats: ['damage', 'range'],
   defaultTargetMode: 'first',
@@ -48,22 +49,21 @@ const archer: TowerDef = {
 const mage: TowerDef = {
   id: 'mage',
   name: 'Огневик',
-  description: 'поджигает толпу, огонь прожигает латы',
+  description: 'поджигает врагов: огонь ранит постепенно и обходит латы',
   interactionHint:
-    'Огонь снимает замедление и быстро сжигает сети. Разводите Огневика с Морозко и Ловчим по дороге.',
+    'Сначала стреляет по негорящим. Горение длится 5 секунд и не складывается; слабый огонь не продлевает сильный. Холод тушит огонь, огонь снимает холод и сжигает сети.',
   cost: 90,
   upgradeCosts: [80, 130],
   tiers: [
-    // Баланс v4: был взрыв на 16/27/44 сразу. Теперь ~20% урона — взрывом,
-    // ~80% — горением за 3 с (запас огня: повторный поджог добавляет, а не перезапускает).
-    // v6: горение +10% (19/33/53 → 21/36/58) — пар больше не наносит урона
-    { damage: 5, cooldown: 1.2, range: 2.2, splashRadius: 0.9, burnDamage: 21, burnDuration: 3 },
-    { damage: 9, cooldown: 1.1, range: 2.4, splashRadius: 1, burnDamage: 36, burnDuration: 3 },
-    { damage: 14, cooldown: 1, range: 2.6, splashRadius: 1.15, burnDamage: 58, burnDuration: 3 },
+    // Горение без накопления силы; v15: попадание само по себе не ранит.
+    { damage: 0, cooldown: 1.2, range: 1.5, splashRadius: 0.55, burnDamage: 15.3, burnDuration: 5 },
+    { damage: 0, cooldown: 1.1, range: 1.7, splashRadius: 0.65, burnDamage: 37.4, burnDuration: 5 },
+    { damage: 0, cooldown: 1, range: 1.9, splashRadius: 0.75, burnDamage: 61.2, burnDuration: 5 },
   ],
-  displayStats: ['damage', 'burnDamage', 'range'],
+  displayStats: ['burnDamage', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
+  preferUnburning: true,
   takesFireRateBonus: true,
   fire: (world, tower, target, stats) =>
     shootHoming(world, tower, target, {
@@ -80,16 +80,16 @@ const mage: TowerDef = {
 const frost: TowerDef = {
   id: 'frost',
   name: 'Морозко',
-  description: 'замедляет всех вокруг, сам почти не ранит',
+  description: 'замедляет всех вокруг, не наносит урона',
   interactionHint:
     'Холод тушит огонь без урона. Ставьте Морозко и Огневика на разных участках дороги.',
   cost: 70,
   upgradeCosts: [60, 100],
   tiers: [
     // Баланс v4: урон был 3/5/8 — Морозко наносил урона на монету больше всех
-    { damage: 1, cooldown: 1.1, range: 1.7, slowAmount: 0.45, slowDuration: 1.6 },
-    { damage: 2, cooldown: 1.05, range: 1.9, slowAmount: 0.55, slowDuration: 2 },
-    { damage: 3, cooldown: 1, range: 2.2, slowAmount: 0.65, slowDuration: 2.4 },
+    { damage: 0, cooldown: 1.1, range: 1.7, slowAmount: 0.45, slowDuration: 1.6 },
+    { damage: 0, cooldown: 1.05, range: 1.9, slowAmount: 0.55, slowDuration: 2 },
+    { damage: 0, cooldown: 1, range: 2.2, slowAmount: 0.65, slowDuration: 2.4 },
   ],
   displayStats: ['slowAmount', 'range'],
   defaultTargetMode: 'first',
@@ -102,14 +102,32 @@ const ballista: TowerDef = {
   id: 'ballista',
   name: 'Баллиста',
   description: 'бьёт далеко и мощно, пробивает броню',
-  cost: 130,
-  upgradeCosts: [110, 180],
+  cost: 160,
+  upgradeCosts: [140, 210],
+  aspects: [
+    {
+      id: 'giant-slayer',
+      name: 'Сокрушитель',
+      description:
+        '+60% урона по ограм, Горынычу и Узурпатору. Урон по остальным врагам и скорость стрельбы не меняются.',
+      cost: 180,
+      giantDamageBonus: 0.6,
+    },
+    {
+      id: 'armor-breaker',
+      name: 'Раскол лат',
+      description:
+        'Каждое попадание снимает броню латника, Горыныча или Узурпатора на 4 с, помогая всем союзникам. Повторные попадания обновляют срок, но не складываются.',
+      cost: 180,
+      armorBreakDuration: 4,
+    },
+  ],
   tiers: [
     // Баланс v4: было 50/80/125 урона раз в 2,2/2/1,8 с, пробивала 3/4/5 врагов —
     // и была выгоднее всех почти против всех. Теперь бьёт реже, но сильнее, а пробивает только двоих
-    { damage: 80, cooldown: 3, range: 3.4, pierceCount: 2 },
-    { damage: 135, cooldown: 2.7, range: 3.6, pierceCount: 2 },
-    { damage: 210, cooldown: 2.4, range: 3.9, pierceCount: 2 },
+    { damage: 75, cooldown: 3.2, range: 2.7, pierceCount: 2 },
+    { damage: 125, cooldown: 3, range: 2.9, pierceCount: 2 },
+    { damage: 195, cooldown: 2.8, range: 3.1, pierceCount: 2 },
   ],
   displayStats: ['damage', 'range'],
   // Умение баллисты: игрок переключает «первый» ↔ «сильный». «Сильный» бьёт самого крупного
@@ -118,7 +136,8 @@ const ballista: TowerDef = {
   defaultTargetMode: 'first',
   canChooseTarget: true,
   takesFireRateBonus: true,
-  fire: (world, tower, target, stats) =>
+  fire: (world, tower, target, stats) => {
+    const aspect = towerAspect(tower)
     shootLine(world, tower, target, {
       look: tower.tier >= BALLISTA_TWIN_BOLT_TIER ? 'twinBolt' : 'bolt',
       speed: 18,
@@ -126,23 +145,27 @@ const ballista: TowerDef = {
       damageKind: 'piercing',
       pierceCount: stats.pierceCount ?? 1,
       maxDistance: stats.range * BALLISTA_REACH_FACTOR,
-    }),
+      giantDamageBonus: aspect?.giantDamageBonus,
+      armorBreakDuration: aspect?.armorBreakDuration,
+    })
+  },
 }
 
 const cannon: TowerDef = {
   id: 'cannon',
   name: 'Пушкарь',
-  description: 'бьёт дальше всех, ядро разбивает толпу',
-  cost: 140,
-  upgradeCosts: [100, 140],
+  description: 'медленное ядро бьёт по точке, сильнее в центре',
+  interactionHint: 'Ядро летит в точку выстрела: быстрые враги могут уйти из зоны взрыва.',
+  cost: 340,
+  upgradeCosts: [160, 220],
   tiers: [
     // Роль — густая толпа издалека: чем плотнее идут враги, тем больше их накрывает взрыв.
     // Против одиночек (огры, редкие латники) — из худших: стреляет редко.
     // v7: отброса больше нет — вместе с Морозко и сетями он держал врагов у двери вечно
     // и отнимал роль у Ловчего. Взамен урон 21/35/56 → 30/50/80, взрыв 0,7/0,8/0,9 → 1/1,15/1,3
-    { damage: 30, cooldown: 3.2, range: 3.8, splashRadius: 1 },
-    { damage: 50, cooldown: 3, range: 4.1, splashRadius: 1.15 },
-    { damage: 80, cooldown: 2.8, range: 4.4, splashRadius: 1.3 },
+    { damage: 100, cooldown: 4.8, range: 2.9, splashRadius: 1 },
+    { damage: 160, cooldown: 4.6, range: 3.2, splashRadius: 1.15 },
+    { damage: 240, cooldown: 4.4, range: 3.4, splashRadius: 1.3 },
   ],
   displayStats: ['damage', 'splashRadius', 'range'],
   defaultTargetMode: 'first',
@@ -155,6 +178,8 @@ const cannon: TowerDef = {
       damage: stats.damage,
       damageKind: 'physical',
       splashRadius: stats.splashRadius,
+      tracksTarget: false,
+      splashEdgeDamageShare: 0.5,
     }),
 }
 
@@ -198,9 +223,9 @@ const warlock: TowerDef = {
   cost: 100,
   upgradeCosts: [80, 120],
   tiers: [
-    { damage: 0, cooldown: 1.5, range: 2.2, curseAmount: 0.35, curseDuration: 2 },
-    { damage: 0, cooldown: 1.5, range: 2.4, curseAmount: 0.5, curseDuration: 2.5 },
-    { damage: 0, cooldown: 1.5, range: 2.6, curseAmount: 0.65, curseDuration: 3 },
+    { damage: 0, cooldown: 1.5, range: 2.2, curseAmount: 0.2, curseDuration: 2 },
+    { damage: 0, cooldown: 1.5, range: 2.4, curseAmount: 0.3, curseDuration: 2.5 },
+    { damage: 0, cooldown: 1.5, range: 2.6, curseAmount: 0.4, curseDuration: 3 },
   ],
   displayStats: ['curseAmount', 'healingReduction', 'range'],
   defaultTargetMode: 'first',
@@ -214,15 +239,17 @@ const bell: TowerDef = {
   id: 'bell',
   name: 'Звонарь',
   description: 'башни рядом стреляют чаще',
+  interactionHint:
+    'Не ускоряет Морозко, Колдуна, Казну и других Звонарей. Бонусы не складываются — действует сильнейший. При равной силе связь показана с одним источником.',
   cost: 100,
   upgradeCosts: [80, 120],
   tiers: [
     // Каждая ступень достаёт новые клетки (центры клеток — на расстоянии 1; 1,41; 2; 2,24 …):
     // 1,5 — восемь соседних; 2,05 — ещё четыре через одну по прямой; 2,3 — ещё восемь «ходом коня».
     // До v6 на I и II было 1,5 — улучшение радиус не меняло
-    { damage: 0, cooldown: 0, range: 1.5, fireRateBonus: 0.25 },
-    { damage: 0, cooldown: 0, range: 2.05, fireRateBonus: 0.4 },
-    { damage: 0, cooldown: 0, range: 2.3, fireRateBonus: 0.55 },
+    { damage: 0, cooldown: 0, range: 1.5, fireRateBonus: 0.2 },
+    { damage: 0, cooldown: 0, range: 2.05, fireRateBonus: 0.3 },
+    { damage: 0, cooldown: 0, range: 2.3, fireRateBonus: 0.4 },
   ],
   displayStats: ['fireRateBonus', 'range'],
   defaultTargetMode: 'first',
@@ -234,12 +261,14 @@ const treasury: TowerDef = {
   id: 'treasury',
   name: 'Казна',
   description: 'приносит золото после каждой волны',
+  interactionHint:
+    'Соседние Казны, включая диагонали, дают по +10% дохода, максимум +30%. Через клетку бонуса нет. Монетка отмечает активную синергию; проценты и связи видны при выборе Казны.',
   cost: 80,
   upgradeCosts: [70, 100],
   tiers: [
-    { damage: 0, cooldown: 0, range: 0, goldPerWave: 20 },
+    { damage: 0, cooldown: 0, range: 0, goldPerWave: 12 },
+    { damage: 0, cooldown: 0, range: 0, goldPerWave: 23 },
     { damage: 0, cooldown: 0, range: 0, goldPerWave: 38 },
-    { damage: 0, cooldown: 0, range: 0, goldPerWave: 63 },
   ],
   displayStats: ['goldPerWave'],
   defaultTargetMode: 'first',

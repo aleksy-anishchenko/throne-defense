@@ -11,6 +11,7 @@ import { isValidPlayerName, normalizePlayerName, type LeaderboardEntry } from '@
 import {
   BALANCE_VERSION,
   LEVELS,
+  PLAYABLE_LEVELS,
   MAX_SPEED,
   TOWERS,
   createGame,
@@ -57,11 +58,13 @@ type SubmissionStatus =
 const forcedLevel: LevelDef | undefined =
   typeof location === 'undefined'
     ? undefined
-    : LEVELS.find((level) => level.id === new URLSearchParams(location.search).get('level'))
+    : PLAYABLE_LEVELS.find(
+        (level) => level.id === new URLSearchParams(location.search).get('level'),
+      )
 
 /** Случайный зал, кроме exceptId — чтобы два раза подряд не выпал один и тот же */
 function randomLevel(exceptId?: string): LevelDef {
-  const candidates = LEVELS.filter((level) => level.id !== exceptId)
+  const candidates = PLAYABLE_LEVELS.filter((level) => level.id !== exceptId)
   return candidates[Math.floor(Math.random() * candidates.length)]
 }
 

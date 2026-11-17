@@ -33,6 +33,7 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
     rootDuration: 0,
     curseTimeLeft: 0,
     curseAmount: 0,
+    armorBreakTimeLeft: 0,
     isDead: false,
   })
 }
@@ -80,7 +81,7 @@ export function moveEnemies(world: World, dt: number): boolean {
 }
 
 /**
- * Часы сети, проклятия и «устойчивости» после них. Не ниже нуля — так проще читать состояние.
+ * Часы сети, проклятия, снятия брони и «устойчивости» после сети. Не ниже нуля.
  * Сеть кончилась на горящем враге — значит, сгорела (событие netBurn для картинки)
  */
 function tickStatusTimers(world: World, enemy: Enemy, dt: number): void {
@@ -89,6 +90,7 @@ function tickStatusTimers(world: World, enemy: Enemy, dt: number): void {
   if (wasRooted && enemy.rootTimeLeft === 0 && enemy.burnTimeLeft > 0) world.emit('netBurn', enemy)
   enemy.rootImmunityLeft = Math.max(0, enemy.rootImmunityLeft - dt)
   enemy.curseTimeLeft = Math.max(0, enemy.curseTimeLeft - dt)
+  enemy.armorBreakTimeLeft = Math.max(0, enemy.armorBreakTimeLeft - dt)
 }
 
 /** Лечить ли этого соседа: живой, раненый и в радиусе лечения */

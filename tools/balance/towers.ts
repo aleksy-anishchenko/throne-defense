@@ -10,7 +10,7 @@
 
 import {
   BALANCE_VERSION,
-  LEVELS,
+  PLAYABLE_LEVELS as LEVELS,
   SIMULATION_STEP,
   TOWER_LIST,
   createGame,
@@ -37,7 +37,7 @@ export const STREAMS: EnemyStream[] = [
 ]
 
 export const DAMAGE_TOWERS = TOWER_LIST.filter(
-  (def) => def.tiers[0].damage > 0 && def.id !== 'frost',
+  (def) => (def.tiers[0].damage > 0 || (def.tiers[0].burnDamage ?? 0) > 0) && def.id !== 'frost',
 )
 export const MEASUREMENT_WAVES = [1, 10, 20] as const
 /** Сопоставляем ступени с этапами, где их покупают: I — начало, II — развитие, III — середина. */
@@ -49,6 +49,7 @@ export interface Placement {
   col: number
   row: number
   tier?: number
+  aspectId?: string
 }
 
 export interface CombatReport {
@@ -73,7 +74,7 @@ function runStream(game: Game, stream: EnemyStream, immortal = false): CombatRep
   }
   const report: CombatReport = {
     spentGold: game.state.towers.reduce(
-      (sum, tower) => sum + investedGold(tower.def, tower.tier),
+      (sum, tower) => sum + investedGold(tower.def, tower.tier, tower.aspectId),
       0,
     ),
     damage: 0,
@@ -139,6 +140,9 @@ export function measureDefense(
     for (let i = 0; i < tier; i++) {
       if (!game.upgrade(placement.col, placement.row))
         throw new Error('Не удалось улучшить башню стенда')
+    }
+    if (placement.aspectId && !game.specialize(placement.col, placement.row, placement.aspectId)) {
+      throw new Error('Не удалось выбрать специализацию башни стенда')
     }
   }
   return runStream(game, stream)

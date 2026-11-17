@@ -5,7 +5,7 @@ import { TOWERS, type TargetMode } from '@throne/game'
 import { computed } from 'vue'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
-import { toRoman } from '@/utils/format'
+import { plural, toRoman } from '@/utils/format'
 import { formatStatLine } from '@/utils/towerStats'
 
 /** Как называть, кого башня выбирает целью */
@@ -29,6 +29,8 @@ export function useSelectedTowerInfo() {
     if (!towerId) return null
     const def = TOWERS[towerId]
     const tier = selection.selected.tier
+    const aspect = def.aspects?.find((candidate) => candidate.id === selection.selected.aspectId)
+    const hasAspects = tier === def.tiers.length - 1 && Boolean(def.aspects?.length)
     const nextStats = def.tiers[tier + 1]
     const upgradeCost = nextStats ? def.upgradeCosts[tier] : null
     const lines = def.displayStats.map((statKey) =>
@@ -37,9 +39,31 @@ export function useSelectedTowerInfo() {
     // Звонарь рядом — видно, что башня стреляет быстрее и насколько
     const bonus = selection.selected.fireRateBonus
     if (bonus > 0) lines.push(`Звонарь: стреляет на ${Math.round(bonus * 100)}% чаще`)
+    if (towerId === 'bell') {
+      const count = selection.selected.bellBoostedTowers
+      const covered = selection.selected.bellCoveredTowers
+      lines.push(`Ускоряет ${count} ${plural(count, ['башню', 'башни', 'башен'])}`)
+      if (covered === 0) lines.push('Нет подходящих башен в радиусе')
+      else if (covered > count)
+        lines.push(`Другой Звонарь даёт не меньший бонус: ${covered - count}`)
+    }
+    if (towerId === 'treasury') {
+      const { treasuryNeighbors, treasuryBonus, treasuryIncome } = selection.selected
+      lines.push(`Соседние Казны: ${treasuryNeighbors}, бонус +${Math.round(treasuryBonus * 100)}%`)
+      lines.push(`Итого за волну: ${treasuryIncome}`)
+    }
     return {
-      title: `${def.name} ${toRoman(tier)}`,
+      title: `${def.name} ${toRoman(tier + (aspect ? 1 : 0))}`,
       lines,
+      hasAspects,
+      aspect,
+      aspects: (hasAspects ? (def.aspects ?? []) : []).map((candidate) => ({
+        ...candidate,
+        canAfford: store.hud.gold >= candidate.cost,
+      })),
+      canSpecialize: store.hud.phase === 'build',
+      canUndoSpecialization:
+        Boolean(aspect) && !selection.selected.aspectLocked && store.hud.phase === 'build',
       interactionHint: def.interactionHint,
       upgradeCost,
       canAfford: upgradeCost !== null && store.hud.gold >= upgradeCost,

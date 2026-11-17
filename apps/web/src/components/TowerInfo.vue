@@ -7,6 +7,7 @@ import {
   useSelectedTowerInfo,
 } from '@/composables/useSelectedTowerInfo'
 import { useSelectionStore } from '@/stores/selection'
+import TowerAspects from './TowerAspects.vue'
 
 const selection = useSelectionStore()
 const selectedTowerInfo = useSelectedTowerInfo()
@@ -31,7 +32,9 @@ const selectedTowerInfo = useSelectedTowerInfo()
         цель: {{ TARGET_MODE_LABELS[selectedTowerInfo.targetMode] }}
       </button>
     </div>
+    <TowerAspects />
     <button
+      v-if="!selectedTowerInfo.hasAspects"
       class="btn action"
       :class="{ primary: selectedTowerInfo.canAfford }"
       type="button"

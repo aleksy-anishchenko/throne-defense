@@ -742,15 +742,52 @@ const TIER_RING_GAP_WIDTH = 0.05
  * Снаружи и с тёмным зазором — чтобы золото рамки не сливалось с золотом самой башни
  * (колокол Звонаря, сундук Казны, лук лучника III)
  */
-function drawTierRing(ctx: Canvas2D, tier: number) {
+function drawTierRing(ctx: Canvas2D, tier: number, aspectId: string | null) {
   ctx.strokeStyle = '#2a2e45'
   ctx.lineWidth = TIER_RING_GAP_WIDTH
   circle(ctx, 0, 0, TIER_RING_RADIUS)
   ctx.stroke()
-  ctx.strokeStyle = TIER_RING_COLORS[tier] ?? GOLD
+  ctx.strokeStyle = aspectId
+    ? aspectId === 'giant-slayer'
+      ? '#f6a665'
+      : '#91dbef'
+    : (TIER_RING_COLORS[tier] ?? GOLD)
   ctx.lineWidth = TIER_RING_WIDTH
   circle(ctx, 0, 0, TIER_RING_RADIUS)
   ctx.stroke()
+}
+
+/** Копьё или расколотый щит: аспекты различаются не только цветом. */
+function drawAspectMark(ctx: Canvas2D, aspectId: string) {
+  ctx.save()
+  ctx.translate(0.27, -0.27)
+  ctx.fillStyle = '#252b43'
+  circle(ctx, 0, 0, 0.105)
+  ctx.fill()
+  ctx.strokeStyle = aspectId === 'giant-slayer' ? '#f6a665' : '#91dbef'
+  ctx.lineWidth = 0.022
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  if (aspectId === 'giant-slayer') {
+    ctx.moveTo(0, 0.075)
+    ctx.lineTo(0, -0.065)
+    ctx.moveTo(-0.045, -0.005)
+    ctx.lineTo(0, -0.065)
+    ctx.lineTo(0.045, -0.005)
+  } else {
+    ctx.moveTo(-0.06, -0.055)
+    ctx.lineTo(0.06, -0.055)
+    ctx.lineTo(0.045, 0.03)
+    ctx.lineTo(0, 0.075)
+    ctx.lineTo(-0.045, 0.03)
+    ctx.closePath()
+    ctx.moveTo(0.015, -0.055)
+    ctx.lineTo(-0.02, 0)
+    ctx.lineTo(0.02, 0.015)
+    ctx.lineTo(0, 0.06)
+  }
+  ctx.stroke()
+  ctx.restore()
 }
 
 /** Башня целиком: тень, постамент, сама башня, золотые точки ступени */
@@ -761,6 +798,7 @@ export function drawTower(
   aimAngle: number,
   time: number,
   isReady: boolean,
+  aspectId: string | null = null,
 ) {
   ctx.fillStyle = 'rgba(8,9,18,.45)'
   circle(ctx, 0, 0.05, 0.39)
@@ -769,7 +807,7 @@ export function drawTower(
   ctx.fillStyle = '#5a6186'
   circle(ctx, 0, 0, 0.37)
   ctx.fill()
-  if (tier >= TIER_II) drawTierRing(ctx, tier)
+  if (tier >= TIER_II) drawTierRing(ctx, tier, aspectId)
   ctx.fillStyle = '#3b4162'
   circle(ctx, 0, 0, 0.3)
   ctx.fill()
@@ -783,11 +821,13 @@ export function drawTower(
   ctx.fillStyle = GOLD
   ctx.strokeStyle = '#2a2e45'
   ctx.lineWidth = 0.015
-  for (let i = 0; i <= tier; i++) {
-    circle(ctx, (i - tier / 2) * 0.13, 0.32, 0.042)
+  const displayTier = tier + (aspectId ? 1 : 0)
+  for (let i = 0; i <= displayTier; i++) {
+    circle(ctx, (i - displayTier / 2) * 0.13, 0.32, 0.042)
     ctx.fill()
     ctx.stroke()
   }
+  if (aspectId) drawAspectMark(ctx, aspectId)
 }
 
 // Масштаб и центр рисунка на холсте 96×96: башня размером в 1 клетку занимает 104 px,

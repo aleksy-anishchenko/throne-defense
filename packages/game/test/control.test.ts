@@ -89,15 +89,19 @@ describe('Ловчий', () => {
 })
 
 describe('Колдун', () => {
+  it('бонус урона и снижение лечения растут до 40%', () => {
+    expect(TOWERS['warlock'].tiers.map((tier) => tier.curseAmount)).toEqual([0.2, 0.3, 0.4])
+    expect(TOWERS['bell'].tiers.map((tier) => tier.fireRateBonus)).toEqual([0.2, 0.3, 0.4])
+  })
   it('проклятый враг получает больше урона — и от брони не зависит', () => {
     const game = newGame()
     game.build('warlock', 5, 11)
     const enemy = placeEnemy(game, 'armor', 1.5)
     game.step(SIMULATION_STEP)
-    expect(enemy.curseAmount).toBeCloseTo(0.35)
+    expect(enemy.curseAmount).toBeCloseTo(0.2)
     const hpBefore = enemy.hp
     damageEnemy(worldOf(game), enemy, 16, 'magic')
-    expect(hpBefore - enemy.hp).toBeCloseTo(16 * 1.35)
+    expect(hpBefore - enemy.hp).toBeCloseTo(16 * 1.2)
   })
 
   it('два Колдуна не складываются: действует самое сильное проклятие', () => {
@@ -105,10 +109,10 @@ describe('Колдун', () => {
     game.state.gold = 1000
     game.build('warlock', 5, 11)
     game.build('warlock', 3, 11)
-    game.upgrade(3, 11) // II — проклятие 50%
+    game.upgrade(3, 11) // II — проклятие 30%
     const enemy = placeEnemy(game, 'rebel', 1.5)
     game.step(SIMULATION_STEP)
-    expect(enemy.curseAmount).toBeCloseTo(0.5)
+    expect(enemy.curseAmount).toBeCloseTo(0.3)
   })
 
   it('проклятие проходит само', () => {
@@ -125,8 +129,21 @@ describe('Колдун', () => {
 })
 
 describe('Пушкарь', () => {
+  it('дальний и дорогой: улучшения ускоряют стрельбу, но урон не уменьшается', () => {
+    const cannon = TOWERS['cannon']
+    expect(cannon.cost).toBe(340)
+    expect(cannon.upgradeCosts).toEqual([160, 220])
+    expect(cannon.tiers.map((tier) => tier.cooldown)).toEqual([4.8, 4.6, 4.4])
+    expect(cannon.tiers.map((tier) => tier.range)).toEqual([2.9, 3.2, 3.4])
+    expect(cannon.tiers.map((tier) => tier.damage)).toEqual([100, 160, 240])
+    for (let tier = 0; tier < cannon.tiers.length; tier++) {
+      expect(cannon.tiers[tier].range).toBeGreaterThan(TOWERS['ballista'].tiers[tier].range)
+    }
+  })
+
   it('ядро бьёт всех в круге взрыва и никого не отбрасывает (с v7)', () => {
     const game = newGame()
+    game.state.gold = TOWERS['cannon'].cost
     game.build('cannon', 5, 11)
     const front = placeEnemy(game, 'rebel', 3)
     const behind = placeEnemy(game, 'rebel', 2.8)

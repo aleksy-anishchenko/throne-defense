@@ -1,9 +1,16 @@
 // Все уровни игры. Новый уровень: создай файл рядом (по образцу throne-hall.ts) и добавь сюда.
-// Партия начинается в случайном зале из этого списка (см. apps/web/src/stores/game.ts).
-// У всех залов одно поле 9×13 и трон в одном месте (hall-base.ts) — на это рассчитана отрисовка
+// Полный список сохраняет старые залы для рейтинга и ранее открытых партий.
 
 import type { LevelDef } from '../types.ts'
+import { compactThroneHall } from './compact-throne-hall.ts'
+import { compactHall } from './compact-halls.ts'
 import { HALLS } from './halls.ts'
 import { throneHall } from './throne-hall.ts'
 
-export const LEVELS: readonly LevelDef[] = [throneHall, ...HALLS]
+export const LEVELS: readonly LevelDef[] = [throneHall, ...HALLS, compactThroneHall]
+
+/** Залы, доступные для новых партий. Старые результаты сохраняют названия и проверку. */
+const RETIRED_LEVEL_IDS = new Set(['granovitaya', 'embassy-hall', 'library', 'compact-throne-hall'])
+export const PLAYABLE_LEVELS: readonly LevelDef[] = LEVELS.filter(
+  (level) => !RETIRED_LEVEL_IDS.has(level.id),
+).map(compactHall)

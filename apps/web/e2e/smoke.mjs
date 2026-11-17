@@ -15,8 +15,8 @@ import { startApi, withResources } from './resources.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 // Размер поля в клетках (как в уровне «Тронный зал»)
-const COLS = 9
-const ROWS = 13
+const COLS = 7
+const ROWS = 11
 
 let failed = 0
 const errors = []
@@ -364,11 +364,15 @@ async function desktop(browser, url) {
     )
     await waitForFrames(page)
   }
-  await hoverCell(5, 11)
+  await hoverCell(4, 9)
   check('над пустой плитой без стража в руке курсор обычный', (await boardCursor()) === 'default')
 
   // Постройка мышью
   const archerCard = page.getByRole('button', { name: /Лучник/ })
+  check(
+    'в магазине показана цена Пушкаря 340',
+    (await page.getByRole('button', { name: /Пушкарь/ }).innerText()).includes('340'),
+  )
   await archerCard.click()
   check('карточка в магазине нажата', (await archerCard.getAttribute('aria-pressed')) === 'true')
   // innerText, а не textContent: учитывает, что скрыто стилями
@@ -377,25 +381,25 @@ async function desktop(browser, url) {
     (await page.locator('#hint').innerText()).startsWith('Нажмите на свободную плиту'),
     await page.locator('#hint').innerText(),
   )
-  await hoverCell(5, 11)
+  await hoverCell(4, 9)
   check('со стражем в руке над свободной плитой — рука', (await boardCursor()) === 'pointer')
-  await hoverCell(4, 11)
+  await hoverCell(3, 9)
   check('над ковром (строить нельзя) — обычный курсор', (await boardCursor()) === 'default')
-  await clickCell(page, 5, 11, 'right')
-  await clickCell(page, 5, 11, 'middle')
+  await clickCell(page, 4, 9, 'right')
+  await clickCell(page, 4, 9, 'middle')
   check('правая и средняя кнопки не строят', (await readGameSnapshot(page)).towers.length === 0)
-  await clickCell(page, 5, 11)
+  await clickCell(page, 4, 9)
   check(
     'после постройки страж убран из «руки»',
     (await archerCard.getAttribute('aria-pressed')) === 'false',
   )
-  await clickCell(page, 2, 9)
+  await clickCell(page, 1, 9)
   check(
     'нажатие на свободную плиту без стража ничего не строит',
     (await readGameSnapshot(page)).towers.length === 1,
   )
   await archerCard.click()
-  await clickCell(page, 2, 9)
+  await clickCell(page, 1, 9)
   let snapshot = await readGameSnapshot(page)
   check(
     'две башни, осталось 50 золота',
@@ -403,87 +407,351 @@ async function desktop(browser, url) {
     JSON.stringify(snapshot),
   )
 
-  // Золота 50, Баллиста стоит 130: в руку не берётся, сразу отказ
+  // Золота 50, Баллиста стоит 160: в руку не берётся, сразу отказ
   const ballistaCard = page.getByRole('button', { name: /Баллиста/ })
   await ballistaCard.click()
   await waitForFrames(page)
   check(
     'без золота страж не берётся в руку, есть тост',
     (await ballistaCard.getAttribute('aria-pressed')) === 'false' &&
-      !!(await page.locator('.toast.visible').textContent())?.includes('Баллиста стоит 130'),
+      !!(await page.locator('.toast.visible').textContent())?.includes('Баллиста стоит 160'),
   )
 
   // Выбор, улучшение, продажа
-  await hoverCell(5, 11)
+  await hoverCell(4, 9)
   check('над башней — рука (её можно выбрать)', (await boardCursor()) === 'pointer')
   await page.keyboard.press('Escape')
   await waitForFrames(page)
   check('Escape снял выбор в магазине', (await archerCard.getAttribute('aria-pressed')) === 'false')
-  await clickCell(page, 5, 11)
+  await clickCell(page, 4, 9)
   check('панель башни', (await page.locator('.tower-info b').textContent()) === 'Лучник I')
   const statLines = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
     ' | ',
   )
-  check('характеристики в панели', statLines === 'урон 7 → 12 | дальность 2,4 → 2,6', statLines)
+  check('характеристики в панели', statLines === 'урон 7 → 12 | дальность 1,9 → 2,1', statLines)
 
   check('у лучника выбора цели нет', (await page.locator('.tower-info .target-mode').count()) === 0)
 
-  // Звонарь рядом: в панели лучника видно, насколько он ускорен. Потом всё как было
+  // Звонарь: постоянный значок, подробности при выборе и честный предпросмотр без сложения.
+  await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  const readBellMark = () =>
+    page.evaluate((cols) => {
+      const canvas = document.querySelector('#board')
+      const cell = canvas.width / cols
+      return [
+        ...canvas
+          .getContext('2d')
+          .getImageData(
+            Math.round(4.09 * cell),
+            Math.round(9.1 * cell),
+            Math.round(0.26 * cell),
+            Math.round(0.26 * cell),
+          ).data,
+      ]
+    }, COLS)
+  const withoutBellMark = await readBellMark()
   const goldBeforeBell = await page.evaluate(() => {
     const { game } = window.__throne
+    const canvas = document.querySelector('#board')
+    const ctx = canvas.getContext('2d')
+    const fillText = ctx.fillText
+    const fillRect = ctx.fillRect
+    window.__bellLabels = []
+    ctx.fillRect = function (x, y, width, height) {
+      if (x === 0 && y === 0 && width === canvas.width && height === canvas.height) {
+        window.__bellLabels = []
+      }
+      return fillRect.call(this, x, y, width, height)
+    }
+    ctx.fillText = function (text, ...args) {
+      if (/^(→ )?\+\d+%$/.test(text)) window.__bellLabels.push(text)
+      return fillText.call(this, text, ...args)
+    }
+    window.__restoreBellLabels = () => {
+      ctx.fillText = fillText
+      ctx.fillRect = fillRect
+      delete window.__bellLabels
+      delete window.__restoreBellLabels
+    }
     const gold = game.state.gold
     game.state.gold += 1000
-    game.build('bell', 6, 11)
     return gold
   })
   await waitForFrames(page)
+  await page.getByRole('button', { name: /Звонарь/ }).click()
+  await hoverCell(5, 9)
+  check(
+    'превью Звонаря: реальное усиление +20% и число получателей',
+    (await page.locator('#hint').innerText()).includes('ускорит 1 башню на 20%') &&
+      (await page.evaluate(() => window.__bellLabels.includes('→ +20%'))),
+  )
+  await clickCell(page, 5, 9)
+  const withBellMark = await readBellMark()
+  check(
+    'без выбора башни ускорение отмечено значком, но без лишних процентов',
+    withBellMark.some((value, i) => i % 4 < 3 && Math.abs(value - withoutBellMark[i]) > 30) &&
+      (await page.evaluate(() => window.__bellLabels.length === 0)),
+  )
+  await clickCell(page, 4, 9)
+  await waitForFrames(page)
   const bellLine = (await page.locator('.tower-info .tower-stats span').allTextContents()).at(-1)
-  check('панель: лучник ускорен Звонарём', bellLine === 'Звонарь: стреляет на 25% чаще', bellLine)
+  check('панель: лучник ускорен Звонарём', bellLine === 'Звонарь: стреляет на 20% чаще', bellLine)
+  check(
+    'выбор получателя показывает его фактический процент на поле',
+    await page.evaluate(() => window.__bellLabels.join(',') === '+20%'),
+  )
+  await page.evaluate(() => window.__throne.game.build('frost', 5, 10))
+  await clickCell(page, 5, 9)
+  check(
+    'Звонарь считает одного получателя; Морозко рядом не учитывается',
+    (await page.locator('.tower-info').innerText()).includes('Ускоряет 1 башню'),
+  )
+  await page.evaluate(() => {
+    const { game } = window.__throne
+    game.build('bell', 4, 10)
+    game.upgrade(4, 10)
+    game.upgrade(4, 10)
+  })
+  await waitForFrames(page)
+  const weakerBellInfo = await page.locator('.tower-info').innerText()
+  check(
+    'слабый Звонарь честно показывает перекрытие сильным',
+    weakerBellInfo.includes('Ускоряет 0 башен') &&
+      weakerBellInfo.includes('Другой Звонарь даёт не меньший бонус: 1') &&
+      (await page.evaluate(() => window.__bellLabels.length === 0)),
+  )
+  await clickCell(page, 4, 9)
+  check(
+    'две ауры не складываются: на поле и в панели +40%, а не +60%',
+    (await page.locator('.tower-info').innerText()).includes('стреляет на 40% чаще') &&
+      (await page.evaluate(() => window.__bellLabels.join(',') === '+40%')),
+  )
+  await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  await page.getByRole('button', { name: /Звонарь/ }).click()
+  await hoverCell(4, 8)
+  check(
+    'превью второго Звонаря не обещает прибавку поверх сильной ауры',
+    (await page.locator('#hint').innerText()).includes('уже получают не меньший бонус') &&
+      (await page.evaluate(() => !window.__bellLabels.includes('→ +20%'))),
+  )
+  await page.keyboard.press('Escape')
+  const beforeArcherPreview = await readGameSnapshot(page)
+  await archerCard.click()
+  await hoverCell(4, 8)
+  check(
+    'до постройки Лучника видны будущие +40% от сильнейшего Звонаря и подсказка',
+    (await page.evaluate(() => window.__bellLabels.join(',') === '→ +40%')) &&
+      (await page.locator('#hint').innerText()).includes('получит +40% к скорострельности'),
+  )
+  const afterArcherPreview = await readGameSnapshot(page)
+  check(
+    'предпросмотр Лучника не тратит золото и не строит башню',
+    beforeArcherPreview.gold === afterArcherPreview.gold &&
+      beforeArcherPreview.towers.length === afterArcherPreview.towers.length &&
+      (await page.evaluate(() => window.__throne.game.towerAt(4, 8) === undefined)),
+  )
+  await hoverCell(0, 1)
+  check(
+    'при выходе будущего Лучника из зоны бонус исчезает',
+    await page.evaluate(() => window.__bellLabels.length === 0),
+  )
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: /Морозко/ }).click()
+  await hoverCell(4, 8)
+  check(
+    'Морозко в зоне Звонаря не получает ложного предпросмотра ускорения',
+    await page.evaluate(() => window.__bellLabels.length === 0),
+  )
+  await page.keyboard.press('Escape')
+  await page.evaluate(() => window.__throne.game.sell(4, 10))
+  await clickCell(page, 4, 9)
+  check(
+    'после продажи сильного Звонаря возвращается +20% от оставшегося',
+    (await page.locator('.tower-info').innerText()).includes('стреляет на 20% чаще') &&
+      (await page.evaluate(() => window.__bellLabels.join(',') === '+20%')),
+  )
+  await page.keyboard.press('Escape')
+  await archerCard.click()
+  await hoverCell(4, 8)
+  check(
+    'предпросмотр нового Лучника тоже обновляется до +20% после продажи сильной ауры',
+    (await page.evaluate(() => window.__bellLabels.join(',') === '→ +20%')) &&
+      (await page.locator('#hint').innerText()).includes('получит +20% к скорострельности'),
+  )
+  await page.keyboard.press('Escape')
+  await page.evaluate(() => window.__throne.game.build('bell', 0, 0))
+  await clickCell(page, 0, 0)
+  check(
+    'Звонарь без получателей явно сообщает об этом',
+    (await page.locator('.tower-info').innerText()).includes('Нет подходящих башен в радиусе'),
+  )
   await page.evaluate((gold) => {
     const { game } = window.__throne
-    game.sell(6, 11)
+    game.sell(5, 9)
+    game.sell(5, 10)
+    game.sell(0, 0)
     game.state.gold = gold
+    window.__restoreBellLabels()
   }, goldBeforeBell)
   await waitForFrames(page)
+  await clickCell(page, 4, 9)
 
   // Колдун: ослабление лечения видно отдельно и растёт при улучшении.
   const goldBeforeWarlock = await page.evaluate(() => {
     const { game } = window.__throne
     const gold = game.state.gold
     game.state.gold += 1000
-    game.build('warlock', 6, 11)
+    game.build('warlock', 5, 9)
     return gold
   })
-  await clickCell(page, 6, 11)
+  await clickCell(page, 5, 9)
   check(
-    'Колдун I: показано ослабление лечения 35% → 50%',
-    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −35% → −50%'),
+    'Колдун I: показано ослабление лечения 20% → 30%',
+    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −20% → −30%'),
   )
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
   check(
-    'Колдун II: показано ослабление лечения 50% → 65%',
-    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −50% → −65%'),
+    'Колдун II: показано ослабление лечения 30% → 40%',
+    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −30% → −40%'),
   )
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
   check(
-    'Колдун III: показано ослабление лечения 65%',
-    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −65%'),
+    'Колдун III: показано ослабление лечения 40%',
+    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −40%'),
   )
   await page.evaluate((gold) => {
     const { game } = window.__throne
-    game.sell(6, 11)
+    game.sell(5, 9)
     game.state.gold = gold
   }, goldBeforeWarlock)
-  await clickCell(page, 5, 11)
+
+  // Казны-соседи: бонус и фактический доход видны в общей панели.
+  const goldBeforeTreasuries = await page.evaluate(() => {
+    const { game } = window.__throne
+    const canvas = document.querySelector('#board')
+    const ctx = canvas.getContext('2d')
+    const fillText = ctx.fillText
+    const fillRect = ctx.fillRect
+    window.__treasuryLabels = []
+    ctx.fillRect = function (x, y, width, height) {
+      if (x === 0 && y === 0 && width === canvas.width && height === canvas.height) {
+        window.__treasuryLabels = []
+      }
+      return fillRect.call(this, x, y, width, height)
+    }
+    ctx.fillText = function (text, ...args) {
+      if (/^(→ )?\+\d+%$/.test(text)) window.__treasuryLabels.push(text)
+      return fillText.call(this, text, ...args)
+    }
+    window.__restoreTreasuryLabels = () => {
+      ctx.fillText = fillText
+      ctx.fillRect = fillRect
+      delete window.__treasuryLabels
+      delete window.__restoreTreasuryLabels
+    }
+    const gold = game.state.gold
+    game.state.gold += 1000
+    game.build('treasury', 0, 0)
+    game.build('treasury', 1, 1)
+    return gold
+  })
+  await waitForFrames(page)
+  check(
+    'без выбора Казны постоянных процентов на поле нет',
+    await page.evaluate(() => window.__treasuryLabels.length === 0),
+  )
+  await clickCell(page, 4, 9)
+  check(
+    'выбор Лучника не раскрывает проценты соседних Казён',
+    await page.evaluate(() => window.__treasuryLabels.length === 0),
+  )
+  await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  const neighborPixel = () =>
+    page.evaluate((cols) => {
+      const canvas = document.querySelector('#board')
+      const cell = canvas.width / cols
+      return [
+        ...canvas
+          .getContext('2d')
+          .getImageData(
+            Math.round(1.05 * cell),
+            Math.round(0.15 * cell),
+            Math.max(2, Math.round(0.05 * cell)),
+            Math.round(0.7 * cell),
+          ).data,
+      ]
+    }, COLS)
+  const beforePreview = await neighborPixel()
+  await page.getByRole('button', { name: /Казна/ }).click()
+  await hoverCell(2, 1)
+  const withPreview = await neighborPixel()
+  check(
+    'при размещении Казны соседняя клетка подсвечена',
+    withPreview.some((value, i) => i % 4 < 3 && Math.abs(value - beforePreview[i]) > 10),
+  )
+  check(
+    'превью Казны показывает будущий бонус со стрелкой',
+    await page.evaluate(() => window.__treasuryLabels.includes('→ +10%')),
+  )
+  await page.keyboard.press('Escape')
+  await clickCell(page, 0, 0)
+  await waitForFrames(page)
+  const treasuryInfo = await page.locator('.tower-info').innerText()
+  check(
+    'Казна показывает диагонального соседа и округлённый доход',
+    treasuryInfo.includes('Соседние Казны: 1, бонус +10%') &&
+      treasuryInfo.includes('Итого за волну: 13'),
+    treasuryInfo,
+  )
+  check(
+    'при выборе Казны проценты показаны у неё и у соседа',
+    await page.evaluate(() => window.__treasuryLabels.join(',') === '+10%,+10%'),
+  )
+  await page.evaluate((gold) => {
+    const { game } = window.__throne
+    window.__treasuryLabels = []
+    game.sell(1, 1)
+    game.state.gold = gold
+  }, goldBeforeTreasuries)
+  await waitForFrames(page)
+  const treasuryAfterSale = await page.locator('.tower-info').innerText()
+  check(
+    'после продажи соседа Казна показывает доход без бонуса',
+    treasuryAfterSale.includes('Соседние Казны: 0, бонус +0%') &&
+      treasuryAfterSale.includes('Итого за волну: 12'),
+    treasuryAfterSale,
+  )
+  check(
+    'после продажи соседа на поле +0%, старый бонус исчез',
+    await page.evaluate(
+      () => window.__treasuryLabels.includes('+0%') && !window.__treasuryLabels.includes('+10%'),
+    ),
+  )
+  await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  check(
+    'снятие выбора Казны скрывает и нулевой процент',
+    await page.evaluate(() => window.__treasuryLabels.length === 0),
+  )
+  await page.evaluate((gold) => {
+    const { game } = window.__throne
+    game.sell(0, 0)
+    game.state.gold = gold
+    window.__restoreTreasuryLabels()
+  }, goldBeforeTreasuries)
+  await clickCell(page, 4, 9)
 
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
   check(
     'улучшение',
-    snapshot.gold === 10 && snapshot.towers.includes('archer1@5,11'),
+    snapshot.gold === 10 && snapshot.towers.includes('archer1@4,9'),
     JSON.stringify(snapshot),
   )
   await page.getByRole('button', { name: /Улучшить/ }).click()
@@ -503,16 +771,16 @@ async function desktop(browser, url) {
   )
   check('панель башни скрылась', (await page.locator('.tower-info').count()) === 0)
 
-  // Постройка с клавиатуры: 1, стрелки к клетке (5, 11), Enter
+  // Постройка с клавиатуры: 1, стрелки к клетке (4, 9), Enter
   await page.keyboard.press('1')
   await page.keyboard.press('ArrowRight')
-  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowDown')
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
   check(
     'постройка с клавиатуры',
-    snapshot.towers.includes('archer0@5,11') && snapshot.gold === 50,
+    snapshot.towers.includes('archer0@4,9') && snapshot.gold === 50,
     JSON.stringify(snapshot),
   )
   check(
@@ -532,19 +800,22 @@ async function desktop(browser, url) {
   // Shift: страж остаётся «в руке», можно ставить подряд (потом башню возвращаем — золото прежнее)
   await archerCard.click()
   await page.keyboard.down('Shift')
-  await clickCell(page, 3, 9)
+  await clickCell(page, 2, 9)
   await page.keyboard.up('Shift')
   check(
     'Shift: построил и страж остался «в руке»',
-    (await readGameSnapshot(page)).towers.includes('archer0@3,9') &&
+    (await readGameSnapshot(page)).towers.includes('archer0@2,9') &&
       (await archerCard.getAttribute('aria-pressed')) === 'true',
   )
   await page.keyboard.press('Escape')
-  await clickCell(page, 3, 9)
+  await clickCell(page, 2, 9)
   await page.getByRole('button', { name: /Вернуть/ }).click()
   await waitForFrames(page)
   check('Shift-башню вернули, золото прежнее', (await readGameSnapshot(page)).gold === 50)
   await page.keyboard.press('Escape')
+  // В новой экономике используем оставшиеся 50 на третьего Лучника перед волной.
+  await archerCard.click()
+  await clickCell(page, 2, 9)
 
   // Волна: пробел, скорость ×3. Башня «в руке» перед волной — выбор должен сняться.
   // Карточку выбираем мышью: фокус остаётся на ней, но без рамки — пробел всё равно игре
@@ -571,7 +842,14 @@ async function desktop(browser, url) {
     'кнопка скорости называет значение',
     (await speedButton.getAttribute('aria-label')) === 'Скорость игры: ×3',
   )
-  await page.waitForFunction(() => window.__throne.game.state.enemies.length >= 3)
+  // Дверь расположена за нижним краем canvas: появившийся враг ещё может быть невидим.
+  // Для сравнения пикселей ждём, пока целиком войдёт и тело, и область огня вокруг него.
+  await page.waitForFunction(() => {
+    const { game } = window.__throne
+    const enemy = game.state.enemies.find((candidate) => candidate.def.id === 'rebel')
+    return enemy && enemy.y + enemy.def.radius + 0.15 < game.level.def.rows
+  })
+  await page.evaluate(() => window.__throne.game.setPaused(true))
   check(
     'подсказка «Врагов осталось»',
     (await page.locator('#hint').textContent()).startsWith('Врагов осталось'),
@@ -588,6 +866,7 @@ async function desktop(browser, url) {
     burnPixels.changedShare >= BURN_MIN_CHANGED_SHARE,
     JSON.stringify(burnPixels),
   )
+  await page.evaluate(() => window.__throne.game.setPaused(false))
   await page.waitForFunction(() => window.__throne.game.state.phase === 'build', null, {
     timeout: 60_000,
   })
@@ -781,21 +1060,22 @@ async function desktop(browser, url) {
   await page.waitForFunction(() => window.__throne.game.state.enemies.length > 0)
   check('21-я волна началась, враги вышли', (await readGameSnapshot(page)).phase === 'wave')
 
-  // Баллиста (баланс v4): начинаем новую партию, чтобы хватило золота
+  // Баллиста стоит дороже стартового бюджета: выдаём средства только для проверки панели.
   await page.evaluate(() => window.__throne.store.newGame())
+  await page.evaluate(() => (window.__throne.game.state.gold = 160))
   await page.getByRole('button', { name: /Баллиста/ }).click()
-  await clickCell(page, 5, 11)
+  await clickCell(page, 4, 9)
   await page.keyboard.press('Escape')
-  await clickCell(page, 5, 11)
+  await clickCell(page, 4, 9)
   const ballista = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
     ' | ',
   )
-  check('баллиста: числа баланса v4', ballista === 'урон 80 → 135 | дальность 3,4 → 3,6', ballista)
+  check('баллиста: характеристики', ballista === 'урон 75 → 125 | дальность 2,7 → 2,9', ballista)
 
   // Выбор цели — умение баллисты: кнопкой в панели и клавишей T
   const targetButton = page.locator('.tower-info .target-mode')
   const ballistaTargetMode = () =>
-    page.evaluate(() => window.__throne.game.towerAt(5, 11).targetMode)
+    page.evaluate(() => window.__throne.game.towerAt(4, 9).targetMode)
   check('баллиста: цель «первый»', (await targetButton.textContent()).trim() === 'цель: первый')
   await targetButton.click()
   await waitForFrames(page)
@@ -810,6 +1090,46 @@ async function desktop(browser, url) {
     'клавиша T вернула «первый»',
     (await targetButton.textContent()).trim() === 'цель: первый' &&
       (await ballistaTargetMode()) === 'first',
+  )
+
+  // IV ступень — выбор из двух аспектов. Деньги выдаются только для проверки интерфейса.
+  check(
+    'Баллиста I: специализация ещё не предлагается',
+    (await page.locator('.tower-info .tower-aspects').count()) === 0,
+  )
+  await page.evaluate(() => (window.__throne.game.state.gold = 530))
+  await waitForFrames(page)
+  await page.getByRole('button', { name: /Улучшить/ }).click()
+  await page.getByRole('button', { name: /Улучшить/ }).click()
+  await waitForFrames(page)
+  const aspects = page.locator('.tower-info .tower-aspects')
+  check(
+    'Баллиста III: два аспекта по 180',
+    (await aspects.locator('.aspect-option').count()) === 2 &&
+      (await aspects.innerText()).includes('ограм, Горынычу и Узурпатору'),
+  )
+  await aspects.getByRole('button', { name: 'Сокрушитель за 180 золота', exact: true }).click()
+  await waitForFrames(page)
+  check(
+    'покупка аспекта: IV ступень, списано 180, только одна специализация',
+    (await page.locator('.tower-info b').textContent()) === 'Баллиста IV' &&
+      (await readGameSnapshot(page)).gold === 0 &&
+      (await page.evaluate(() => window.__throne.game.towerAt(4, 9).aspectId)) === 'giant-slayer' &&
+      (await aspects.locator('.aspect-option').count()) === 0,
+  )
+  await aspects.getByRole('button', { name: /Отменить аспект/ }).click()
+  await waitForFrames(page)
+  check(
+    'отмена: снова III, возвращено 180 и можно выбрать другой аспект',
+    (await page.locator('.tower-info b').textContent()) === 'Баллиста III' &&
+      (await readGameSnapshot(page)).gold === 180,
+  )
+  await aspects.getByRole('button', { name: 'Раскол лат за 180 золота', exact: true }).click()
+  await waitForFrames(page)
+  check(
+    'выбран Раскол лат, показано действие на 4 с',
+    (await aspects.innerText()).includes('на 4 с') &&
+      (await page.evaluate(() => window.__throne.game.towerAt(4, 9).aspectId)) === 'armor-breaker',
   )
 
   // Зажатый пробел не должен ставить паузу (повторы клавиши игнорируются)
@@ -832,18 +1152,25 @@ async function desktop(browser, url) {
     snapshot.phase === 'wave' && !snapshot.paused,
     JSON.stringify(snapshot),
   )
+  check(
+    'после начала боя аспект закреплён и не отменяется',
+    await page.evaluate(() => {
+      const { game } = window.__throne
+      return game.towerAt(4, 9).aspectLocked && !game.undoSpecialization(4, 9)
+    }),
+  )
 
   // Стрелки снимают выбор с плиты: цифра ставит стража под курсор, а не на старую плиту
   await page.evaluate(() => window.__throne.store.newGame())
-  await clickCell(page, 6, 11) // выбрали пустую плиту
-  await page.keyboard.press('ArrowUp') // курсор: из центра (4, 6) на (4, 5)
+  await clickCell(page, 5, 9) // выбрали пустую плиту
+  await page.keyboard.press('ArrowUp') // курсор: из центра (3, 5) на (3, 4)
   await page.keyboard.press('1')
   await page.keyboard.press('Enter')
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
   check(
     'стрелки снимают выбор с плиты',
-    snapshot.towers.length === 1 && snapshot.towers[0] === 'archer0@4,5',
+    snapshot.towers.length === 1 && snapshot.towers[0] === 'archer0@3,4',
     JSON.stringify(snapshot.towers),
   )
 
@@ -988,13 +1315,13 @@ async function phone(browser, url) {
   const drawerText = await drawer.innerText()
   check(
     'в меню до покупки есть описание и характеристики',
-    drawerText.includes('Поджигает толпу') && /урон \d/.test(drawerText),
+    drawerText.includes('Поджигает врагов') && /урон \d/.test(drawerText),
     drawerText.slice(0, 200),
   )
   check(
     'Колдун: на телефоне ослабление лечения видно до покупки',
     (await drawer.getByRole('button', { name: /^Колдун/ }).innerText()).includes(
-      'получаемое лечение −35%',
+      'получаемое лечение −20%',
     ),
   )
   await page.keyboard.press('Escape')
@@ -1018,8 +1345,8 @@ async function phone(browser, url) {
   )
   const bounds = await page.locator('#board').boundingBox()
   await page.touchscreen.tap(
-    bounds.x + (5.5 / COLS) * bounds.width,
-    bounds.y + (11.5 / ROWS) * bounds.height,
+    bounds.x + (4.5 / COLS) * bounds.width,
+    bounds.y + (9.5 / ROWS) * bounds.height,
   )
   check(
     'постройка касанием',
@@ -1036,8 +1363,8 @@ async function phone(browser, url) {
   )
   // Выбранная башня: панели башни внизу нет (она в меню), высота панели та же, поле не прыгает
   await page.touchscreen.tap(
-    bounds.x + (5.5 / COLS) * bounds.width,
-    bounds.y + (11.5 / ROWS) * bounds.height,
+    bounds.x + (4.5 / COLS) * bounds.width,
+    bounds.y + (9.5 / ROWS) * bounds.height,
   )
   await waitForFrames(page)
   check('панель башни на телефоне внизу скрыта', await page.locator('.tower-info').isHidden())
@@ -1063,7 +1390,8 @@ async function phone(browser, url) {
     'в меню башни есть характеристики и кнопки, лишнего нет',
     !towerMenuText.includes('Поджигает') &&
       !towerMenuText.includes('Выбрать стража') &&
-      /урон \d/.test(towerMenuText) &&
+      /горение \d/.test(towerMenuText) &&
+      !/урон \d/.test(towerMenuText) &&
       towerMenuText.includes('Улучшить') &&
       towerMenuText.includes('Вернуть'),
     towerMenuText,
@@ -1086,8 +1414,8 @@ async function phone(browser, url) {
   // Башня внизу поля, поэтому меню наверху, а левый нижний угол экрана — мимо него
   const tapTower = () =>
     page.touchscreen.tap(
-      bounds.x + (5.5 / COLS) * bounds.width,
-      bounds.y + (11.5 / ROWS) * bounds.height,
+      bounds.x + (4.5 / COLS) * bounds.width,
+      bounds.y + (9.5 / ROWS) * bounds.height,
     )
   await tapTower()
   await waitForFrames(page)
@@ -1119,6 +1447,54 @@ async function phone(browser, url) {
   await checkStartButtonVisible(page)
   await checkControlsFit(page)
   await checkShopCardsVisible(page)
+  // На узком телефоне обе карточки аспекта доступны в прокручиваемом меню.
+  await page.evaluate(() => {
+    const { game } = window.__throne
+    game.state.gold = 1000
+    game.build('ballista', 4, 9)
+    game.upgrade(4, 9)
+    game.upgrade(4, 9)
+  })
+  await clickCell(page, 4, 9)
+  const aspectMenu = page.getByRole('dialog', { name: 'Башня: Баллиста III', exact: true })
+  check(
+    '320×568: обе специализации есть в меню башни',
+    (await aspectMenu.locator('.aspect-option').count()) === 2,
+  )
+  await aspectMenu.getByRole('button', { name: 'Раскол лат за 180 золота', exact: true }).tap()
+  await waitForFrames(page)
+  const specializedMenu = page.getByRole('dialog', { name: 'Башня: Баллиста IV', exact: true })
+  check(
+    '320×568: аспект покупается касанием, текст не выходит за ширину меню',
+    (await specializedMenu.isVisible()) &&
+      (await specializedMenu.evaluate((element) => element.scrollWidth <= element.clientWidth)),
+  )
+  await specializedMenu.getByRole('button', { name: /Отменить аспект/ }).tap()
+  await aspectMenu.getByRole('button', { name: /Вернуть/ }).tap()
+  await waitForFrames(page)
+  const phoneGoldBeforeBell = await page.evaluate(() => {
+    const { game } = window.__throne
+    const gold = game.state.gold
+    game.state.gold += 500
+    game.build('archer', 4, 9)
+    game.build('bell', 5, 9)
+    return gold
+  })
+  await clickCell(page, 5, 9)
+  const bellMenu = page.getByRole('dialog', { name: 'Башня: Звонарь I', exact: true })
+  check(
+    '320×568: меню Звонаря показывает получателей и правило без сложения',
+    (await bellMenu.innerText()).includes('Ускоряет 1 башню') &&
+      (await bellMenu.innerText()).includes('Бонусы не складываются'),
+  )
+  await page.keyboard.press('Escape')
+  await page.evaluate((gold) => {
+    const { game } = window.__throne
+    game.sell(4, 9)
+    game.sell(5, 9)
+    game.state.gold = gold
+  }, phoneGoldBeforeBell)
+  await waitForFrames(page)
   await page.setViewportSize({ width: 932, height: 430 }) // iPhone Plus/Max набок
   await waitForFrames(page)
   await checkStartButtonVisible(page)

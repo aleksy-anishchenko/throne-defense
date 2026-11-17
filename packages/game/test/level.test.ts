@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { LEVELS, createGame, createLevel, type LevelDef, type WaveGroup } from '../src/index.ts'
+import {
+  LEVELS,
+  PLAYABLE_LEVELS,
+  createGame,
+  createLevel,
+  type LevelDef,
+  type WaveGroup,
+} from '../src/index.ts'
 import { throneHall } from '../src/levels/throne-hall.ts'
 
 const withWaves = (waves: WaveGroup[][]): LevelDef => ({ ...throneHall, waves })
@@ -96,8 +103,43 @@ describe('проверка уровня при загрузке', () => {
 })
 
 describe('залы', () => {
-  const hallLevels = LEVELS.map(createLevel)
+  const hallLevels = LEVELS.filter((level) => level.id !== 'compact-throne-hall').map(createLevel)
   const throne = createLevel(throneHall)
+
+  it('для новых партий доступны только выбранные шесть залов', () => {
+    expect(PLAYABLE_LEVELS.map((level) => level.id)).toEqual([
+      'throne-hall',
+      'marble-hall',
+      'svetlitsa',
+      'pharaoh-hall',
+      'colonnade',
+      'anubis-temple',
+    ])
+  })
+
+  it('доступные залы компактны, имеют корректный путь и препятствия', () => {
+    for (const def of PLAYABLE_LEVELS) {
+      expect([def.cols, def.rows], def.id).toEqual([7, 11])
+      const level = createLevel(def)
+      expect(level.path.length, def.id).toBeGreaterThan(0)
+      const originalProps = LEVELS.find((original) => original.id === def.id)?.props?.length ?? 0
+      expect(def.props?.length ?? 0, def.id).toBe(
+        originalProps + (def.id === 'throne-hall' ? 3 : 0),
+      )
+      for (const [index, point] of def.pathPoints.entries()) {
+        if (index === 0) continue
+        const previous = def.pathPoints[index - 1]
+        expect(point[0] === previous[0] || point[1] === previous[1], def.id).toBe(true)
+      }
+    }
+  })
+
+  it('компактный зал меньше и сохраняет двадцать исходных волн', () => {
+    const compact = LEVELS.find((level) => level.id === 'compact-throne-hall')!
+    expect([compact.cols, compact.rows]).toEqual([7, 11])
+    expect(compact.waves).toEqual(throneHall.waves)
+    expect(createLevel(compact).path.length).toBeGreaterThan(0)
+  })
 
   it('id и названия не повторяются', () => {
     expect(new Set(LEVELS.map((level) => level.id)).size).toBe(LEVELS.length)

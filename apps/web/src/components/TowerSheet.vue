@@ -11,6 +11,7 @@ import {
 import { useMenuFocus } from '@/composables/useMenuFocus'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
+import TowerAspects from './TowerAspects.vue'
 
 const store = useGameStore()
 const selection = useSelectionStore()
@@ -79,8 +80,10 @@ function onBackdropClick() {
           </button>
         </li>
       </ul>
+      <TowerAspects />
       <div class="tower-sheet-actions">
         <button
+          v-if="!info.hasAspects"
           class="btn action"
           :class="{ primary: info.canAfford }"
           type="button"

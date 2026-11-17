@@ -3,6 +3,7 @@
 import {
   TOWERS,
   fireRateBonusOf,
+  fireRateSourceOf,
   towerStats,
   type Game,
   type Tower,
@@ -24,8 +25,28 @@ import {
 } from './shapes'
 import { drawPropFlames } from './props'
 import { drawShot } from './shots'
-import { drawBuffRing } from './statuses'
+import { BUFF_RGB, drawBuffRing } from './statuses'
 import { drawTower } from './towers'
+import {
+  drawBellConnections,
+  drawBellIndicators,
+  drawBellPreview,
+  drawTowerBellPreview,
+} from './bell'
+import {
+  bellBuffs,
+  bellPlacementPreview,
+  focusedBellBuffs,
+  towerPlacementBellPreview,
+} from '@/utils/bellSupport'
+import {
+  drawTreasuryBonus,
+  drawTreasuryBonuses,
+  drawTreasuryNetwork,
+  drawTreasuryPreviewLinks,
+  treasuryPlacementPreview,
+  treasurySynergy,
+} from './treasury'
 import { isAuraTower } from '@/utils/towerStats'
 
 /** Больше стольких настоящих пикселей на один CSS-пиксель не рисуем (иначе тяжело) */
@@ -63,8 +84,7 @@ export interface Renderer {
 
 export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer {
   const ctx = canvas.getContext('2d')!
-  // Размер поля у всех залов один (levels/hall-base.ts, проверяет тест) — читаем один раз
-  const { cols, rows } = game.level.def
+  let { cols, rows } = game.level.def
   const effects = createEffects(game)
 
   let cellCssPx = INITIAL_CELL_CSS_PX // размер клетки в CSS-пикселях
@@ -134,33 +154,51 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
    * x, y — центр Звонаря; isAllowed и maxRange — как у drawRange
    */
   function drawAuraCells(
+    stats: TowerStats,
     x: number,
     y: number,
     range: number,
     isAllowed: boolean,
     maxRange = range,
   ) {
+    ctx.save()
     const ownCol = Math.floor(x)
     const ownRow = Math.floor(y)
+    const source = game.towerAt(ownCol, ownRow)
     const size = 1 - AURA_CELL_INSET * 2
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const distanceSquared = (col - ownCol) ** 2 + (row - ownRow) ** 2
         if (distanceSquared === 0 || distanceSquared > maxRange ** 2) continue
-        // Только плиты, где может стоять башня: ковёр и трон Звонарю ускорять нечего
-        if (!game.isCellFree(col, row) && !game.towerAt(col, row)) continue
+        const tower = game.towerAt(col, row)
+        // Не подсвечиваем Морозко, Колдуна, Казну, Звонарей, ковёр и препятствия.
+        if (tower ? !tower.def.takesFireRateBonus : !game.isCellFree(col, row)) continue
         const left = col + AURA_CELL_INSET
         const top = row + AURA_CELL_INSET
         if (distanceSquared <= range ** 2) {
-          ctx.fillStyle = isAllowed ? 'rgba(227,178,74,.16)' : 'rgba(240,90,70,.12)'
+          const receives =
+            tower &&
+            (source
+              ? fireRateSourceOf(game.state.towers, tower) === source
+              : fireRateBonusOf(game.state.towers, tower) < (stats.fireRateBonus ?? 0))
+          ctx.fillStyle = !isAllowed
+            ? 'rgba(240,90,70,.1)'
+            : receives
+              ? `rgba(${BUFF_RGB},.18)`
+              : `rgba(${BUFF_RGB},.04)`
           ctx.fillRect(left, top, size, size)
-          ctx.strokeStyle = isAllowed ? 'rgba(227,178,74,.7)' : 'rgba(240,110,80,.75)'
-          ctx.lineWidth = 0.03
+          ctx.strokeStyle = !isAllowed
+            ? 'rgba(240,110,80,.75)'
+            : receives
+              ? `rgba(${BUFF_RGB},.9)`
+              : 'rgba(192,204,218,.45)'
+          ctx.lineWidth = receives ? 0.035 : 0.022
+          ctx.setLineDash(receives ? [] : [0.06, 0.08])
           ctx.strokeRect(left, top, size, size)
         } else {
-          ctx.fillStyle = isAllowed ? 'rgba(227,178,74,.05)' : 'rgba(240,90,70,.05)'
+          ctx.fillStyle = isAllowed ? `rgba(${BUFF_RGB},.04)` : 'rgba(240,90,70,.05)'
           ctx.fillRect(left, top, size, size)
-          ctx.strokeStyle = isAllowed ? 'rgba(227,178,74,.5)' : 'rgba(240,110,80,.5)'
+          ctx.strokeStyle = isAllowed ? `rgba(${BUFF_RGB},.4)` : 'rgba(240,110,80,.5)'
           ctx.lineWidth = 0.025
           ctx.setLineDash([0.06, 0.08])
           ctx.strokeRect(left, top, size, size)
@@ -168,6 +206,38 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         }
       }
     }
+    ctx.restore()
+  }
+
+  /** Пунктир — свободное место для соседа, яркая рамка — существующая соседняя Казна. */
+  function drawTreasuryCells(col: number, row: number, isAllowed: boolean) {
+    ctx.save()
+    ctx.setLineDash([0.06, 0.08])
+    for (let neighborRow = row - 1; neighborRow <= row + 1; neighborRow++) {
+      for (let neighborCol = col - 1; neighborCol <= col + 1; neighborCol++) {
+        if (
+          (neighborCol === col && neighborRow === row) ||
+          !game.isCellFree(neighborCol, neighborRow)
+        ) {
+          continue
+        }
+        ctx.fillStyle = isAllowed ? 'rgba(243,233,210,.05)' : 'rgba(240,110,80,.05)'
+        ctx.fillRect(neighborCol + 0.07, neighborRow + 0.07, 0.86, 0.86)
+        ctx.strokeStyle = isAllowed ? 'rgba(243,233,210,.5)' : 'rgba(240,110,80,.5)'
+        ctx.lineWidth = 0.022
+        ctx.strokeRect(neighborCol + 0.07, neighborRow + 0.07, 0.86, 0.86)
+      }
+    }
+    ctx.setLineDash([])
+    for (const tower of treasuryPlacementPreview(game.state.towers, col, row).neighbors) {
+      if (tower.col === col && tower.row === row) continue
+      ctx.fillStyle = 'rgba(255,215,117,.2)'
+      ctx.fillRect(tower.col + 0.07, tower.row + 0.07, 0.86, 0.86)
+      ctx.strokeStyle = isAllowed ? '#ffe297' : '#f0866a'
+      ctx.lineWidth = 0.055
+      ctx.strokeRect(tower.col + 0.07, tower.row + 0.07, 0.86, 0.86)
+    }
+    ctx.restore()
   }
 
   /** Дальность башни: у Звонаря — клетками, у остальных — кругом */
@@ -179,7 +249,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     isAllowed: boolean,
     maxRange = range,
   ) {
-    if (isAuraTower(stats)) drawAuraCells(x, y, range, isAllowed, maxRange)
+    if (isAuraTower(stats)) drawAuraCells(stats, x, y, range, isAllowed, maxRange)
     else drawRange(x, y, range, isAllowed, maxRange)
   }
 
@@ -200,14 +270,14 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     for (const tower of towers) {
       ctx.save()
       ctx.translate(tower.x, tower.y)
-      // Ускорена Звонарём — золотое кольцо у основания (до «подпрыгивания»: кольцо на полу)
+      // Ускорена Звонарём — голубое кольцо у основания, отличное от золота Казны.
       if (fireRateBonusOf(towers, tower) > 0) drawBuffRing(ctx, time)
       const popTimeLeft = effects.popTimeLeft(tower)
       if (popTimeLeft > 0 && !prefersReducedMotion) {
         ctx.scale(1 + popTimeLeft * POP_SCALE, 1 + popTimeLeft * POP_SCALE)
       }
       const isReady = tower.cooldownLeft < towerStats(tower).cooldown * READY_COOLDOWN_SHARE
-      drawTower(ctx, tower.def.id, tower.tier, tower.aimAngle, time, isReady)
+      drawTower(ctx, tower.def.id, tower.tier, tower.aimAngle, time, isReady, tower.aspectId)
       if (tower === selectedTower) {
         ctx.strokeStyle = GOLD
         ctx.lineWidth = 0.045
@@ -242,19 +312,49 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   function drawGhostTower(armedTowerId: string, ghostCell: Cell, time: number) {
     const def = TOWERS[armedTowerId]
     const canAfford = game.state.gold >= def.cost
-    drawReach(
-      def.tiers[0],
-      ghostCell.col + CELL_CENTER,
-      ghostCell.row + CELL_CENTER,
-      def.tiers[0].range,
-      canAfford,
-      maxTierRange(def),
+    const receivingBellPreview = towerPlacementBellPreview(
+      game.state.towers,
+      armedTowerId,
+      ghostCell.col,
+      ghostCell.row,
     )
+    const treasuryPreview =
+      def.id === 'treasury'
+        ? treasuryPlacementPreview(game.state.towers, ghostCell.col, ghostCell.row)
+        : null
+    const position = { x: ghostCell.col + CELL_CENTER, y: ghostCell.row + CELL_CENTER }
+    if (treasuryPreview) {
+      drawTreasuryCells(ghostCell.col, ghostCell.row, canAfford)
+      drawTreasuryPreviewLinks(ctx, position, treasuryPreview.neighbors, canAfford)
+    } else
+      drawReach(
+        def.tiers[0],
+        ghostCell.col + CELL_CENTER,
+        ghostCell.row + CELL_CENTER,
+        def.tiers[0].range,
+        canAfford,
+        maxTierRange(def),
+      )
     ctx.save()
     ctx.translate(ghostCell.col + CELL_CENTER, ghostCell.row + CELL_CENTER)
     ctx.globalAlpha = canAfford ? 0.7 : 0.35
+    if (receivingBellPreview && canAfford) drawBuffRing(ctx, time)
     drawTower(ctx, armedTowerId, 0, TOWER_IDLE_AIM_ANGLE, time, true)
     ctx.restore()
+    if (treasuryPreview) {
+      drawTreasuryBonus(ctx, position, treasuryPreview.bonus, cellCssPx, true, canAfford)
+    }
+    if (def.id === 'bell') {
+      drawBellPreview(
+        ctx,
+        bellPlacementPreview(game.state.towers, ghostCell.col, ghostCell.row),
+        cellCssPx,
+        canAfford,
+      )
+    }
+    if (receivingBellPreview) {
+      drawTowerBellPreview(ctx, receivingBellPreview, cellCssPx, canAfford)
+    }
   }
 
   /** Рамка клавиатурного курсора */
@@ -290,6 +390,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   return {
     resize(width, height) {
       if (!width || !height) return
+      ;({ cols, rows } = game.level.def)
       pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO)
       cellCssPx = Math.max(
         MIN_CELL_CSS_PX,
@@ -309,7 +410,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     },
 
     draw(realDt, boardView) {
-      // Новая партия в другом зале — фон зала рисуем заново (поле у всех залов одного размера)
+      // Новая партия в другом зале — фон зала рисуем заново.
       if (game.level !== hallLevel && hallLayer) {
         hallLevel = game.level
         hallLayer = buildHall(hallLevel, canvas.width, canvas.height, cellDevicePx)
@@ -348,19 +449,26 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         // Выбранная башня: подсветка всегда обычная (не красная). И бледно — дальность на высшей
         // ступени: видно, что даст улучшение (на высшей ступени совпадает и не рисуется)
         const stats = towerStats(selectedTower)
-        drawReach(
-          stats,
-          selectedTower.x,
-          selectedTower.y,
-          stats.range,
-          true,
-          maxTierRange(selectedTower.def),
-        )
+        if (selectedTower.def.id === 'treasury')
+          drawTreasuryCells(selectedTower.col, selectedTower.row, true)
+        else
+          drawReach(
+            stats,
+            selectedTower.x,
+            selectedTower.y,
+            stats.range,
+            true,
+            maxTierRange(selectedTower.def),
+          )
       }
 
       drawThrone(ctx, game.level, time, hurtIntensity())
       // Живое пламя светцев и канделябров — каждый кадр, поверх неподвижного фона
       drawPropFlames(ctx, game.level.def.props ?? [], time)
+      const treasuries = treasurySynergy(state.towers)
+      drawTreasuryNetwork(ctx, treasuries.bonuses, treasuries.links, selectedTower)
+      const bellSupport = bellBuffs(state.towers)
+      drawBellConnections(ctx, focusedBellBuffs(bellSupport, selectedTower))
       drawTowers(time, selectedTower)
       drawEnemies(time)
 
@@ -373,6 +481,9 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       if (ghostCell && boardView.armedTowerId && game.isCellFree(ghostCell.col, ghostCell.row)) {
         drawGhostTower(boardView.armedTowerId, ghostCell, time)
       }
+      // Плашки поверх предпросмотра клеток — подсветка не приглушает действующий процент.
+      drawTreasuryBonuses(ctx, treasuries.bonuses, selectedTower, cellCssPx)
+      drawBellIndicators(ctx, bellSupport, selectedTower, cellCssPx)
       if (isPlaying && boardView.cursorCell) drawCursor(boardView.cursorCell)
 
       ctx.setTransform(pixelRatio, 0, 0, pixelRatio, shakeX, shakeY)

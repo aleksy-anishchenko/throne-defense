@@ -45,6 +45,10 @@ export interface HomingShotOptions {
   damageKind: DamageKind
   /** Радиус взрыва в клетках; без него снаряд бьёт только цель */
   splashRadius?: number
+  /** Следовать за целью; по умолчанию да. */
+  tracksTarget?: boolean
+  /** Доля урона у края взрыва; по умолчанию 1. */
+  splashEdgeDamageShare?: number
   /** Сколько урона добавить горением каждому, кого задел; без него не поджигает */
   burnDamage?: number
   /** За сколько секунд догорает поджог */
@@ -65,6 +69,10 @@ export interface LineShotOptions {
   pierceCount: number
   /** Сколько клеток снаряд пролетит, прежде чем исчезнуть */
   maxDistance: number
+  /** Дополнительный урон по каждому задетому исполину. */
+  giantDamageBonus?: number
+  /** Длительность снятия брони после попадания. */
+  armorBreakDuration?: number
 }
 
 /** Нанести урон врагу с учётом брони. Если враг погиб — награда и событие kill */
@@ -75,10 +83,11 @@ export function damageEnemy(
   damageKind: DamageKind,
 ): void {
   if (enemy.isDead) return
+  const armor = enemy.armorBreakTimeLeft > 0 ? 0 : enemy.def.armor
   let effectiveDamage = damage
-  if (damageKind === 'physical') effectiveDamage = Math.max(1, damage - enemy.def.armor)
+  if (damageKind === 'physical') effectiveDamage = Math.max(1, damage - armor)
   else if (damageKind === 'piercing')
-    effectiveDamage = Math.max(1, damage - enemy.def.armor * PIERCING_ARMOR_FACTOR)
+    effectiveDamage = Math.max(1, damage - armor * PIERCING_ARMOR_FACTOR)
   world.emit('hit', enemy)
   loseHp(world, enemy, effectiveDamage)
 }
@@ -118,6 +127,8 @@ export function shootHoming(
     target,
     targetX: target.x,
     targetY: target.y,
+    tracksTarget: options.tracksTarget ?? true,
+    splashEdgeDamageShare: options.splashEdgeDamageShare ?? 1,
     speed: options.speed,
     damage: options.damage,
     damageKind: options.damageKind,
@@ -149,13 +160,15 @@ export function shootLine(
     distanceLeft: options.maxDistance,
     damage: options.damage,
     damageKind: options.damageKind,
+    giantDamageBonus: options.giantDamageBonus ?? 0,
+    armorBreakDuration: options.armorBreakDuration ?? 0,
     piercesLeft: options.pierceCount,
     hitEnemies: new Set(),
     isDone: false,
   })
 }
 
-/** Волна холода: замедляет и ранит всех в радиусе башни, а горящих — тушит паром */
+/** Волна холода: замедляет врагов, а горящих — тушит паром */
 export function frostPulse(world: World, tower: Tower, stats: TowerStats): void {
   const slowAmount = stats.slowAmount ?? 0
   const slowDuration = stats.slowDuration ?? 0
@@ -168,7 +181,7 @@ export function frostPulse(world: World, tower: Tower, stats: TowerStats): void 
     // так было в оригинале, баланс настроен с этим.)
     enemy.slowFactor = enemy.slowTimeLeft > 0 ? Math.max(enemy.slowFactor, slowFactor) : slowFactor
     enemy.slowTimeLeft = Math.max(enemy.slowTimeLeft, slowDuration)
-    damageEnemy(world, enemy, stats.damage, 'magic')
+    if (stats.damage > 0) damageEnemy(world, enemy, stats.damage, 'magic')
     if (enemy.burnDamageLeft > 0 && !enemy.isDead) extinguishWithSteam(world, enemy)
   }
 }
@@ -247,7 +260,11 @@ function updateLineShot(world: World, shot: LineShot, dt: number): void {
       enemy.def.radius + LINE_SHOT_HIT_MARGIN
     ) {
       shot.hitEnemies.add(enemy)
-      damageEnemy(world, enemy, shot.damage, shot.damageKind)
+      if (shot.armorBreakDuration > 0 && enemy.def.armor > 0) {
+        enemy.armorBreakTimeLeft = Math.max(enemy.armorBreakTimeLeft, shot.armorBreakDuration)
+      }
+      const damageMultiplier = enemy.def.isGiant ? 1 + shot.giantDamageBonus : 1
+      damageEnemy(world, enemy, shot.damage * damageMultiplier, shot.damageKind)
       shot.piercesLeft--
       if (shot.piercesLeft <= 0) {
         shot.isDone = true
@@ -261,10 +278,10 @@ function updateLineShot(world: World, shot: LineShot, dt: number): void {
   if (shot.distanceLeft <= 0) shot.isDone = true
 }
 
-/** Снаряд за целью: летит к ней, а долетев — бьёт цель или взрывается */
+/** Снаряд летит за целью либо в зафиксированную точку. */
 function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
   // Пока цель жива — следим за ней
-  if (!shot.target.isDead) {
+  if (shot.tracksTarget && !shot.target.isDead) {
     shot.targetX = shot.target.x
     shot.targetY = shot.target.y
   }
@@ -288,7 +305,10 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
         Math.hypot(enemy.x - shot.targetX, enemy.y - shot.targetY) <=
           shot.splashRadius + enemy.def.radius * SPLASH_ENEMY_RADIUS_SHARE
       ) {
-        hitWithShot(world, shot, enemy)
+        const distance = Math.hypot(enemy.x - shot.targetX, enemy.y - shot.targetY)
+        const fraction = Math.min(1, distance / shot.splashRadius)
+        const damageShare = 1 - (1 - shot.splashEdgeDamageShare) * fraction
+        hitWithShot(world, shot, enemy, damageShare)
       }
     }
     // Сеть падает, а не взрывается — у неё своё событие и своя картинка
@@ -301,16 +321,16 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
 }
 
 /** Всё, что снаряд делает с врагом при попадании: урон, огонь, сеть */
-function hitWithShot(world: World, shot: HomingShot, enemy: Enemy): void {
+function hitWithShot(world: World, shot: HomingShot, enemy: Enemy, damageShare = 1): void {
   // Сеть не ранит: без этой проверки броня превратила бы урон 0 в 1 (Math.max(1, …))
-  if (shot.damage > 0) damageEnemy(world, enemy, shot.damage, shot.damageKind)
+  if (shot.damage > 0) damageEnemy(world, enemy, shot.damage * damageShare, shot.damageKind)
   igniteEnemy(world, enemy, shot.burnDamage, shot.burnDuration)
   rootEnemy(enemy, shot.rootDuration)
 }
 
 /**
- * Поджечь врага: добавить burnDamage в запас огня. Догорает весь запас за burnDuration
- * (если враг уже горит дольше — за оставшееся время).
+ * Поджечь врага: равный огонь обновляет длительность, сильный заменяет слабый.
+ * Слабый поджог не продлевает сильный. Сила — урон в секунду, а не оставшийся запас.
  * Огонь растапливает лёд (замедление снимается, а огня — меньше, см. THAW_BURN_MULTIPLIER).
  * Пойманный в сеть загорелся — сеть догорает: держит не дольше NET_ON_FIRE_SHARE своего времени
  */
@@ -329,8 +349,12 @@ function igniteEnemy(world: World, enemy: Enemy, burnDamage: number, burnDuratio
     enemy.rootImmunityLeft -= enemy.rootTimeLeft - burningNetTime
     enemy.rootTimeLeft = burningNetTime
   }
-  enemy.burnDamageLeft += burnDamage * burnShare
-  enemy.burnTimeLeft = Math.max(enemy.burnTimeLeft, burnDuration)
+  const rate = (burnDamage * burnShare) / burnDuration
+  const currentRate = enemy.burnTimeLeft > 0 ? enemy.burnDamageLeft / enemy.burnTimeLeft : 0
+  // Допуск нужен из-за округления остатка урона при шагах симуляции.
+  if (rate + 1e-9 < currentRate) return
+  enemy.burnDamageLeft = rate * burnDuration
+  enemy.burnTimeLeft = burnDuration
 }
 
 /** Горящие враги теряют здоровье: равными долями, так что запас огня догорает ровно к сроку */

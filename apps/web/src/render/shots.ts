@@ -23,7 +23,7 @@ const BOLT_COLOR = '#dfe5f2'
 const BOLT_WIDTH = 0.055
 
 /** Фаербол: радиус головы и длина хвоста, клеток */
-const FIREBALL_RADIUS = 0.11
+const FIREBALL_RADIUS = 0.075
 const FIREBALL_TAIL = 0.4
 
 /**

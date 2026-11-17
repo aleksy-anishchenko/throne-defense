@@ -142,7 +142,10 @@ export function findCompatibleCell(game: Game, def: TowerDef): Cell | null {
   )
   const allies =
     def.id === 'warlock'
-      ? game.state.towers.filter((tower) => tower.def.tiers[tower.tier].damage > 0)
+      ? game.state.towers.filter((tower) => {
+          const stats = tower.def.tiers[tower.tier]
+          return stats.damage > 0 || (stats.burnDamage ?? 0) > 0
+        })
       : []
   if (!conflicts.length && !allies.length) return findBestCell(game, range)
   const samples: { x: number; y: number; weight: number }[] = []
@@ -235,7 +238,12 @@ function spendGold(game: Game, strategy: Strategy, stepIndex: number): number {
 }
 
 /** Сыграть партию ботом */
-export function playBot(level: LevelDef, strategy: Strategy, maxWaves = Infinity): BotResult {
+export function playBot(
+  level: LevelDef,
+  strategy: Strategy,
+  maxWaves = Infinity,
+  onWaveStart?: (game: Game) => void,
+): BotResult {
   const game = createGame(level)
   game.reset()
   const waves: WaveReport[] = []
@@ -254,6 +262,7 @@ export function playBot(level: LevelDef, strategy: Strategy, maxWaves = Infinity
     for (let i = 0; i < INTERMISSION_STEPS; i++) game.step(SIMULATION_STEP)
     const wave = game.state.wave
     const livesBefore = game.state.lives
+    onWaveStart?.(game)
     game.startWave()
 
     for (let i = 0; i < MAX_WAVE_STEPS && game.state.phase === 'wave'; i++) {
@@ -271,7 +280,10 @@ export function playBot(level: LevelDef, strategy: Strategy, maxWaves = Infinity
       score: state.score,
       wealth:
         state.gold +
-        state.towers.reduce((sum, tower) => sum + investedGold(tower.def, tower.tier), 0),
+        state.towers.reduce(
+          (sum, tower) => sum + investedGold(tower.def, tower.tier, tower.aspectId),
+          0,
+        ),
     })
     if (state.phase === 'lost' || state.phase === 'won') {
       return makeResult(state.phase === 'won' ? 'won' : 'lost')

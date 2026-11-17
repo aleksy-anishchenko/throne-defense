@@ -5,12 +5,19 @@ import {
   type LeaderboardResponse,
   type SubmitRunRequest,
 } from '@throne/contracts'
-import { BALANCE_VERSION, LEVELS, createLevel, maxPossibleScore } from '@throne/game'
+import {
+  BALANCE_VERSION,
+  LEVELS,
+  PLAYABLE_LEVELS,
+  createLevel,
+  maxPossibleScore,
+} from '@throne/game'
 import type { FastifyInstance } from 'fastify'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../src/app.ts'
 import { IN_MEMORY_DATABASE } from '../src/db/database.ts'
 import { insertRun } from '../src/services/leaderboard.ts'
+import { MAX_WAVES_CLEARED, runRejection } from '../src/services/plausibility.ts'
 
 const LEVEL_ID = 'throne-hall'
 
@@ -25,6 +32,20 @@ function run(
 ): SubmitRunRequest {
   return { playerName, levelId, score, wavesCleared, balanceVersion: BALANCE_VERSION }
 }
+
+it('сервер принимает предельный счёт компактного зала на каждой допустимой волне', () => {
+  for (const def of PLAYABLE_LEVELS) {
+    const level = createLevel(def)
+    for (let wave = 0; wave <= MAX_WAVES_CLEARED; wave++) {
+      const score = maxPossibleScore(level, wave)
+      if (score < 1) continue
+      expect(
+        runRejection(run('Проверка', score, wave, def.id)),
+        `${def.id}, волна ${wave}`,
+      ).toBeNull()
+    }
+  }
+})
 
 describe('общий топ', () => {
   let app: FastifyInstance

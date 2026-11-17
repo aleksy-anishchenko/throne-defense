@@ -28,6 +28,7 @@ export function useGameLoop(
   let pixelRatioQuery: MediaQueryList | null = null
   let animationFrameId = 0
   let lastTimestamp = 0
+  let fittedLevel = store.game.level
 
   function runFrame(timestamp: number) {
     // Следующий кадр просим первым делом: если в этом кадре случится ошибка,
@@ -37,6 +38,10 @@ export function useGameLoop(
     // `|| 0` — страховка: если получилось «не число» (NaN), считаем, что времени не прошло
     const realDt = Math.min(MAX_FRAME_DT, (timestamp - lastTimestamp) / MS_PER_SECOND || 0)
     lastTimestamp = timestamp
+    if (fittedLevel !== store.game.level) {
+      fittedLevel = store.game.level
+      fitBoard()
+    }
     store.game.advance(realDt)
     renderer?.draw(realDt, selection.boardView())
     store.syncHud()

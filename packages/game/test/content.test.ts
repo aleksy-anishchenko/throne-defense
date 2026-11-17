@@ -19,6 +19,7 @@ describe('выбор цели — умение баллисты', () => {
    */
   function setUp(mode: TargetMode | null) {
     const game = newGame()
+    game.state.gold = TOWERS['ballista'].cost
     game.build('ballista', 5, 11)
     if (mode) expect(game.setTargetMode(5, 11, mode)).toBe(true)
     const first = placeEnemy(game, 'rebel', 4)

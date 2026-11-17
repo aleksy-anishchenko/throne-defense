@@ -1,4 +1,4 @@
-// Как выглядят эффекты на враге: огонь, мороз, проклятие, сеть.
+// Как выглядят эффекты на враге: огонь, мороз, проклятие, сеть, раскол лат.
 //
 // Общие правила — у каждого эффекта одни и те же «слои», отличаются только цвет и рисунок:
 // 1. Кольцо у ног — под телом. Колец два места («слота»), у всех одна толщина:
@@ -8,7 +8,7 @@
 // 2. Оттенок тела — цветом эффекта, одной прозрачности.
 // 3. Знак на модельке — поверх тела: иней, сеть, пламя.
 // 4. Частицы (render/effects.ts): от огня искры летят вверх, с мороза сыплется снег.
-// Цветные кольца — то, что вредит врагу. Золото — наше (бафф Звонаря у башен).
+// На врагах кольца обозначают вредящие им эффекты; у башен ускорение Звонаря голубое, доход Казны золотой.
 //
 // Новый эффект — новая запись в STATUS_LOOKS (и, если нужно, в STATUS_PARTICLES в effects.ts).
 
@@ -86,6 +86,13 @@ const STATUS_LOOKS: readonly StatusLook[] = [
     hasTint: true,
   },
   {
+    // Раскол лат: отдельный знак щита, без третьего кольца и лишнего оттенка.
+    isActive: (enemy) => enemy.armorBreakTimeLeft > 0,
+    rgb: '145,219,239',
+    hasTint: false,
+    drawMark: (ctx, radius) => drawBrokenArmor(ctx, radius),
+  },
+  {
     // Сеть: сама сеть поверх врага, чуть шире его; без кольца и оттенка.
     // Горит (враг в огне) — грузила тлеют оранжевым: сеть скоро сгорит
     isActive: (enemy) => enemy.rootTimeLeft > 0,
@@ -110,6 +117,32 @@ const STATUS_LOOKS: readonly StatusLook[] = [
     drawMark: (ctx, radius, time) => drawFlames(ctx, radius, time),
   },
 ]
+
+function drawBrokenArmor(ctx: Canvas2D, radius: number) {
+  ctx.save()
+  ctx.translate(radius * 0.65, -radius * 0.7)
+  ctx.scale(radius, radius)
+  ctx.fillStyle = '#24374a'
+  ctx.strokeStyle = '#91dbef'
+  ctx.lineWidth = 0.09
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.moveTo(-0.4, -0.35)
+  ctx.lineTo(0.4, -0.35)
+  ctx.lineTo(0.3, 0.2)
+  ctx.lineTo(0, 0.5)
+  ctx.lineTo(-0.3, 0.2)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(0.1, -0.35)
+  ctx.lineTo(-0.12, 0)
+  ctx.lineTo(0.12, 0.12)
+  ctx.lineTo(0, 0.45)
+  ctx.stroke()
+  ctx.restore()
+}
 
 /** Кольца у ног — до тела врага */
 export function drawStatusRings(ctx: Canvas2D, enemy: Enemy, radius: number, time: number) {
@@ -286,15 +319,15 @@ function drawFlames(ctx: Canvas2D, radius: number, time: number) {
 
 // ——— Баффы наших башен ———
 
-/** Цвет «нашего» эффекта — золото (RGB для прозрачности) */
-export const BUFF_RGB = '227,178,74'
-/** Радиус золотого кольца у ускоренной башни, клеток: снаружи основания (кольцо выбора — 0,41, сплошное) */
+/** Ускорение Звонаря — голубое; золото оставлено доходу Казны. */
+export const BUFF_RGB = '157,218,255'
+/** Радиус кольца у ускоренной башни, клеток: снаружи основания (кольцо выбора — 0,41, сплошное) */
 const BUFF_RING_RADIUS = 0.47
 /** Как быстро качается колокол Звонаря, рад/с: кольцо пульсирует в такт (см. towers.ts) */
 export const BELL_SWING_SPEED = 3
 
 /**
- * Башня, которую ускоряет Звонарь: золотое свечение у основания и пунктирное кольцо,
+ * Башня, которую ускоряет Звонарь: голубое свечение у основания и пунктирное кольцо,
  * пульсирующее в такт колоколу. Пунктир — чтобы не спутать со сплошным кольцом выбора.
  * (0, 0) — центр башни; рисуется до самой башни
  */

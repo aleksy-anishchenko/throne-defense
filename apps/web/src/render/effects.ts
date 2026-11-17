@@ -1,7 +1,7 @@
 // Визуальные эффекты: искры, всплывающее «+6», кольца мороза, взрывы, тряска экрана.
 // Логика игры про них ничего не знает — эффекты появляются в ответ на её события.
 
-import { fireRateBonusOf, towerStats, type Enemy, type Game, type Tower } from '@throne/game'
+import { fireRateSourceOf, towerStats, type Enemy, type Game, type Tower } from '@throne/game'
 import { getEnemyArt } from './enemies'
 import { GOLD, circle, drawNet, prefersReducedMotion, type Canvas2D } from './shapes'
 import { BELL_SWING_SPEED, BUFF_RGB, FIRE_RGB } from './statuses'
@@ -234,8 +234,13 @@ const STATUS_PARTICLES: readonly StatusParticles[] = [
   },
 ]
 
-/** Нотка над башней, которую ускоряет Звонарь: золотая, медленно всплывает */
-const NOTE_LOOK: MoteLook = { youngColor: GOLD, oldColor: '#f2d48a', shape: 'note', size: 0.1 }
+/** Нотка над ускоренной башней: голубая, как значок и связи Звонаря. */
+const NOTE_LOOK: MoteLook = {
+  youngColor: `rgb(${BUFF_RGB})`,
+  oldColor: '#c5d9ef',
+  shape: 'note',
+  size: 0.1,
+}
 /** Сколько ноток в секунду над ускоренной башней (в среднем) */
 const NOTE_RATE = 0.8
 /** Скорость нотки вверх, клеток/с, и сколько она живёт, с */
@@ -427,22 +432,24 @@ export function createEffects(game: Game): Effects {
 
   /**
    * Звонарь и его соседи: раз за размах колокола на каждой башне, до которой он достаёт,
-   * вспыхивает золотое кольцо — «звон дошёл»; над ускоренными башнями всплывают нотки.
+   * вспыхивает голубое кольцо — «звон дошёл»; над ускоренными башнями всплывают нотки.
    * Не волна от колокола до края радиуса: круг обманывал — Звонарь действует на клетки, а не круг
    */
   function spawnBellEffects(simDt: number) {
     if (prefersReducedMotion || simDt <= 0) return
     const towers = game.state.towers
-    const buffed = towers.filter((tower) => fireRateBonusOf(towers, tower) > 0)
+    const buffed = towers.flatMap((tower) => {
+      const source = fireRateSourceOf(towers, tower)
+      return source ? [{ tower, source }] : []
+    })
     if (buffed.length === 0) return
     const strike = Math.floor((gameTime() * BELL_SWING_SPEED) / (Math.PI * 2))
     for (const tower of towers) {
-      const range = towerStats(tower).range
       if (!(towerStats(tower).fireRateBonus ?? 0)) continue
       if (bellStrikes.get(tower) === strike) continue
       bellStrikes.set(tower, strike)
-      for (const other of buffed) {
-        if ((other.x - tower.x) ** 2 + (other.y - tower.y) ** 2 > range ** 2) continue
+      for (const { tower: other, source } of buffed) {
+        if (source !== tower) continue
         add({
           kind: 'ring',
           x: other.x,
@@ -455,7 +462,7 @@ export function createEffects(game: Game): Effects {
         })
       }
     }
-    for (const tower of buffed) {
+    for (const { tower } of buffed) {
       if (Math.random() >= NOTE_RATE * simDt) continue
       add({
         kind: 'mote',

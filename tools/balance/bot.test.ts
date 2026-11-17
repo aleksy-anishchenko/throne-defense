@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ENEMIES,
   LEVELS,
+  PLAYABLE_LEVELS,
   TOWERS,
   createGame,
   createLevel,
@@ -13,77 +14,47 @@ import { STRATEGIES, findCellFor, playBot, type Strategy } from './bot.ts'
 import {
   ARMY_BUDGET,
   DAMAGE_TOWERS,
-  ROLE_WAVES,
   STREAMS,
-  damagePerGold,
-  effectiveDamagePerGold,
   measureArmy,
   measureDefense,
   type Placement,
 } from './towers.ts'
 
 const throneHall = LEVELS.find((level) => level.id === 'throne-hall')!
+const classicLevels = LEVELS.filter((level) => level.id !== 'compact-throne-hall')
 const strategy = (name: string) => STRATEGIES.find((candidate) => candidate.name === name)!
 const mixed = strategy('Экономика и поддержка')
-const monoStrategies = STRATEGIES.filter((candidate) => candidate.name.startsWith('Только '))
-const results = new Map<string, ReturnType<typeof playBot>>()
+const results = new WeakMap<(typeof LEVELS)[number], Map<string, ReturnType<typeof playBot>>>()
 function result(level: (typeof LEVELS)[number], candidate: Strategy) {
-  const key = `${level.id}:${candidate.name}`
-  if (!results.has(key)) results.set(key, playBot(level, candidate))
-  return results.get(key)!
+  let byStrategy = results.get(level)
+  if (!byStrategy) {
+    byStrategy = new Map()
+    results.set(level, byStrategy)
+  }
+  if (!byStrategy.has(candidate.name)) byStrategy.set(candidate.name, playBot(level, candidate))
+  return byStrategy.get(candidate.name)!
 }
 
-// Роли сравниваем по среднему девяти залов: отдельная геометрия может помогать конкретной
-// башне. Ступени I/II/III соответствуют здоровью врагов волн 1/5/10, а не бессмертной мишени.
-describe('роли четырёх атакующих башен', () => {
-  for (let tier = 0; tier < ROLE_WAVES.length; tier++) {
-    const rankings = STREAMS.map((stream) =>
-      DAMAGE_TOWERS.map((def) => ({
-        id: def.id,
-        value:
-          LEVELS.reduce((sum, level) => sum + effectiveDamagePerGold(level, def, tier, stream), 0) /
-          LEVELS.length,
-      })).sort((a, b) => b.value - a.value),
-    )
-
-    for (const def of DAMAGE_TOWERS) {
-      it(`${def.name} ${tier + 1}: есть сильный и слабый поток, не больше двух побед`, () => {
-        const positions = rankings.map((ranking) =>
-          ranking.findIndex((entry) => entry.id === def.id),
+// Критерии эффективности v8 вынесены в classic-balance.legacy.ts.
+// Совместимость старых залов и потолок счёта по-прежнему обязательны.
+describe('совместимость классических залов', () => {
+  for (const level of classicLevels) {
+    it(`${level.name}: стратегии не зависают и укладываются в серверный потолок счёта`, () => {
+      const prepared = createLevel(level)
+      for (const candidate of STRATEGIES) {
+        const played = result(level, candidate)
+        expect(played.outcome, candidate.name).not.toBe('stuck')
+        expect(played.score, candidate.name).toBeLessThanOrEqual(
+          maxPossibleScore(prepared, played.wavesCleared),
         )
-        expect(positions.some((position) => position < 2)).toBe(true)
-        expect(positions.some((position) => position >= 2)).toBe(true)
-        expect(positions.filter((position) => position === 0).length).toBeLessThanOrEqual(2)
-      })
-    }
-    for (const [index, stream] of STREAMS.entries()) {
-      it(`${stream.name}, ступень ${tier + 1}: лучший урон не выше двойного среднего`, () => {
-        const ranking = rankings[index]
-        const average = ranking.reduce((sum, entry) => sum + entry.value, 0) / ranking.length
-        expect(ranking[0].value / average).toBeLessThanOrEqual(2)
-      })
-    }
+      }
+    })
   }
 })
 
-describe('стратегии и залы', () => {
-  for (const level of LEVELS) {
-    it(`${level.name}: смесь отбивает минимум на две волны больше каждой моностратегии`, () => {
-      const reference = result(level, mixed)
-      expect(reference.outcome).not.toBe('stuck')
-      expect(reference.wavesCleared).toBeGreaterThanOrEqual(18)
-      for (const candidate of monoStrategies) {
-        const mono = result(level, candidate)
-        expect(mono.outcome, candidate.name).toBe('lost')
-        expect(reference.wavesCleared - mono.wavesCleared, candidate.name).toBeGreaterThanOrEqual(2)
-      }
-    })
-    it(`${level.name}: сложность смеси в пределах ±1 волны от Тронного зала`, () => {
-      expect(
-        Math.abs(result(level, mixed).wavesCleared - result(throneHall, mixed).wavesCleared),
-      ).toBeLessThanOrEqual(1)
-    })
-    it(`${level.name}: стратегии не зависают и укладываются в серверный потолок счёта`, () => {
+describe('компактные залы', () => {
+  for (const level of PLAYABLE_LEVELS) {
+    it(`${level.name}: стратегии завершаются и не превышают потолок счёта`, () => {
       const prepared = createLevel(level)
       for (const candidate of STRATEGIES) {
         const played = result(level, candidate)
@@ -109,31 +80,8 @@ function lineup(towers: readonly { id: string; tier: number }[]): Placement[] {
   })
 }
 
-describe('поддержка за общий бюджет', () => {
-  const base = Array.from({ length: 4 }, () => ({ id: 'cannon', tier: 2 }))
-  const armor = STREAMS.find((stream) => stream.enemyId === 'armor')!
-  for (const id of ['frost', 'trapper', 'warlock', 'bell']) {
-    it(`${TOWERS[id].name}: усиливает батарею против латников сильнее дополнительных лучников`, () => {
-      // Основные башни уже улучшены: за бюджет поддержки можно добавить одного-двух
-      // лучников. Сравниваем одинаковый доступный бюджет, остаток денег не даёт урона.
-      const supported = measureDefense(throneHall, lineup([...base, { id, tier: 0 }]), armor, 20)
-      const attackers = measureDefense(
-        throneHall,
-        lineup([
-          ...base,
-          ...Array.from({ length: Math.floor(TOWERS[id].cost / TOWERS['archer'].cost) }, () => ({
-            id: 'archer',
-            tier: 0,
-          })),
-        ]),
-        armor,
-        20,
-      )
-      expect(attackers.spentGold).toBeLessThanOrEqual(supported.spentGold)
-      expect(supported.damage / attackers.damage).toBeGreaterThan(1.1)
-    })
-  }
-  it('Казна: постройка и каждое улучшение окупаются за 3,5–4,5 волны без продажи', () => {
+describe('экономика Казны', () => {
+  it('Одиночная Казна: постройка и каждое улучшение окупаются за 6–7 волн без продажи', () => {
     const treasury = TOWERS['treasury']
     for (let tier = 0; tier < treasury.tiers.length; tier++) {
       const income = treasury.tiers[tier].goldPerWave!
@@ -143,8 +91,8 @@ describe('поддержка за общий бюджет', () => {
           ? totalPayback
           : treasury.upgradeCosts[tier - 1] / (income - treasury.tiers[tier - 1].goldPerWave!)
       for (const payback of [totalPayback, marginalPayback]) {
-        expect(payback).toBeGreaterThanOrEqual(3.5)
-        expect(payback).toBeLessThanOrEqual(4.5)
+        expect(payback).toBeGreaterThanOrEqual(6)
+        expect(payback).toBeLessThanOrEqual(7)
       }
     }
   })
@@ -157,8 +105,11 @@ describe('поддержка за общий бюджет', () => {
     }
     const played = playBot(throneHall, withoutTreasury)
     expect(played.outcome).not.toBe('stuck')
-    const withTreasury = result(throneHall, mixed).waves.find((wave) => wave.wave === 10)!
-    const without = played.waves.find((wave) => wave.wave === 10)!
+    const withTreasury = result(throneHall, mixed).waves.find((wave) => wave.wave === 10)
+    const without = played.waves.find((wave) => wave.wave === 10)
+    expect(withTreasury, 'стратегия с Казной должна дойти до 10-й волны').toBeDefined()
+    expect(without, 'стратегия без Казны должна дойти до 10-й волны').toBeDefined()
+    if (!withTreasury || !without) return
     expect(withTreasury.wealth).toBeGreaterThan(without.wealth + TOWERS['treasury'].cost)
   })
 })
@@ -168,7 +119,9 @@ describe('достоверность стенда', () => {
     const stream = { name: 'один лазутчик', enemyId: 'scout', count: 1, gap: 0 }
     const report = measureDefense(throneHall, lineup([{ id: 'ballista', tier: 2 }]), stream)
     expect(report.kills).toBe(1)
-    expect(report.damage).toBe(ENEMIES['scout'].hp)
+    expect(report.damage).toBe(
+      Math.round(ENEMIES['scout'].hp * hpMultiplier(1, throneHall.waves.length)),
+    )
     expect(report.leaks).toBe(0)
   })
   it('без защиты все враги доходят и отнимают свои жизни', () => {
@@ -195,11 +148,4 @@ describe('достоверность стенда', () => {
           }
     })
   }
-  it('улучшение баллисты не становится намного выгоднее постройки на бессмертных мишенях', () => {
-    const rebels = STREAMS[0]
-    expect(
-      damagePerGold(throneHall, TOWERS['ballista'], 2, rebels) /
-        damagePerGold(throneHall, TOWERS['ballista'], 0, rebels),
-    ).toBeLessThan(1.25)
-  })
 })

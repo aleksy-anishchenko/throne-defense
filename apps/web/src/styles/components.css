@@ -432,3 +432,54 @@
   flex: 1 1 0;
   min-height: 54px;
 }
+
+/* Специализация после III: одинаковые карточки в боковой панели и меню телефона. */
+.tower-aspects {
+  display: grid;
+  flex-basis: 100%;
+  min-width: 0;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+.tower-aspects h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--gold);
+}
+.tower-aspects .aspect-option {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  white-space: normal;
+  text-align: left;
+}
+.aspect-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 8px;
+}
+.aspect-cost {
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.aspect-description,
+.aspect-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  font-weight: 400;
+}
+.aspect-hint {
+  color: var(--parch-dim);
+}
+.tower-aspects .aspect-undo {
+  padding: 8px;
+  white-space: normal;
+  font-size: 0.9rem;
+}
+.tower-drawer .shop-drawer-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

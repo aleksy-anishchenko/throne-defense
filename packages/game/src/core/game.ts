@@ -5,7 +5,13 @@
 import { MAX_SPEED, MIN_SPEED, SIMULATION_STEP } from '../data/balance.ts'
 import { TOWERS } from '../data/towers.ts'
 import { moveEnemies, spawnSplits, updateHealers } from '../systems/enemies.ts'
-import { TARGET_MODES, refundFor, updateTowers, upgradeCost } from '../systems/towers.ts'
+import {
+  TARGET_MODES,
+  refundFor,
+  towerAspect,
+  updateTowers,
+  upgradeCost,
+} from '../systems/towers.ts'
 import { buildSpawnQueue, finishWave, getWaveGroups, spawnDueEnemies } from '../systems/waves.ts'
 import { updateBurning, updateShots } from '../systems/combat.ts'
 import type {
@@ -41,6 +47,10 @@ export interface Game {
   build(towerId: string, col: number, row: number): Tower | null
   /** Улучшить башню на клетке. false — если нельзя (нет башни, не хватает золота, последняя ступень) */
   upgrade(col: number, row: number): boolean
+  /** Купить аспект между волнами: нужна последняя обычная ступень и отсутствие другого аспекта. */
+  specialize(col: number, row: number, aspectId: string): boolean
+  /** Отменить покупку аспекта с полным возвратом, пока он ещё не участвовал в бою. */
+  undoSpecialization(col: number, row: number): boolean
   /** Продать башню. Возвращает, сколько золота вернули, или null */
   sell(col: number, row: number): number | null
   /** Кого башня на клетке выбирает целью. false — если нельзя (нет башни, ей нечего выбирать) */
@@ -192,6 +202,8 @@ export function createGame(levelDef: LevelDef): Game {
         x: col + CELL_CENTER_OFFSET,
         y: row + CELL_CENTER_OFFSET,
         tier: 0,
+        aspectId: null,
+        aspectLocked: false,
         cooldownLeft: 0,
         aimAngle: INITIAL_AIM_ANGLE,
         targetMode: def.defaultTargetMode,
@@ -213,6 +225,37 @@ export function createGame(levelDef: LevelDef): Game {
       if (state.phase === 'build') tower.goldSinceLastWave += cost
       tower.tier++
       events.emit('upgrade', tower)
+      return true
+    },
+
+    specialize(col, row, aspectId) {
+      const tower = towerAt(col, row)
+      if (
+        !tower ||
+        state.phase !== 'build' ||
+        tower.tier !== tower.def.tiers.length - 1 ||
+        tower.aspectId !== null
+      ) {
+        return false
+      }
+      const aspect = tower.def.aspects?.find((candidate) => candidate.id === aspectId)
+      if (!aspect || state.gold < aspect.cost) return false
+      state.gold -= aspect.cost
+      tower.goldSinceLastWave += aspect.cost
+      tower.aspectId = aspect.id
+      tower.aspectLocked = false
+      world.emit('upgrade', tower)
+      return true
+    },
+
+    undoSpecialization(col, row) {
+      const tower = towerAt(col, row)
+      if (!tower || state.phase !== 'build' || tower.aspectLocked) return false
+      const aspect = towerAspect(tower)
+      if (!aspect) return false
+      state.gold += aspect.cost
+      tower.goldSinceLastWave -= aspect.cost
+      tower.aspectId = null
       return true
     },
 
@@ -240,7 +283,10 @@ export function createGame(levelDef: LevelDef): Game {
     startWave() {
       if (state.phase !== 'build') return false
       // Всё, что стоит на поле, идёт в бой: полный возврат при продаже кончается
-      for (const tower of state.towers) tower.goldSinceLastWave = 0
+      for (const tower of state.towers) {
+        tower.goldSinceLastWave = 0
+        if (tower.aspectId !== null) tower.aspectLocked = true
+      }
       state.spawnQueue = buildSpawnQueue(level, state.wave)
       state.waveTime = 0
       state.phase = 'wave'

@@ -14,7 +14,7 @@ export const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: numb
   pierceCount: { label: 'пронзает', format: String },
   burnDamage: { label: 'горение', format: String },
   fireRateBonus: { label: 'ускоряет соседей на', format: formatPercent },
-  goldPerWave: { label: 'доход за волну', format: String },
+  goldPerWave: { label: 'базовый доход за волну', format: String },
   rootDuration: { label: 'держит в сети', format: (value) => `${formatDecimal(value)} с` },
   curseAmount: { label: 'урон по проклятым', format: (value) => `+${formatPercent(value)}` },
   healingReduction: { label: 'получаемое лечение', format: (value) => `−${formatPercent(value)}` },

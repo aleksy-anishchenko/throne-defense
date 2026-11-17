@@ -18,14 +18,20 @@ export {
 } from './data/balance.ts'
 export { ENEMIES } from './data/enemies.ts'
 export { TOWERS, TOWER_LIST } from './data/towers.ts'
-export { LEVELS } from './levels/index.ts'
+export { LEVELS, PLAYABLE_LEVELS } from './levels/index.ts'
 export {
   TARGET_MODES,
   investedGold,
   isFullRefund,
   fireRateBonusOf,
+  fireRateSourceOf,
+  bellCoverage,
+  treasuryNeighbors,
+  treasuryBonusOf,
+  treasuryIncomeOf,
   refundFor,
   towerStats,
+  towerAspect,
   displayStatValue,
   upgradeCost,
 } from './systems/towers.ts'

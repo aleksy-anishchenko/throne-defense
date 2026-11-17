@@ -17,7 +17,7 @@ function cursedOgre(tier: number) {
 }
 
 describe('проклятие и лечение', () => {
-  for (const [tier, share] of [0.65, 0.5, 0.35].entries()) {
+  for (const [tier, share] of [0.8, 0.7, 0.6].entries()) {
     it(`Колдун ${tier + 1}: получатель сохраняет ${share * 100}% лечения`, () => {
       const { game, healer, ogre } = cursedOgre(tier)
       expect(ogre.curseTimeLeft).toBeGreaterThan(0)
@@ -44,7 +44,7 @@ describe('проклятие и лечение', () => {
     healer.curseTimeLeft = 0
     healer.healCooldownLeft = 0
     game.step(SIMULATION_STEP)
-    expect(ogre.hp).toBeCloseTo(1 + healer.maxHp * ENEMIES['healer'].heal!.amount * 0.35)
+    expect(ogre.hp).toBeCloseTo(1 + healer.maxHp * ENEMIES['healer'].heal!.amount * 0.6)
   })
 
   it('два Колдуна дают сильнейшее снижение, без сложения до запрета лечения', () => {
@@ -54,8 +54,8 @@ describe('проклятие и лечение', () => {
     game.step(SIMULATION_STEP)
     healer.healCooldownLeft = 0
     game.step(SIMULATION_STEP)
-    expect(ogre.curseAmount).toBeCloseTo(0.65)
-    expect(ogre.hp).toBeCloseTo(1 + healer.maxHp * ENEMIES['healer'].heal!.amount * 0.35)
+    expect(ogre.curseAmount).toBeCloseTo(0.4)
+    expect(ogre.hp).toBeCloseTo(1 + healer.maxHp * ENEMIES['healer'].heal!.amount * 0.6)
   })
 
   it('в кадр окончания проклятия возвращается полное лечение, даже если сила ещё записана', () => {
@@ -65,7 +65,7 @@ describe('проклятие и лечение', () => {
     healer.healCooldownLeft = 0
     game.step(SIMULATION_STEP)
     expect(ogre.curseTimeLeft).toBe(0)
-    expect(ogre.curseAmount).toBeCloseTo(0.65)
+    expect(ogre.curseAmount).toBeCloseTo(0.4)
     expect(ogre.hp).toBeCloseTo(1 + healer.maxHp * ENEMIES['healer'].heal!.amount)
   })
 
