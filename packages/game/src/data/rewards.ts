@@ -97,9 +97,9 @@ export const REWARD_LIST: readonly RewardDef[] = [
   {
     id: 'giant-diet',
     name: 'Разгрузочный день',
-    description: 'Огры и Горынычи появляются с −15% здоровья',
+    description: 'Огры и Горынычи появляются с −20% здоровья',
     mark: '◡',
-    effect: { kind: 'miniBossHp', amount: 0.15 },
+    effect: { kind: 'miniBossHp', amount: 0.2 },
   },
 ]
 

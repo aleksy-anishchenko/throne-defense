@@ -207,7 +207,7 @@ describe('благословения после волн', () => {
     const before = slowed.pathDistance
     changed.step(SIMULATION_STEP)
     expect(slowed.pathDistance - before).toBeCloseTo(slowed.def.speed * 0.85 * SIMULATION_STEP)
-    expect(dietOgre.maxHp / normalOgre.maxHp).toBeCloseTo(0.85, 1)
+    expect(dietOgre.maxHp / normalOgre.maxHp).toBeCloseTo(0.8, 1)
     expect(dietBoss.maxHp).toBe(normalBoss.maxHp)
   })
 
