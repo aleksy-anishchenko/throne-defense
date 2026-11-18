@@ -7,10 +7,27 @@ import {
   waveBonus,
   type GameEvents,
 } from '../src/index.ts'
+import { HALL_BASE } from '../src/levels/hall-base.ts'
 import { throneHall } from '../src/levels/throne-hall.ts'
 import { newGame, recordEvents, stepUntil } from './helpers.ts'
 
 describe('волны', () => {
+  it('последние две волны сохраняют согласованный финальный состав', () => {
+    expect(HALL_BASE.waves[18]).toEqual([
+      ['ogre', 4, 1.8, 0],
+      ['armor', 14, 0.6, 4],
+      ['healer', 3, 3, 3],
+      ['gorynych', 2, 7, 6],
+    ])
+    expect(HALL_BASE.waves[19]).toEqual([
+      ['boss', 1, 0, 0],
+      ['armor', 12, 0.9, 3],
+      ['ogre', 4, 3, 8],
+      ['scout', 24, 0.3, 14],
+      ['healer', 2, 3, 4],
+    ])
+  })
+
   it('первая волна с двумя лучниками проходится без потерь', () => {
     const game = newGame()
     game.build('archer', 5, 11)

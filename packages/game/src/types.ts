@@ -142,6 +142,8 @@ export interface EnemyDef {
   controlResistance?: number
   /** Лечит других врагов рядом (знахарь) */
   heal?: EnemyHeal
+  /** Не получает лечение от знахарей (Узурпатор) */
+  immuneToHealing?: boolean
   /** Погибая, распадается на нескольких врагов поменьше (Змей Горыныч) */
   splitInto?: EnemySplit
 }

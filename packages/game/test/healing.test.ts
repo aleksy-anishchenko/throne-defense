@@ -17,6 +17,16 @@ function cursedOgre(tier: number) {
 }
 
 describe('проклятие и лечение', () => {
+  it('Узурпатор не получает лечение от знахаря', () => {
+    const game = newGame()
+    const healer = placeEnemy(game, 'healer', 1.5)
+    const boss = placeEnemy(game, 'boss', 1.7)
+    boss.hp = 1
+    healer.healCooldownLeft = 0
+    game.step(SIMULATION_STEP)
+    expect(boss.hp).toBe(1)
+  })
+
   for (const [tier, share] of [0.8, 0.7, 0.6].entries()) {
     it(`Колдун ${tier + 1}: получатель сохраняет ${share * 100}% лечения`, () => {
       const { game, healer, ogre } = cursedOgre(tier)

@@ -84,9 +84,9 @@ const waves: WaveGroup[][] = [
     ['healer', 4, 2.5, 3],
   ],
   [
-    ['ogre', 6, 1.8, 0],
-    ['armor', 17, 0.6, 4],
-    ['healer', 4, 3, 3],
+    ['ogre', 4, 1.8, 0],
+    ['armor', 14, 0.6, 4],
+    ['healer', 3, 3, 3],
     ['gorynych', 2, 7, 6],
   ],
   [
@@ -94,7 +94,7 @@ const waves: WaveGroup[][] = [
     ['armor', 12, 0.9, 3],
     ['ogre', 4, 3, 8],
     ['scout', 24, 0.3, 14],
-    ['healer', 3, 3, 4],
+    ['healer', 2, 3, 4],
   ],
 ]
 

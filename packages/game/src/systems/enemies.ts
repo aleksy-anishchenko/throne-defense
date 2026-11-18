@@ -98,6 +98,7 @@ function canHeal(healer: Enemy, other: Enemy, radius: number): boolean {
   return (
     other !== healer &&
     !other.isDead &&
+    !other.def.immuneToHealing &&
     other.hp < other.maxHp &&
     (other.x - healer.x) ** 2 + (other.y - healer.y) ** 2 <= radius * radius
   )

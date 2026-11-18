@@ -92,6 +92,7 @@ const ENEMY_LIST: EnemyDef[] = [
     radius: 0.42,
     slowResistance: 0.5,
     controlResistance: 0.7,
+    immuneToHealing: true,
   },
 ]
 
