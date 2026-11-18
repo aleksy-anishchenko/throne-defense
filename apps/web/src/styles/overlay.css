@@ -81,6 +81,10 @@
 .sheet .btn.primary {
   font-size: 1.15rem;
 }
+.sheet .btn.danger {
+  border-color: var(--crimson);
+  color: #ffd9d9;
+}
 
 /* Выбор благословения после рубежной волны */
 .reward-choice {

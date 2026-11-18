@@ -60,6 +60,8 @@ export interface Game {
   /** Выбрать одну из трёх наград после рубежной волны */
   chooseReward(rewardId: RewardId): boolean
   startWave(): boolean
+  /** Добровольно завершить текущую партию поражением */
+  surrender(): boolean
   /** После победы — играть дальше, в бесконечном режиме */
   continueEndless(): void
   setPaused(paused: boolean): void
@@ -308,6 +310,15 @@ export function createGame(levelDef: LevelDef): Game {
       state.phase = 'wave'
       state.isPaused = false
       events.emit('waveStart', state.wave)
+      return true
+    },
+
+    surrender() {
+      if (!isPlaying()) return false
+      state.lives = 0
+      state.isPaused = false
+      state.phase = 'lost'
+      events.emit('defeat', undefined)
       return true
     },
 

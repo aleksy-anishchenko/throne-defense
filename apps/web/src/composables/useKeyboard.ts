@@ -1,7 +1,7 @@
 // Управление с клавиатуры: 1–9 выбирают стража, пробел — волна/пауза,
 // стрелки двигают курсор по полю, Enter ставит стража (Shift — и оставляет его «в руке»),
 // Esc снимает выбор,
-// T меняет, кого бьёт выбранная башня. На экранах «Лучшие результаты» и «Настройки» Esc — «Назад».
+// T меняет, кого бьёт выбранная башня. На экранах меню Esc — «Назад».
 
 import { TOWER_LIST } from '@throne/game'
 import { onMounted, onUnmounted } from 'vue'
@@ -34,8 +34,8 @@ export function useKeyboard(): void {
     // На кнопке пробел и Enter должны нажимать саму кнопку (фокус на кнопке бывает только
     // с клавиатуры — после щелчка мышью его снимает onClick ниже)
     const isButtonFocused = event.target instanceof HTMLButtonElement
-    // Открыты настройки посреди партии: клавиши не должны управлять игрой под ними
-    if (store.screen === 'settings' && event.key !== 'Escape') return
+    // Любой экран поверх поля блокирует игровые клавиши. Escape остаётся навигацией
+    if (store.screen !== null && event.key !== 'Escape') return
 
     // Цифры 1–9, см. MAX_HOTKEY_DIGIT. По положению клавиши (event.code), а не по символу:
     // с зажатым Shift (режим «ставить подряд») клавиша «2» даёт «@», а не «2»
@@ -53,6 +53,14 @@ export function useKeyboard(): void {
       }
       if (store.screen === 'settings') {
         store.closeSettings()
+        return
+      }
+      if (store.screen === 'surrender') {
+        store.cancelSurrender()
+        return
+      }
+      if (store.screen === 'menu' && store.isPlaying()) {
+        store.closeGameMenu()
         return
       }
       // Открыто меню — Escape закрывает его. Страж «в руке» остаётся, а выбранная башня — нет:

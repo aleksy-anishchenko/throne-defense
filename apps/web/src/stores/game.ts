@@ -117,6 +117,8 @@ export const useGameStore = defineStore('game', () => {
 
   // Какой экран показан поверх поля (меню, поражение, победа) или null
   const screen = ref<OverlayScreen>('menu')
+  /** Меню само поставило паузу и снимет её после «Продолжить» */
+  let isPausedByGameMenu = false
 
   /** Выбор благословения и уже полученные награды — снимок для Vue */
   const rewards = reactive({
@@ -315,6 +317,7 @@ export const useGameStore = defineStore('game', () => {
     screen.value = 'victory'
   })
   game.on('defeat', () => {
+    isPausedByGameMenu = false
     saveResultIfBest()
     finishRunForLeaderboard()
     screen.value = 'defeat'
@@ -353,6 +356,7 @@ export const useGameStore = defineStore('game', () => {
     runCount.value++
     forgetFinishedRun()
     isNewBest.value = false
+    isPausedByGameMenu = false
     syncRewards()
     screen.value = null
     syncHud()
@@ -387,6 +391,35 @@ export const useGameStore = defineStore('game', () => {
 
   function pauseIfFighting() {
     if (state.phase === 'wave') game.setPaused(true)
+  }
+
+  /** Меню посреди партии: бой останавливается до «Продолжить» */
+  function openGameMenu() {
+    if (!isPlaying() || screen.value !== null) return
+    isPausedByGameMenu = state.phase === 'wave' && !state.isPaused
+    pauseIfFighting()
+    screen.value = 'menu'
+  }
+
+  function closeGameMenu() {
+    if (screen.value !== 'menu' || !isPlaying()) return
+    screen.value = null
+    if (isPausedByGameMenu && state.phase === 'wave') game.setPaused(false)
+    isPausedByGameMenu = false
+  }
+
+  function requestSurrender() {
+    if (screen.value === 'menu' && isPlaying()) screen.value = 'surrender'
+  }
+
+  function cancelSurrender() {
+    if (screen.value === 'surrender' && isPlaying()) screen.value = 'menu'
+  }
+
+  function surrender() {
+    if (screen.value !== 'surrender') return
+    isPausedByGameMenu = false
+    game.surrender()
   }
 
   /** Изменить настройки звука (выключатели, громкость) — сразу слышно и сохраняется */
@@ -450,6 +483,11 @@ export const useGameStore = defineStore('game', () => {
     cycleSpeed,
     togglePause,
     pauseIfFighting,
+    openGameMenu,
+    closeGameMenu,
+    requestSurrender,
+    cancelSurrender,
+    surrender,
     updateAudioSettings,
     previewSfx,
     openSettings,

@@ -43,6 +43,20 @@ const screenContent = computed(() => {
   const { hud, bestResult } = store
   switch (store.screen) {
     case 'menu':
+      if (store.isPlaying()) {
+        const waveText =
+          hud.wave > hud.waveCount ? `Волна ${hud.wave}` : `Волна ${hud.wave} из ${hud.waveCount}`
+        return {
+          title: 'Пауза',
+          text: `${waveText}. Жизни трона: ${hud.lives}.`,
+          note: '',
+          buttons: [
+            { label: 'Продолжить', action: store.closeGameMenu },
+            { label: 'Настройки', action: store.openSettings },
+            { label: 'Сдаться', action: store.requestSurrender },
+          ],
+        }
+      }
       return {
         title: 'Защита трона',
         text: 'Мятежники ломятся в тронный зал. Расставьте стражу вдоль ковра и не подпустите их к трону.',
@@ -84,6 +98,16 @@ const screenContent = computed(() => {
         text: `Волна ${store.rewards.wave} отбита. Одна из трёх наград останется до конца партии.`,
         note: 'Выбранные благословения складываются.',
         buttons: [],
+      }
+    case 'surrender':
+      return {
+        title: 'Сдаться?',
+        text: 'Текущая партия завершится. Результат сохранится.',
+        note: '',
+        buttons: [
+          { label: 'Отмена', action: store.cancelSurrender },
+          { label: 'Да, сдаться', action: store.surrender },
+        ],
       }
     case 'leaderboard':
       return {
@@ -156,14 +180,16 @@ watch(
           v-for="(button, i) in screenContent.buttons"
           :key="button.label"
           class="btn"
-          :class="{ primary: i === 0 }"
+          :class="{ primary: i === 0, danger: button.label === 'Да, сдаться' }"
           type="button"
           @click="button.action"
         >
           {{ button.label }}
         </button>
       </div>
-      <p v-if="store.screen === 'menu'" class="version">Версия {{ appVersion }}</p>
+      <p v-if="store.screen === 'menu' && !store.isPlaying()" class="version">
+        Версия {{ appVersion }}
+      </p>
     </div>
   </div>
 </template>

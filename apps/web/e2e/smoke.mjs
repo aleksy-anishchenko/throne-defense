@@ -326,7 +326,7 @@ async function desktop(browser, url) {
       )),
   )
 
-  const versionText = await page.locator('.sheet .version').textContent()
+  const versionText = (await page.locator('.sheet .version').textContent())?.trim()
   check(
     'в меню видна версия сборки',
     /^Версия ([0-9a-f]{7,}|dev) · \d{2}\.\d{2}\.\d{4}$/.test(versionText),
@@ -1258,13 +1258,19 @@ async function desktop(browser, url) {
     JSON.stringify(snapshot.towers),
   )
 
-  // Настройки посреди боя: игра встаёт на паузу, клавиши не управляют игрой под экраном
+  // Меню посреди боя: игра встаёт на паузу, из меню открываются настройки
   await page.getByRole('button', { name: 'Начать волну' }).click()
-  await page.getByRole('button', { name: 'Настройки' }).click()
+  await page.getByRole('button', { name: 'Меню' }).click()
+  const pauseMenu = page.getByRole('dialog', { name: 'Пауза' })
+  check(
+    'меню открылось, бой на паузе',
+    (await appears(pauseMenu)) && (await readGameSnapshot(page)).paused,
+  )
+  await pauseMenu.getByRole('button', { name: 'Настройки' }).click()
   const settingsDialog = page.getByRole('dialog', { name: 'Настройки' })
   snapshot = await readGameSnapshot(page)
   check(
-    'настройки открылись, бой на паузе',
+    'настройки открылись из меню, бой на паузе',
     (await appears(settingsDialog)) && snapshot.phase === 'wave' && snapshot.paused,
     JSON.stringify(snapshot),
   )
@@ -1282,23 +1288,34 @@ async function desktop(browser, url) {
   await page.keyboard.press('Escape')
   await waitForFrames(page)
   check(
-    'Escape закрыл настройки, бой продолжился сам',
-    (await settingsDialog.count()) === 0 && !(await readGameSnapshot(page)).paused,
+    'Escape закрыл настройки и вернул в меню',
+    (await settingsDialog.count()) === 0 &&
+      (await pauseMenu.isVisible()) &&
+      (await readGameSnapshot(page)).paused,
   )
+  await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  check('Escape закрыл меню, бой продолжился', !(await readGameSnapshot(page)).paused)
 
   // Пауза, поставленная игроком до настроек, после них остаётся
   await page.getByRole('button', { name: 'Пауза' }).click()
-  await page.getByRole('button', { name: 'Настройки' }).click()
+  await page.getByRole('button', { name: 'Меню' }).click()
+  await page
+    .getByRole('dialog', { name: 'Пауза' })
+    .getByRole('button', { name: 'Настройки' })
+    .click()
   await page.getByRole('button', { name: 'Готово' }).click()
   await waitForFrames(page)
-  check('своя пауза игрока после настроек осталась', (await readGameSnapshot(page)).paused)
+  await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  check('своя пауза игрока после меню и настроек осталась', (await readGameSnapshot(page)).paused)
 
   // Настройки и испорченный рекорд переживают перезагрузку
   await page.evaluate(() => localStorage.setItem('throne-best', '123'))
   await page.reload()
   await page.waitForFunction(() => document.querySelector('#app')?.children.length > 0)
   check('испорченный рекорд: меню на месте', await playButton.isVisible())
-  // Шестерёнка под меню тоже есть в разметке (выключена inert) — берём кнопку самого меню
+  // Кнопка меню под главным экраном тоже есть в разметке (выключена inert) — берём кнопку меню
   await page.getByRole('dialog').getByRole('button', { name: 'Настройки' }).click()
   check(
     'настройки звука пережили перезагрузку',
@@ -1321,6 +1338,26 @@ async function desktop(browser, url) {
   await waitForFrames(page)
   await checkStartButtonVisible(page)
   await checkShopCardsVisible(page)
+
+  // Сдаться можно только после подтверждения
+  await page.getByRole('button', { name: 'Меню' }).click()
+  await page.getByRole('dialog', { name: 'Пауза' }).getByRole('button', { name: 'Сдаться' }).click()
+  check(
+    'сдаться сначала просит подтверждение',
+    await appears(page.getByRole('dialog', { name: 'Сдаться?' })),
+  )
+  await page.getByRole('button', { name: 'Отмена' }).click()
+  check(
+    'отмена сдачи возвращает в меню',
+    await appears(page.getByRole('dialog', { name: 'Пауза' })),
+  )
+  await page.getByRole('button', { name: 'Сдаться' }).click()
+  await page.getByRole('button', { name: 'Да, сдаться' }).click()
+  await page.getByRole('heading', { name: 'Трон пал' }).waitFor({ timeout: 5000 })
+  check(
+    'подтверждённая сдача завершает партию',
+    (await readGameSnapshot(page)).phase === 'lost' && (await readGameSnapshot(page)).lives === 0,
+  )
   await page.close()
 }
 

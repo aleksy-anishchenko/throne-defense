@@ -122,6 +122,18 @@ describe('волны', () => {
     expect(game.state.wave).toBe(21)
     expect(game.waveGroups(25).some(([enemyId]) => enemyId === 'boss')).toBe(true)
   })
+
+  it('игрок может добровольно завершить партию', () => {
+    const game = newGame()
+    const recordedEvents = recordEvents(game)
+    game.build('archer', 5, 11)
+    game.startWave()
+    expect(game.surrender()).toBe(true)
+    expect(game.state.phase).toBe('lost')
+    expect(game.state.lives).toBe(0)
+    expect(recordedEvents).toContain('defeat')
+    expect(game.surrender()).toBe(false)
+  })
 })
 
 describe('время', () => {
