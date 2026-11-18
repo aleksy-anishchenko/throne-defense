@@ -52,6 +52,9 @@ export function useSelectedTowerInfo() {
       lines.push(`Соседние Казны: ${treasuryNeighbors}, бонус +${Math.round(treasuryBonus * 100)}%`)
       lines.push(`Итого за волну: ${treasuryIncome}`)
     }
+    if (selection.selected.aspectId === 'hunter-mark') {
+      lines.push(`серия ${selection.selected.hunterStacks}/${selection.selected.hunterMaxStacks}`)
+    }
     return {
       title: `${def.name} ${toRoman(tier + (aspect ? 1 : 0))}`,
       lines,

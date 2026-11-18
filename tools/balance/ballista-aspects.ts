@@ -1,6 +1,6 @@
 // npm run balance:aspects — изолированные потоки на 20-й волне, НЕ полное прохождение.
 // Общая расстановка: Баллиста III + четыре Лучника III. Сравниваем аспект за 180
-// с ещё одним Лучником III за 160; остаток бюджета не даёт боевого преимущества.
+// с ещё одним Лучником III за 190; разница бюджета не создаёт дополнительной защиты.
 import { PLAYABLE_LEVELS, TOWERS, createGame, type LevelDef } from '@throne/game'
 import { findCellFor } from './bot.ts'
 import { measureDefense, type EnemyStream, type Placement } from './towers.ts'

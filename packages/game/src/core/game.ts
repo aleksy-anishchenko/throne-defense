@@ -219,6 +219,8 @@ export function createGame(levelDef: LevelDef): Game {
         // Построена во время волны — сразу в бою, полного возврата нет
         goldSinceLastWave: state.phase === 'build' ? def.cost : 0,
         upgradeGoldPaid: 0,
+        hunterTargetId: null,
+        hunterStacks: 0,
       }
       state.towers.push(tower)
       state.towersByCell.set(cellKey(col, row), tower)
@@ -255,6 +257,8 @@ export function createGame(levelDef: LevelDef): Game {
       tower.goldSinceLastWave += aspect.cost
       tower.aspectId = aspect.id
       tower.aspectLocked = false
+      tower.hunterTargetId = null
+      tower.hunterStacks = 0
       world.emit('upgrade', tower)
       return true
     },
@@ -267,6 +271,8 @@ export function createGame(levelDef: LevelDef): Game {
       state.gold += aspect.cost
       tower.goldSinceLastWave -= aspect.cost
       tower.aspectId = null
+      tower.hunterTargetId = null
+      tower.hunterStacks = 0
       return true
     },
 

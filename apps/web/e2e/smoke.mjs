@@ -17,6 +17,8 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 // Размер поля в клетках (как в уровне «Тронный зал»)
 const COLS = 7
 const ROWS = 11
+const ARCHER_COST = 60
+const ARCHER_UPGRADE_COST = 50
 
 let failed = 0
 const errors = []
@@ -404,12 +406,12 @@ async function desktop(browser, url) {
   await clickCell(page, 1, 9)
   let snapshot = await readGameSnapshot(page)
   check(
-    'две башни, осталось 50 золота',
-    snapshot.towers.length === 2 && snapshot.gold === 50,
+    'две башни, осталось 30 золота',
+    snapshot.towers.length === 2 && snapshot.gold === 30,
     JSON.stringify(snapshot),
   )
 
-  // Золота 50, Баллиста стоит 160: в руку не берётся, сразу отказ
+  // Золота 30, Баллиста стоит 160: в руку не берётся, сразу отказ
   const ballistaCard = page.getByRole('button', { name: /Баллиста/ })
   await ballistaCard.click()
   await waitForFrames(page)
@@ -740,12 +742,15 @@ async function desktop(browser, url) {
     'снятие выбора Казны скрывает и нулевой процент',
     await page.evaluate(() => window.__treasuryLabels.length === 0),
   )
-  await page.evaluate((gold) => {
-    const { game } = window.__throne
-    game.sell(0, 0)
-    game.state.gold = gold
-    window.__restoreTreasuryLabels()
-  }, goldBeforeTreasuries)
+  await page.evaluate(
+    ({ gold, upgradeCost }) => {
+      const { game } = window.__throne
+      game.sell(0, 0)
+      game.state.gold = gold + upgradeCost
+      window.__restoreTreasuryLabels()
+    },
+    { gold: goldBeforeTreasuries, upgradeCost: ARCHER_UPGRADE_COST },
+  )
   await clickCell(page, 4, 9)
 
   await page.getByRole('button', { name: /Улучшить/ }).click()
@@ -753,7 +758,7 @@ async function desktop(browser, url) {
   snapshot = await readGameSnapshot(page)
   check(
     'улучшение',
-    snapshot.gold === 10 && snapshot.towers.includes('archer1@4,9'),
+    snapshot.gold === goldBeforeTreasuries && snapshot.towers.includes('archer1@4,9'),
     JSON.stringify(snapshot),
   )
   await page.getByRole('button', { name: /Улучшить/ }).click()
@@ -767,8 +772,9 @@ async function desktop(browser, url) {
   await waitForFrames(page)
   snapshot = await readGameSnapshot(page)
   check(
-    'до волны «Вернуть» отдаёт всё (90 золота)',
-    snapshot.gold === 100 && snapshot.towers.length === 1,
+    'до волны «Вернуть» отдаёт всю постройку и улучшение',
+    snapshot.gold === goldBeforeTreasuries + ARCHER_COST + ARCHER_UPGRADE_COST &&
+      snapshot.towers.length === 1,
     JSON.stringify(snapshot),
   )
   check('панель башни скрылась', (await page.locator('.tower-info').count()) === 0)
@@ -782,7 +788,8 @@ async function desktop(browser, url) {
   snapshot = await readGameSnapshot(page)
   check(
     'постройка с клавиатуры',
-    snapshot.towers.includes('archer0@4,9') && snapshot.gold === 50,
+    snapshot.towers.includes('archer0@4,9') &&
+      snapshot.gold === goldBeforeTreasuries + ARCHER_UPGRADE_COST,
     JSON.stringify(snapshot),
   )
   check(
@@ -813,11 +820,53 @@ async function desktop(browser, url) {
   await clickCell(page, 2, 9)
   await page.getByRole('button', { name: /Вернуть/ }).click()
   await waitForFrames(page)
-  check('Shift-башню вернули, золото прежнее', (await readGameSnapshot(page)).gold === 50)
+  check(
+    'Shift-башню вернули, золото прежнее',
+    (await readGameSnapshot(page)).gold === goldBeforeTreasuries + ARCHER_UPGRADE_COST,
+  )
   await page.keyboard.press('Escape')
-  // В новой экономике используем оставшиеся 50 на третьего Лучника перед волной.
+  // Оставшегося золота хватает на третьего Лучника перед волной.
   await archerCard.click()
   await clickCell(page, 2, 9)
+
+  // Лучник III: два аспекта по 120, покупка и отмена видны в панели.
+  const goldBeforeArcherAspectTest = (await readGameSnapshot(page)).gold
+  await page.evaluate(() => (window.__throne.game.state.gold = 1000))
+  await clickCell(page, 4, 9)
+  await page.getByRole('button', { name: /Улучшить/ }).click()
+  await page.getByRole('button', { name: /Улучшить/ }).click()
+  await waitForFrames(page)
+  const archerAspects = page.locator('.tower-info .tower-aspects')
+  check(
+    'Лучник III: два аспекта по 120',
+    (await archerAspects.locator('.aspect-option').count()) === 2 &&
+      (await archerAspects.innerText()).includes('Метка охотника') &&
+      (await archerAspects.innerText()).includes('Рикошет'),
+  )
+  const archerGoldBeforeAspect = (await readGameSnapshot(page)).gold
+  await archerAspects.getByRole('button', { name: 'Рикошет за 120 золота' }).click()
+  await waitForFrames(page)
+  check(
+    'Рикошет: Лучник IV и списание 120',
+    (await page.locator('.tower-info b').textContent()) === 'Лучник IV' &&
+      (await readGameSnapshot(page)).gold === archerGoldBeforeAspect - 120 &&
+      (await page.evaluate(() => window.__throne.game.towerAt(4, 9).aspectId)) === 'ricochet',
+  )
+  await archerAspects.getByRole('button', { name: /Отменить аспект/ }).click()
+  await waitForFrames(page)
+  check(
+    'аспект Лучника можно отменить до боя',
+    (await page.locator('.tower-info b').textContent()) === 'Лучник III' &&
+      (await readGameSnapshot(page)).gold === archerGoldBeforeAspect,
+  )
+  await page.keyboard.press('Escape')
+  await page.evaluate((gold) => {
+    const { game } = window.__throne
+    game.sell(4, 9)
+    game.build('archer', 4, 9)
+    game.state.gold = gold
+  }, goldBeforeArcherAspectTest)
+  await waitForFrames(page)
 
   // Волна: пробел, скорость ×3. Башня «в руке» перед волной — выбор должен сняться.
   // Карточку выбираем мышью: фокус остаётся на ней, но без рамки — пробел всё равно игре

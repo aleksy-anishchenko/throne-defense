@@ -276,14 +276,15 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       if (popTimeLeft > 0 && !prefersReducedMotion) {
         ctx.scale(1 + popTimeLeft * POP_SCALE, 1 + popTimeLeft * POP_SCALE)
       }
-      const isReady = tower.cooldownLeft < towerStats(tower).cooldown * READY_COOLDOWN_SHARE
-      drawTower(ctx, tower.def.id, tower.tier, tower.aimAngle, time, isReady, tower.aspectId)
+      // Кольцо выбора лежит под башней: знак аспекта у верхнего края должен оставаться поверх
       if (tower === selectedTower) {
         ctx.strokeStyle = GOLD
         ctx.lineWidth = 0.045
         circle(ctx, 0, 0, 0.41)
         ctx.stroke()
       }
+      const isReady = tower.cooldownLeft < towerStats(tower).cooldown * READY_COOLDOWN_SHARE
+      drawTower(ctx, tower.def.id, tower.tier, tower.aimAngle, time, isReady, tower.aspectId)
       ctx.restore()
     }
   }

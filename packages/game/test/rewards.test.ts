@@ -156,11 +156,11 @@ describe('благословения после волн', () => {
     const game = newGame()
     choose(game, 'military-engineer')
     const tower = game.build('archer', 5, 11)!
-    expect(upgradeCost(tower, 0.7)).toBe(28)
+    expect(upgradeCost(tower, 0.7)).toBe(35)
     expect(game.upgrade(tower.col, tower.row)).toBe(true)
-    expect(tower.upgradeGoldPaid).toBe(28)
-    expect(towerInvestedGold(tower)).toBe(78)
-    expect(refundFor(tower)).toBe(78)
+    expect(tower.upgradeGoldPaid).toBe(35)
+    expect(towerInvestedGold(tower)).toBe(95)
+    expect(refundFor(tower)).toBe(95)
   })
 
   it('скидка военного инженера не распространяется на аспекты', () => {

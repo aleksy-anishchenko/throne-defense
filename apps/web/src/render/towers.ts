@@ -737,6 +737,16 @@ const TIER_RING_RADIUS = 0.395
 const TIER_RING_WIDTH = 0.028
 const TIER_RING_GAP_WIDTH = 0.05
 
+const ASPECT_COLORS: Readonly<Record<string, string>> = {
+  'giant-slayer': '#f6a665',
+  'armor-breaker': '#91dbef',
+  'hunter-mark': '#9bd36a',
+  ricochet: '#d6a8ff',
+}
+
+const aspectColor = (aspectId: string | null) =>
+  aspectId ? (ASPECT_COLORS[aspectId] ?? '#91dbef') : null
+
 /**
  * Кольцо ступени вокруг постамента: серебряное (II) или золотое (III).
  * Снаружи и с тёмным зазором — чтобы золото рамки не сливалось с золотом самой башни
@@ -747,24 +757,20 @@ function drawTierRing(ctx: Canvas2D, tier: number, aspectId: string | null) {
   ctx.lineWidth = TIER_RING_GAP_WIDTH
   circle(ctx, 0, 0, TIER_RING_RADIUS)
   ctx.stroke()
-  ctx.strokeStyle = aspectId
-    ? aspectId === 'giant-slayer'
-      ? '#f6a665'
-      : '#91dbef'
-    : (TIER_RING_COLORS[tier] ?? GOLD)
+  ctx.strokeStyle = aspectColor(aspectId) ?? TIER_RING_COLORS[tier] ?? GOLD
   ctx.lineWidth = TIER_RING_WIDTH
   circle(ctx, 0, 0, TIER_RING_RADIUS)
   ctx.stroke()
 }
 
-/** Копьё или расколотый щит: аспекты различаются не только цветом. */
+/** У каждого аспекта свой знак, поэтому их можно различить без цвета. */
 function drawAspectMark(ctx: Canvas2D, aspectId: string) {
   ctx.save()
   ctx.translate(0.27, -0.27)
   ctx.fillStyle = '#252b43'
   circle(ctx, 0, 0, 0.105)
   ctx.fill()
-  ctx.strokeStyle = aspectId === 'giant-slayer' ? '#f6a665' : '#91dbef'
+  ctx.strokeStyle = aspectColor(aspectId) ?? '#91dbef'
   ctx.lineWidth = 0.022
   ctx.lineJoin = 'round'
   ctx.beginPath()
@@ -774,7 +780,7 @@ function drawAspectMark(ctx: Canvas2D, aspectId: string) {
     ctx.moveTo(-0.045, -0.005)
     ctx.lineTo(0, -0.065)
     ctx.lineTo(0.045, -0.005)
-  } else {
+  } else if (aspectId === 'armor-breaker') {
     ctx.moveTo(-0.06, -0.055)
     ctx.lineTo(0.06, -0.055)
     ctx.lineTo(0.045, 0.03)
@@ -785,6 +791,26 @@ function drawAspectMark(ctx: Canvas2D, aspectId: string) {
     ctx.lineTo(-0.02, 0)
     ctx.lineTo(0.02, 0.015)
     ctx.lineTo(0, 0.06)
+  } else if (aspectId === 'hunter-mark') {
+    ctx.arc(0, 0, 0.045, 0, Math.PI * 2)
+    ctx.moveTo(-0.08, 0)
+    ctx.lineTo(-0.035, 0)
+    ctx.moveTo(0.035, 0)
+    ctx.lineTo(0.08, 0)
+    ctx.moveTo(0, -0.08)
+    ctx.lineTo(0, -0.035)
+    ctx.moveTo(0, 0.035)
+    ctx.lineTo(0, 0.08)
+  } else if (aspectId === 'ricochet') {
+    ctx.moveTo(-0.075, -0.045)
+    ctx.lineTo(-0.025, 0)
+    ctx.lineTo(-0.075, 0.045)
+    ctx.moveTo(0.015, -0.045)
+    ctx.lineTo(0.065, 0)
+    ctx.lineTo(0.015, 0.045)
+  } else {
+    ctx.moveTo(-0.045, 0)
+    ctx.lineTo(0.045, 0)
   }
   ctx.stroke()
   ctx.restore()

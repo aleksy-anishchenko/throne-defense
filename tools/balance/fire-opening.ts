@@ -19,7 +19,7 @@ const variants = [
 // Сопоставимый бюджет — не более 300, неистраченный остаток остаётся у игрока.
 const plans = [
   { name: 'Огневик III (300)', id: 'mage', count: 1, tier: 2 },
-  { name: 'Три Лучника II (270)', id: 'archer', count: 3, tier: 1 },
+  { name: 'Два Лучника II (220)', id: 'archer', count: 2, tier: 1 },
   { name: 'Баллиста II (240)', id: 'ballista', count: 1, tier: 1 },
   { name: 'Пушкарь II (240)', id: 'cannon', count: 1, tier: 1 },
 ]

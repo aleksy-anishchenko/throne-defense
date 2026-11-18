@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   SIMULATION_STEP,
+  TOWERS,
   createGame,
   createLevel,
   maxPossibleScore,
@@ -48,8 +49,8 @@ describe('волны', () => {
     game.startWave()
     stepUntil(game, () => game.state.phase !== 'wave')
 
-    // 150 − 2 × 50 + 8 бунтовщиков × 6 + бонус за 1-ю волну
-    expect(game.state.gold).toBe(150 - 100 + 8 * 6 + waveBonus(1))
+    // Стартовое золото − два Лучника + награды за убийства и волну
+    expect(game.state.gold).toBe(150 - 2 * TOWERS['archer'].cost + 8 * 6 + waveBonus(1))
     expect(game.state.score).toBe(8 * 60 + 100)
   })
 

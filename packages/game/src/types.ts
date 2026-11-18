@@ -75,6 +75,19 @@ export interface TowerAspectDef {
   giantDamageBonus?: number
   /** Попадание снимает броню на столько секунд; повторное обновляет срок. */
   armorBreakDuration?: number
+  /** Последовательные выстрелы по одной цели накапливают бонус к урону. */
+  hunterMark?: {
+    /** Прибавка к урону за каждый шаг серии: 0.1 — на 10%. */
+    damagePerStack: number
+    maxStacks: number
+  }
+  /** Дополнительные стрелы по врагам рядом с основной целью. */
+  ricochet?: {
+    /** Доли урона для каждой следующей стрелы. */
+    shares: readonly number[]
+    /** Радиус поиска дополнительных целей вокруг основной, клеток. */
+    radius: number
+  }
 }
 
 /** Описание типа башни. Новая башня = новый объект TowerDef + рисунок в apps/web */
@@ -340,6 +353,10 @@ export interface Tower {
   goldSinceLastWave: number
   /** Сколько золота реально заплачено за обычные улучшения с учётом скидок благословений */
   upgradeGoldPaid: number
+  /** Текущая цель серии «Метки охотника», если аспект выбран */
+  hunterTargetId: number | null
+  /** Текущая длина серии «Метки охотника» */
+  hunterStacks: number
 }
 
 /** Враг, идущий по ковру */

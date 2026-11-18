@@ -19,12 +19,23 @@ import { newGame, placeEnemy, worldOf } from './helpers.ts'
 
 const ASPECT_COST = 180
 const BASE_COST = 510
+const ARCHER_ASPECT_COST = 120
 
 function setUp(aspectId?: string) {
   const game = newGame()
   game.state.gold = 5000
   game.state.wave = 20
   const tower = game.build('ballista', 5, 11)!
+  game.upgrade(tower.col, tower.row)
+  game.upgrade(tower.col, tower.row)
+  if (aspectId) expect(game.specialize(tower.col, tower.row, aspectId)).toBe(true)
+  return { game, tower }
+}
+
+function setUpArcher(aspectId?: string) {
+  const game = newGame()
+  game.state.gold = 5000
+  const tower = game.build('archer', 5, 11)!
   game.upgrade(tower.col, tower.row)
   game.upgrade(tower.col, tower.row)
   if (aspectId) expect(game.specialize(tower.col, tower.row, aspectId)).toBe(true)
@@ -132,6 +143,54 @@ describe('покупка специализации', () => {
     const fresh = game.build('ballista', tower.col, tower.row)!
     expect(fresh.aspectId).toBeNull()
     expect(fresh.aspectLocked).toBe(false)
+  })
+})
+
+describe('аспекты Лучника', () => {
+  it('Лучник III покупает один из двух аспектов за 120 золота', () => {
+    const { game, tower } = setUpArcher()
+    expect(tower.def.cost).toBe(60)
+    expect(tower.def.upgradeCosts).toEqual([50, 80])
+    expect(tower.def.aspects?.map(({ id, cost }) => [id, cost])).toEqual([
+      ['hunter-mark', ARCHER_ASPECT_COST],
+      ['ricochet', ARCHER_ASPECT_COST],
+    ])
+    const gold = game.state.gold
+    expect(game.specialize(tower.col, tower.row, 'hunter-mark')).toBe(true)
+    expect(game.state.gold).toBe(gold - ARCHER_ASPECT_COST)
+    expect(towerAspect(tower)?.name).toBe('Метка охотника')
+    expect(tower.tier).toBe(2)
+  })
+
+  it('Метка охотника повышает урон серии до 50% и сбрасывается при смене цели', () => {
+    const { game, tower } = setUpArcher('hunter-mark')
+    const first = targetAt(game, tower, 'ogre', 1)
+    const second = targetAt(game, tower, 'ogre', 1.5)
+    const damages: number[] = []
+    for (let shot = 0; shot < 6; shot++) {
+      tower.def.fire!(worldOf(game), tower, first, towerStats(tower))
+      damages.push(game.state.shots.at(-1)!.damage)
+    }
+    expect(damages.map((damage) => Number(damage.toFixed(1)))).toEqual([
+      19, 20.9, 22.8, 24.7, 26.6, 28.5,
+    ])
+    tower.def.fire!(worldOf(game), tower, second, towerStats(tower))
+    expect(game.state.shots.at(-1)!.damage).toBe(19)
+  })
+
+  it('Рикошет выпускает две дополнительные стрелы на 60% и 30% урона', () => {
+    const { game, tower } = setUpArcher('ricochet')
+    const primary = targetAt(game, tower, 'ogre', 1)
+    const near = placeEnemy(game, 'ogre')
+    near.x = primary.x + 0.4
+    near.y = primary.y
+    const farther = placeEnemy(game, 'ogre')
+    farther.x = primary.x - 0.7
+    farther.y = primary.y
+    tower.def.fire!(worldOf(game), tower, primary, towerStats(tower))
+    const homing = game.state.shots.filter((shot) => shot.kind === 'homing')
+    expect(homing.map((shot) => shot.target)).toEqual([primary, near, farther])
+    expect(homing.map((shot) => shot.damage)).toEqual([19, 11.4, 5.7])
   })
 })
 

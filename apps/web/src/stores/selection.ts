@@ -18,6 +18,7 @@ import {
   treasuryBonusOf,
   treasuryIncomeOf,
   treasuryNeighbors,
+  towerAspect,
   isFullRefund,
   refundFor,
   rewardStats,
@@ -94,6 +95,8 @@ export const useSelectionStore = defineStore('selection', () => {
     treasuryIncome: 0,
     upgradeCost: null as number | null,
     upgradeCostMultiplier: 1,
+    hunterStacks: 0,
+    hunterMaxStacks: 0,
   })
 
   /** Снимок предпросмотра: игра не реактивна, как и снимок выбранной башни выше. */
@@ -130,6 +133,9 @@ export const useSelectionStore = defineStore('selection', () => {
     selected.treasuryIncome = tower ? treasuryIncomeOf(game.state.towers, tower) : 0
     selected.upgradeCostMultiplier = rewardStats(game.state).upgradeCostMultiplier
     selected.upgradeCost = tower ? upgradeCost(tower, selected.upgradeCostMultiplier) : null
+    const aspect = tower ? towerAspect(tower) : null
+    selected.hunterStacks = tower?.hunterStacks ?? 0
+    selected.hunterMaxStacks = aspect?.hunterMark?.maxStacks ?? 0
 
     const hover = hoverCell.value
     const placementCell = hover ?? cursorCell.value

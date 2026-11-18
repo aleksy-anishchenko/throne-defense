@@ -10,7 +10,7 @@
 
 import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/combat.ts'
 import { towerAspect } from '../systems/towers.ts'
-import type { TowerDef } from '../types.ts'
+import type { Enemy, TowerDef } from '../types.ts'
 
 /** Болт баллисты летит дальше её радиуса обстрела: дальность полёта = range × 1.15 (множитель) */
 const BALLISTA_REACH_FACTOR = 1.15
@@ -21,13 +21,53 @@ const BALLISTA_REACH_FACTOR = 1.15
  */
 const BALLISTA_TWIN_BOLT_TIER = 2
 
+/** Враги рядом с основной целью для дополнительных стрел Рикошета. */
+function ricochetTargets(
+  enemies: readonly Enemy[],
+  primary: Enemy,
+  radius: number,
+  count: number,
+): Enemy[] {
+  const radiusSquared = radius * radius
+  return enemies
+    .filter(
+      (enemy) =>
+        enemy !== primary &&
+        !enemy.isDead &&
+        (enemy.x - primary.x) ** 2 + (enemy.y - primary.y) ** 2 <= radiusSquared,
+    )
+    .sort(
+      (a, b) =>
+        (a.x - primary.x) ** 2 +
+          (a.y - primary.y) ** 2 -
+          ((b.x - primary.x) ** 2 + (b.y - primary.y) ** 2) || a.id - b.id,
+    )
+    .slice(0, count)
+}
+
 const archer: TowerDef = {
   id: 'archer',
   name: 'Лучник',
   description: 'стреляет часто, слаб против лат',
-  cost: 50,
-  // Баланс v4: было 45/85 — улучшенный лучник давал меньше урона на монету, чем новый
-  upgradeCosts: [40, 70],
+  cost: 60,
+  upgradeCosts: [50, 80],
+  aspects: [
+    {
+      id: 'hunter-mark',
+      name: 'Метка охотника',
+      description:
+        'Каждый последовательный выстрел по той же цели даёт +10% урона, до +50%. Смена цели сбрасывает серию.',
+      cost: 120,
+      hunterMark: { damagePerStack: 0.1, maxStacks: 5 },
+    },
+    {
+      id: 'ricochet',
+      name: 'Рикошет',
+      description: 'Стрела поражает основную цель и ещё двух врагов поблизости на 60% и 30% урона.',
+      cost: 120,
+      ricochet: { shares: [0.6, 0.3], radius: 1.3 },
+    },
+  ],
   tiers: [
     { damage: 7, cooldown: 0.4, range: 1.9 },
     { damage: 12, cooldown: 0.36, range: 2.1 },
@@ -37,13 +77,42 @@ const archer: TowerDef = {
   defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: true,
-  fire: (world, tower, target, stats) =>
+  fire: (world, tower, target, stats) => {
+    const aspect = towerAspect(tower)
+    let damage = stats.damage
+    const hunter = aspect?.hunterMark
+    if (hunter) {
+      if (tower.hunterTargetId === target.id) {
+        tower.hunterStacks = Math.min(hunter.maxStacks, tower.hunterStacks + 1)
+      } else {
+        tower.hunterTargetId = target.id
+        tower.hunterStacks = 0
+      }
+      damage *= 1 + tower.hunterStacks * hunter.damagePerStack
+    }
     shootHoming(world, tower, target, {
       look: 'arrow',
       speed: 13,
-      damage: stats.damage,
+      damage,
       damageKind: 'physical',
-    }),
+    })
+    const ricochet = aspect?.ricochet
+    if (!ricochet) return
+    const extraTargets = ricochetTargets(
+      world.state.enemies,
+      target,
+      ricochet.radius,
+      ricochet.shares.length,
+    )
+    for (const [index, extra] of extraTargets.entries()) {
+      shootHoming(world, tower, extra, {
+        look: 'arrow',
+        speed: 13,
+        damage: stats.damage * ricochet.shares[index],
+        damageKind: 'physical',
+      })
+    }
+  },
 }
 
 const mage: TowerDef = {
