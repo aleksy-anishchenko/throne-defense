@@ -38,6 +38,17 @@ describe('благословения после волн', () => {
     expect(REWARD_LIST).toHaveLength(12)
   })
 
+  it('в бесконечном режиме выходит не больше шести знахарей', () => {
+    const game = newGame()
+    for (const wave of [30, 35, 39, 50]) {
+      const healers = game
+        .waveGroups(wave)
+        .filter(([enemyId]) => enemyId === 'healer')
+        .reduce((sum, [, count]) => sum + count, 0)
+      expect(healers).toBeLessThanOrEqual(6)
+    }
+  })
+
   it.each(REWARD_WAVES)(
     'после %i-й волны останавливает партию и предлагает три разные награды',
     (wave) => {

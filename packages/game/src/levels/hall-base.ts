@@ -129,7 +129,7 @@ export const HALL_BASE = {
       ['armor', 14 + 2 * wavesPastEnd, 0.6, 0],
       ['ogre', 6 + wavesPastEnd, 1.8, 3],
       ['scout', 24 + 3 * wavesPastEnd, 0.25, 8],
-      ['healer', 3 + Math.floor(wavesPastEnd / 2), 2.5, 4],
+      ['healer', Math.min(6, 3 + Math.floor(wavesPastEnd / 2)), 2.5, 4],
     ]
     if (waveNumber % ENDLESS_GORYNYCH_EVERY === 0) groups.push(['gorynych', 2, 6, 5])
     if (waveNumber % ENDLESS_BOSS_EVERY === 0)

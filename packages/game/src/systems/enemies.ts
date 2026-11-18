@@ -8,6 +8,9 @@ import { rewardStats } from './rewards.ts'
 /** Насколько отстают друг от друга по ковру те, на кого распался враг, клеток */
 const SPLIT_SPACING = 0.22
 
+/** Сколько союзников один знахарь может получать за один импульс */
+export const MAX_HEAL_TARGETS = 3
+
 /** Выпустить врага enemyId: от двери или (pathDistance) с указанного места ковра */
 export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): void {
   // Волны проверены при загрузке уровня, так что сюда неизвестный id попадает только по ошибке в коде
@@ -97,11 +100,12 @@ function tickStatusTimers(world: World, enemy: Enemy, dt: number): void {
   enemy.armorBreakTimeLeft = Math.max(0, enemy.armorBreakTimeLeft - dt)
 }
 
-/** Лечить ли этого соседа: живой, раненый и в радиусе лечения */
+/** Лечить ли этого соседа: живой, раненый, не знахарь и в радиусе лечения */
 function canHeal(healer: Enemy, other: Enemy, radius: number): boolean {
   return (
     other !== healer &&
     !other.isDead &&
+    !other.def.heal &&
     !other.def.immuneToHealing &&
     other.hp < other.maxHp &&
     (other.x - healer.x) ** 2 + (other.y - healer.y) ** 2 <= radius * radius
@@ -122,10 +126,15 @@ export function updateHealers(world: World, dt: number): void {
     healer.healCooldownLeft = heal.cooldown
 
     const amount = healer.maxHp * heal.amount
-    for (const other of enemies) {
-      if (!canHeal(healer, other, heal.radius)) continue
+    const targets = enemies
+      .filter((other) => canHeal(healer, other, heal.radius))
+      .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.id - b.id)
+      .slice(0, MAX_HEAL_TARGETS)
+    const totalBudget = amount * MAX_HEAL_TARGETS
+    for (const other of targets) {
       const healingShare = other.curseTimeLeft > 0 ? Math.max(0, 1 - other.curseAmount) : 1
-      other.hp = Math.min(other.maxHp, other.hp + amount * healingShare)
+      const distributed = Math.min(amount, totalBudget / targets.length)
+      other.hp = Math.min(other.maxHp, other.hp + distributed * healingShare)
     }
     world.emit('heal', { x: healer.x, y: healer.y, radius: heal.radius })
   }

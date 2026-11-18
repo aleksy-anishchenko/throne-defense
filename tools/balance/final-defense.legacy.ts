@@ -1,5 +1,5 @@
 // Архив положительного результата v18: прежний доход Казны, цены и сила атакующих башен.
-// npm run test:balance:legacy — сравнение с текущими числами, не обещание победы на v35.
+// npm run test:balance:legacy — сравнение с текущими числами, не обещание победы на v36.
 import { describe, expect, it } from 'vitest'
 import { PLAYABLE_LEVELS } from '@throne/game'
 import { playBot, type Strategy } from './bot.ts'

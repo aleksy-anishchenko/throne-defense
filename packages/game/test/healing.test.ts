@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ENEMIES, SIMULATION_STEP } from '../src/index.ts'
-import { updateHealers } from '../src/systems/enemies.ts'
+import { MAX_HEAL_TARGETS, updateHealers } from '../src/systems/enemies.ts'
 import { newGame, placeEnemy, worldOf } from './helpers.ts'
 
 /** Проклятие накладывает настоящая башня; первый импульс лечения откладываем до её выстрела. */
@@ -79,7 +79,7 @@ describe('проклятие и лечение', () => {
     expect(ogre.hp).toBeCloseTo(1 + healer.maxHp * ENEMIES['healer'].heal!.amount)
   })
 
-  it('знахари могут лечить друг друга; снижение зависит от каждого получателя', () => {
+  it('знахари не лечат друг друга', () => {
     const game = newGame()
     const cursed = placeEnemy(game, 'healer', 1.5)
     const normal = placeEnemy(game, 'healer', 1.7)
@@ -88,9 +88,28 @@ describe('проклятие и лечение', () => {
     cursed.curseTimeLeft = 10
     cursed.curseAmount = 0.65
     game.step(SIMULATION_STEP)
-    const amount = normal.maxHp * ENEMIES['healer'].heal!.amount
-    expect(cursed.hp).toBeCloseTo(1 + amount * 0.35)
-    expect(normal.hp).toBeCloseTo(1 + amount)
+    expect(cursed.hp).toBe(1)
+    expect(normal.hp).toBe(1)
+  })
+
+  it('один знахарь лечит не больше трёх наиболее раненых союзников', () => {
+    const game = newGame()
+    const healer = placeEnemy(game, 'healer', 1.5)
+    const rebels = Array.from({ length: 5 }, (_, index) => {
+      const rebel = placeEnemy(game, 'rebel', 1.5 + index * 0.01)
+      rebel.hp = rebel.maxHp * (0.1 + index * 0.1)
+      return rebel
+    })
+    const before = rebels.map((rebel) => rebel.hp)
+    healer.healCooldownLeft = 0
+    updateHealers(worldOf(game), SIMULATION_STEP)
+    expect(MAX_HEAL_TARGETS).toBe(3)
+    const amount = healer.maxHp * ENEMIES['healer'].heal!.amount
+    for (let index = 0; index < 3; index++) {
+      expect(rebels[index].hp).toBeCloseTo(before[index] + amount)
+    }
+    expect(rebels[3].hp).toBe(before[3])
+    expect(rebels[4].hp).toBe(before[4])
   })
 
   for (const wave of [30, 34, 35]) {
