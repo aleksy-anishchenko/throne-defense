@@ -17,6 +17,8 @@ import {
   createGame,
   type LevelDef,
   type Phase,
+  type RewardId,
+  type RewardPick,
 } from '@throne/game'
 import { defineStore } from 'pinia'
 import { markRaw, nextTick, reactive, ref, watch } from 'vue'
@@ -115,6 +117,19 @@ export const useGameStore = defineStore('game', () => {
 
   // Какой экран показан поверх поля (меню, поражение, победа) или null
   const screen = ref<OverlayScreen>('menu')
+
+  /** Выбор благословения и уже полученные награды — снимок для Vue */
+  const rewards = reactive({
+    wave: 0,
+    options: [] as RewardId[],
+    selected: [] as RewardPick[],
+  })
+
+  function syncRewards() {
+    rewards.wave = state.pendingReward?.wave ?? 0
+    rewards.options = state.pendingReward ? [...state.pendingReward.options] : []
+    rewards.selected = state.selectedRewards.map((reward) => ({ ...reward }))
+  }
 
   // ---------------------------------------------------------------- Звук, тосты, рекорд
 
@@ -285,6 +300,15 @@ export const useGameStore = defineStore('game', () => {
   game.on('waveCleared', () => {
     bumpCounters.gold++
   })
+  game.on('rewardOffered', () => {
+    syncRewards()
+    screen.value = 'reward'
+  })
+  game.on('rewardChosen', () => {
+    syncRewards()
+    syncHud()
+    screen.value = null
+  })
   game.on('victory', () => {
     saveResultIfBest()
     finishRunForLeaderboard()
@@ -329,6 +353,7 @@ export const useGameStore = defineStore('game', () => {
     runCount.value++
     forgetFinishedRun()
     isNewBest.value = false
+    syncRewards()
     screen.value = null
     syncHud()
   }
@@ -345,6 +370,10 @@ export const useGameStore = defineStore('game', () => {
 
   function startWave() {
     game.startWave()
+  }
+
+  function chooseReward(rewardId: RewardId): boolean {
+    return game.chooseReward(rewardId)
   }
 
   function cycleSpeed() {
@@ -401,6 +430,7 @@ export const useGameStore = defineStore('game', () => {
     game,
     hud,
     screen,
+    rewards,
     audioSettings,
     toast,
     bumpCounters,
@@ -416,6 +446,7 @@ export const useGameStore = defineStore('game', () => {
     tryBuild,
     rejectAction,
     startWave,
+    chooseReward,
     cycleSpeed,
     togglePause,
     pauseIfFighting,

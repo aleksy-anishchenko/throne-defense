@@ -64,6 +64,59 @@
   font-size: 0.8rem;
   line-height: 1.1;
 }
+.blessings {
+  position: relative;
+  flex: none;
+}
+.blessings summary {
+  min-width: 38px;
+  padding: 5px 8px;
+  background: var(--slab);
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  color: var(--gold);
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  cursor: pointer;
+  list-style: none;
+}
+.blessings summary::-webkit-details-marker {
+  display: none;
+}
+.blessings ul {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 8;
+  width: max-content;
+  max-width: min(82vw, 300px);
+  margin: 0;
+  padding: 8px 10px;
+  display: grid;
+  gap: 5px;
+  list-style: none;
+  background: #10121f;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(8, 9, 18, 0.55);
+  font-size: 0.9rem;
+  text-align: left;
+}
+.blessings li {
+  display: grid;
+  gap: 2px;
+}
+.blessings li strong {
+  font-size: 0.95rem;
+}
+.blessings li strong span {
+  color: var(--gold);
+}
+.blessings li small {
+  color: var(--parch-dim);
+  line-height: 1.3;
+}
 
 /* Поле */
 .stage {

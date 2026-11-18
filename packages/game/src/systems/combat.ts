@@ -3,6 +3,7 @@
 import { SCORE } from '../data/balance.ts'
 import type { DamageKind, Enemy, HomingShot, LineShot, Tower, TowerStats, World } from '../types.ts'
 import { queueSplit } from './enemies.ts'
+import { rewardStats } from './rewards.ts'
 
 /** Какая доля брони врага всё ещё режет пробивающий урон (0.5 = половина брони; физический урон режется всей бронёй, магический — не режется вовсе) */
 const PIERCING_ARMOR_FACTOR = 0.5
@@ -88,6 +89,7 @@ export function damageEnemy(
   if (damageKind === 'physical') effectiveDamage = Math.max(1, damage - armor)
   else if (damageKind === 'piercing')
     effectiveDamage = Math.max(1, damage - armor * PIERCING_ARMOR_FACTOR)
+  effectiveDamage *= rewardStats(world.state).damageMultiplier
   world.emit('hit', enemy)
   loseHp(world, enemy, effectiveDamage)
 }
@@ -103,7 +105,7 @@ function loseHp(world: World, enemy: Enemy, amount: number): void {
   if (enemy.hp <= 0) {
     const state = world.state
     enemy.isDead = true
-    state.gold += enemy.def.reward
+    state.gold += enemy.def.reward + rewardStats(state).killGoldBonus
     state.score += enemy.def.reward * SCORE.perGold
     state.kills++
     queueSplit(world, enemy)
@@ -359,6 +361,7 @@ function igniteEnemy(world: World, enemy: Enemy, burnDamage: number, burnDuratio
 
 /** Горящие враги теряют здоровье: равными долями, так что запас огня догорает ровно к сроку */
 export function updateBurning(world: World, dt: number): void {
+  const damageMultiplier = rewardStats(world.state).damageMultiplier
   for (const enemy of world.state.enemies) {
     if (enemy.isDead || enemy.burnTimeLeft <= 0) continue
     const share = Math.min(1, dt / enemy.burnTimeLeft)
@@ -370,6 +373,6 @@ export function updateBurning(world: World, dt: number): void {
       enemy.burnDamageLeft = 0
     }
     // Огонь — магия: броня его не режет
-    loseHp(world, enemy, burnDamage)
+    loseHp(world, enemy, burnDamage * damageMultiplier)
   }
 }

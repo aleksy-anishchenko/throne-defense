@@ -14,11 +14,13 @@ import {
 } from '../systems/towers.ts'
 import { buildSpawnQueue, finishWave, getWaveGroups, spawnDueEnemies } from '../systems/waves.ts'
 import { updateBurning, updateShots } from '../systems/combat.ts'
+import { applyReward } from '../systems/rewards.ts'
 import type {
   GameEvents,
   GameState,
   Level,
   LevelDef,
+  RewardId,
   TargetMode,
   Tower,
   WaveGroup,
@@ -55,6 +57,8 @@ export interface Game {
   sell(col: number, row: number): number | null
   /** Кого башня на клетке выбирает целью. false — если нельзя (нет башни, ей нечего выбирать) */
   setTargetMode(col: number, row: number, mode: TargetMode): boolean
+  /** Выбрать одну из трёх наград после рубежной волны */
+  chooseReward(rewardId: RewardId): boolean
   startWave(): boolean
   /** После победы — играть дальше, в бесконечном режиме */
   continueEndless(): void
@@ -103,6 +107,8 @@ function initialState(level: Level): GameState {
     splitQueue: [],
     waveTime: 0,
     nextId: 1,
+    pendingReward: null,
+    selectedRewards: [],
   }
 }
 
@@ -277,6 +283,13 @@ export function createGame(levelDef: LevelDef): Game {
         return false
       }
       tower.targetMode = mode
+      return true
+    },
+
+    chooseReward(rewardId) {
+      const picked = applyReward(state, rewardId)
+      if (!picked) return false
+      events.emit('rewardChosen', picked)
       return true
     },
 

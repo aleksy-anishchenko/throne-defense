@@ -171,6 +171,8 @@ describe('отмена аспекта и продажа', () => {
     expect(game.undoSpecialization(tower.col, tower.row)).toBe(false)
     game.state.spawnQueue = []
     game.step(SIMULATION_STEP)
+    expect(game.state.phase).toBe('reward')
+    expect(game.chooseReward(game.state.pendingReward!.options[0])).toBe(true)
     expect(game.state.phase).toBe('build')
     expect(game.undoSpecialization(tower.col, tower.row)).toBe(false)
     expect(game.specialize(tower.col, tower.row, 'armor-breaker')).toBe(false)
@@ -182,6 +184,7 @@ describe('отмена аспекта и продажа', () => {
     game.startWave()
     game.state.spawnQueue = []
     game.step(SIMULATION_STEP)
+    expect(game.chooseReward(game.state.pendingReward!.options[0])).toBe(true)
     const baseRefund = Math.floor(BASE_COST * REFUND_RATE)
     game.specialize(tower.col, tower.row, 'armor-breaker')
     expect(refundFor(tower)).toBe(baseRefund + ASPECT_COST)

@@ -65,6 +65,8 @@ const readGameSnapshot = (page) =>
       paused: state.isPaused,
       time: state.time,
       towers: state.towers.map((tower) => `${tower.def.id}${tower.tier}@${tower.col},${tower.row}`),
+      rewardWave: state.pendingReward?.wave ?? null,
+      rewards: state.selectedRewards.map((reward) => reward.rewardId),
     }
   })
 
@@ -1028,6 +1030,82 @@ async function desktop(browser, url) {
     JSON.stringify(music),
   )
 
+  // Рогалик: после 5/10/15/19-й волны партия ждёт выбора одной из трёх наград.
+  await page.evaluate(() => {
+    const { game } = window.__throne
+    game.state.wave = 5
+    game.state.waveTime = 0
+    game.state.spawnQueue = []
+    game.state.enemies = []
+    game.state.phase = 'wave'
+  })
+  await page.getByRole('heading', { name: 'Выберите благословение' }).waitFor({
+    timeout: 5000,
+  })
+  const rewardCards = page.locator('.reward-card')
+  const rewardNames = await rewardCards.locator('strong').allTextContents()
+  const firstRewardDescription = await rewardCards
+    .first()
+    .locator('.reward-description')
+    .textContent()
+  check(
+    'после 5-й волны три разные награды и поле под ними выключено',
+    rewardNames.length === 3 &&
+      new Set(rewardNames).size === 3 &&
+      (await page.evaluate(() =>
+        ['.hud', '.stage', '.panel'].every((selector) => document.querySelector(selector).inert),
+      )),
+    rewardNames.join(', '),
+  )
+  const pendingReward = await readGameSnapshot(page)
+  await rewardCards.first().click()
+  await waitForFrames(page)
+  const chosenReward = await readGameSnapshot(page)
+  check(
+    'выбранная награда сохранена, партия вернулась к строительству',
+    (await page.locator('.overlay').count()) === 0 &&
+      chosenReward.phase === 'build' &&
+      chosenReward.rewardWave === null &&
+      chosenReward.rewards.length === 1 &&
+      pendingReward.rewardWave === 5,
+    JSON.stringify({ pendingReward, chosenReward }),
+  )
+  check(
+    'полученное благословение видно в шапке',
+    (await page.locator('.blessings summary').textContent())?.trim() === '✦ 1',
+  )
+  await page.locator('.blessings summary').hover()
+  const blessingEffect = await page.locator('.blessings li small').textContent()
+  check(
+    'при наведении на счётчик видно, какой бонус сейчас работает',
+    (await page.locator('.blessings ul').isVisible()) &&
+      Boolean(blessingEffect?.trim()) &&
+      (await page.locator('.blessings li strong').textContent())?.includes(rewardNames[0].trim()),
+    blessingEffect ?? '',
+  )
+
+  // Второй рубеж показывает описание уже выбранной награды в истории снизу.
+  await page.evaluate(() => {
+    const { game } = window.__throne
+    game.state.wave = 10
+    game.state.waveTime = 0
+    game.state.spawnQueue = []
+    game.state.enemies = []
+    game.state.phase = 'wave'
+  })
+  await page.getByRole('heading', { name: 'Выберите благословение' }).waitFor({
+    timeout: 5000,
+  })
+  check(
+    'история выбора описывает действие прошлого благословения',
+    (await page.locator('.reward-history-effect').count()) === 1 &&
+      (await page.locator('.reward-history-effect').textContent())?.trim() ===
+        firstRewardDescription?.trim(),
+    (await page.locator('.reward-history-effect').textContent()) ?? '',
+  )
+  await rewardCards.first().click()
+  await waitForFrames(page)
+
   // Победа: перескакиваем сразу на 20-ю волну
   await page.evaluate(() => {
     const game = window.__throne.game
@@ -1495,6 +1573,40 @@ async function phone(browser, url) {
     game.state.gold = gold
   }, phoneGoldBeforeBell)
   await waitForFrames(page)
+
+  // На узком экране три благословения идут столбиком и не выходят по ширине.
+  await page.evaluate(() => {
+    const { game } = window.__throne
+    game.state.wave = 10
+    game.state.waveTime = 0
+    game.state.spawnQueue = []
+    game.state.enemies = []
+    game.state.phase = 'wave'
+  })
+  await page.getByRole('heading', { name: 'Выберите благословение' }).waitFor({
+    timeout: 5000,
+  })
+  const phoneRewardCards = page.locator('.reward-card')
+  const phoneRewardBounds = await phoneRewardCards.evaluateAll((cards) =>
+    cards.map((card) => {
+      const bounds = card.getBoundingClientRect()
+      return { left: bounds.left, right: bounds.right }
+    }),
+  )
+  check(
+    '320×568: три благословения помещаются по ширине',
+    phoneRewardBounds.length === 3 &&
+      phoneRewardBounds.every((bounds) => bounds.left >= 0 && bounds.right <= 320),
+    JSON.stringify(phoneRewardBounds),
+  )
+  await phoneRewardCards.first().tap()
+  await waitForFrames(page)
+  check(
+    '320×568: благословение выбирается касанием',
+    (await page.locator('.overlay').count()) === 0 &&
+      (await readGameSnapshot(page)).rewards.length === 1,
+  )
+
   await page.setViewportSize({ width: 932, height: 430 }) // iPhone Plus/Max набок
   await waitForFrames(page)
   await checkStartButtonVisible(page)

@@ -16,5 +16,6 @@ export interface BoardView {
   cursorCell: Cell | null
 }
 
-/** Какой экран поверх поля: меню, поражение, победа, таблица лучших или никакого */
-export type OverlayScreen = 'menu' | 'defeat' | 'victory' | 'leaderboard' | 'settings' | null
+/** Какой экран поверх поля: меню, итоги, награда, таблица лучших, настройки или никакого */
+export type OverlayScreen =
+  'menu' | 'defeat' | 'victory' | 'reward' | 'leaderboard' | 'settings' | null

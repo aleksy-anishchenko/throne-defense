@@ -148,6 +148,35 @@ export interface EnemyDef {
   splitInto?: EnemySplit
 }
 
+/** Постоянные и мгновенные эффекты благословений после рубежных волн */
+export type RewardEffect =
+  | { kind: 'gold'; amount: number }
+  | { kind: 'lives'; amount: number }
+  | { kind: 'damage'; amount: number }
+  | { kind: 'fireRate'; amount: number }
+  | { kind: 'killGold'; amount: number }
+  | { kind: 'waveGold'; amount: number }
+
+export type RewardId =
+  'war-chest' | 'field-medic' | 'sharpened-steel' | 'rapid-orders' | 'bounty' | 'royal-tax'
+
+export interface RewardPick {
+  wave: number
+  rewardId: RewardId
+}
+
+export interface PendingReward {
+  wave: number
+  options: readonly RewardId[]
+}
+
+export interface RewardStats {
+  damageMultiplier: number
+  fireRateMultiplier: number
+  killGoldBonus: number
+  waveGoldMultiplier: number
+}
+
 /** Как враг лечит соседей */
 export interface EnemyHeal {
   /** Радиус лечения, клеток */
@@ -407,10 +436,10 @@ export type Shot = HomingShot | LineShot
 
 /**
  * idle — партия не начата (на экране меню),
- * build — между волнами, wave — идёт волна,
+ * build — между волнами, wave — идёт волна, reward — выбор благословения,
  * lost — трон пал, won — все волны отбиты.
  */
-export type Phase = 'idle' | 'build' | 'wave' | 'lost' | 'won'
+export type Phase = 'idle' | 'build' | 'wave' | 'reward' | 'lost' | 'won'
 
 /** Один ещё не вышедший враг в очереди волны */
 export interface SpawnEntry {
@@ -461,6 +490,10 @@ export interface GameState {
   waveTime: number
   /** Номер для следующей башни или врага */
   nextId: number
+  /** Три награды, ожидающие выбора на рубежной волне */
+  pendingReward: PendingReward | null
+  /** Уже выбранные благословения в порядке получения */
+  selectedRewards: RewardPick[]
 }
 
 // ---------------------------------------------------------------- События
@@ -473,6 +506,9 @@ export interface GameEvents {
   sell: { tower: Tower; refund: number }
   waveStart: number
   waveCleared: { wave: number; bonus: number }
+  /** После рубежной волны игрок должен выбрать одну из трёх наград */
+  rewardOffered: PendingReward
+  rewardChosen: RewardPick
   /** Казна принесла золото за отбитую волну */
   income: { tower: Tower; gold: number }
   fire: { tower: Tower; stats: TowerStats }

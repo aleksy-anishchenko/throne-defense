@@ -2,6 +2,7 @@
 
 import { REFUND_RATE } from '../data/balance.ts'
 import type { Enemy, StatKey, TargetMode, Tower, TowerDef, TowerStats, World } from '../types.ts'
+import { rewardStats } from './rewards.ts'
 
 export const towerStats = (tower: Tower): TowerStats => tower.def.tiers[tower.tier]
 
@@ -142,6 +143,7 @@ export function fireRateBonusOf(towers: readonly Tower[], tower: FireRateReceive
 export function updateTowers(world: World, dt: number): void {
   const towers = world.state.towers
   const bells = bellsAmong(towers)
+  const rewards = rewardStats(world.state)
 
   for (const tower of towers) {
     // Звонарь и Казна не стреляют
@@ -149,7 +151,7 @@ export function updateTowers(world: World, dt: number): void {
     if (!fire) continue
 
     const bonus = tower.def.takesFireRateBonus ? fireRateBonusFor(tower, bells) : 0
-    tower.cooldownLeft -= dt * (1 + bonus)
+    tower.cooldownLeft -= dt * (1 + bonus) * rewards.fireRateMultiplier
     if (tower.cooldownLeft > 0) continue
 
     const stats = towerStats(tower)

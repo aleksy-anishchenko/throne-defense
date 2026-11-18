@@ -4,6 +4,7 @@ import { SCORE, waveBonus } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
 import type { Level, SpawnEntry, WaveGroup, World } from '../types.ts'
 import { spawnEnemy } from './enemies.ts'
+import { isRewardWave, maxRewardLives, offerReward, rewardStats } from './rewards.ts'
 import { payTowerIncome } from './towers.ts'
 
 /** Состав волны waveNumber (после последней — бесконечный режим) */
@@ -38,7 +39,7 @@ export function spawnDueEnemies(world: World, dt: number): void {
 /** Волна отбита: бонус, очки и либо следующая волна, либо победа */
 export function finishWave(world: World): void {
   const state = world.state
-  const bonus = waveBonus(state.wave)
+  const bonus = Math.floor(waveBonus(state.wave) * rewardStats(state).waveGoldMultiplier)
   state.gold += bonus
   state.score += SCORE.perWave * state.wave
   state.wavesCleared = state.wave
@@ -49,6 +50,10 @@ export function finishWave(world: World): void {
     state.score += state.lives * SCORE.perLife
     state.phase = 'won'
     world.emit('victory', undefined)
+  } else if (!state.isEndless && isRewardWave(state.wave)) {
+    const pendingReward = offerReward(state, state.wave, world.level.def.id)
+    state.wave++
+    world.emit('rewardOffered', pendingReward)
   } else {
     state.phase = 'build'
     state.wave++
@@ -79,6 +84,8 @@ export function maxPossibleScore(level: Level, wavesCleared: number): number {
   }
   // Очки за волны: 1-я — perWave × 1, 2-я — perWave × 2 и так далее
   score += (SCORE.perWave * wavesCleared * (wavesCleared + 1)) / 2
-  if (wavesCleared >= level.waveCount) score += level.def.startLives * SCORE.perLife
+  if (wavesCleared >= level.waveCount) {
+    score += (level.def.startLives + maxRewardLives()) * SCORE.perLife
+  }
   return score
 }

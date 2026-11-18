@@ -17,6 +17,7 @@ export {
   waveBonus,
 } from './data/balance.ts'
 export { ENEMIES } from './data/enemies.ts'
+export { REWARDS, REWARD_LIST, REWARD_WAVES, type RewardDef } from './data/rewards.ts'
 export { TOWERS, TOWER_LIST } from './data/towers.ts'
 export { LEVELS, PLAYABLE_LEVELS } from './levels/index.ts'
 export {
@@ -37,6 +38,15 @@ export {
 } from './systems/towers.ts'
 // Для сервера: проверка правдоподобия присланного счёта
 export { maxPossibleScore } from './systems/waves.ts'
+export {
+  isRewardWave,
+  maxRewardLives,
+  offerReward,
+  rewardStats,
+  rollRewardOptions,
+  summarizeRewards,
+  type RewardSummary,
+} from './systems/rewards.ts'
 // Для замеров баланса (tools/balance): выпустить врага в обход волн
 export { spawnEnemy } from './systems/enemies.ts'
 

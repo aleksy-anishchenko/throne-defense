@@ -6,6 +6,7 @@ import { formatNumber } from '@/utils/format'
 import { shareResult } from '@/utils/share'
 import AudioSettings from './AudioSettings.vue'
 import LeaderboardTable from './LeaderboardTable.vue'
+import RewardChoice from './RewardChoice.vue'
 import RunSubmission from './RunSubmission.vue'
 
 const store = useGameStore()
@@ -77,6 +78,13 @@ const screenContent = computed(() => {
           { label: 'Лучшие результаты', action: store.openLeaderboard },
         ],
       }
+    case 'reward':
+      return {
+        title: 'Выберите благословение',
+        text: `Волна ${store.rewards.wave} отбита. Одна из трёх наград останется до конца партии.`,
+        note: 'Выбранные благословения складываются.',
+        buttons: [],
+      }
     case 'leaderboard':
       return {
         title: 'Лучшие результаты',
@@ -128,6 +136,7 @@ watch(
     <div
       ref="sheet"
       class="sheet"
+      :class="{ 'sheet-wide': store.screen === 'reward' }"
       role="dialog"
       aria-modal="true"
       aria-labelledby="screen-title"
@@ -141,6 +150,7 @@ watch(
       <RunSubmission v-if="store.screen === 'defeat' || store.screen === 'victory'" />
       <LeaderboardTable v-if="store.screen === 'leaderboard'" />
       <AudioSettings v-if="store.screen === 'settings'" />
+      <RewardChoice v-if="store.screen === 'reward'" />
       <div ref="buttonsRow" class="buttons">
         <button
           v-for="(button, i) in screenContent.buttons"
