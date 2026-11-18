@@ -151,14 +151,31 @@ export interface EnemyDef {
 /** Постоянные и мгновенные эффекты благословений после рубежных волн */
 export type RewardEffect =
   | { kind: 'gold'; amount: number }
-  | { kind: 'lives'; amount: number }
+  | { kind: 'healToFull' }
   | { kind: 'damage'; amount: number }
   | { kind: 'fireRate'; amount: number }
   | { kind: 'killGold'; amount: number }
   | { kind: 'waveGold'; amount: number }
+  | { kind: 'upgradeDiscount'; amount: number }
+  | { kind: 'mageBurn'; amount: number }
+  | { kind: 'control'; slowBonus: number; rootBonus: number }
+  | { kind: 'lastStand'; damageBonus: number; rows: number }
+  | { kind: 'enemySlow'; amount: number }
+  | { kind: 'miniBossHp'; amount: number }
 
 export type RewardId =
-  'war-chest' | 'field-medic' | 'sharpened-steel' | 'rapid-orders' | 'bounty' | 'royal-tax'
+  | 'war-chest'
+  | 'field-medic'
+  | 'sharpened-steel'
+  | 'rapid-orders'
+  | 'bounty'
+  | 'royal-tax'
+  | 'military-engineer'
+  | 'wildfire'
+  | 'control-master'
+  | 'last-stand'
+  | 'rasputitsa'
+  | 'giant-diet'
 
 export interface RewardPick {
   wave: number
@@ -175,6 +192,14 @@ export interface RewardStats {
   fireRateMultiplier: number
   killGoldBonus: number
   waveGoldMultiplier: number
+  upgradeCostMultiplier: number
+  mageBurnMultiplier: number
+  frostSlowBonus: number
+  trapperRootMultiplier: number
+  lastStandDamageMultiplier: number
+  lastStandRows: number
+  enemySpeedMultiplier: number
+  miniBossHpMultiplier: number
 }
 
 /** Как враг лечит соседей */
@@ -313,6 +338,8 @@ export interface Tower {
    * улучшения, аспект). Башня с этим золотом ещё не была в бою — при продаже оно вернётся целиком
    */
   goldSinceLastWave: number
+  /** Сколько золота реально заплачено за обычные улучшения с учётом скидок благословений */
+  upgradeGoldPaid: number
 }
 
 /** Враг, идущий по ковру */
@@ -466,6 +493,8 @@ export interface GameState {
   gold: number
   /** Сколько жизней осталось у трона */
   lives: number
+  /** Полный запас жизней трона для лечения между волнами */
+  maxLives: number
   score: number
   /** Сколько врагов убито */
   kills: number

@@ -3,6 +3,7 @@
 import { hpMultiplier } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
 import type { Enemy, World } from '../types.ts'
+import { rewardStats } from './rewards.ts'
 
 /** Насколько отстают друг от друга по ковру те, на кого распался враг, клеток */
 const SPLIT_SPACING = 0.22
@@ -13,7 +14,9 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
   if (!Object.hasOwn(ENEMIES, enemyId)) throw new Error(`Неизвестный враг «${enemyId}»`)
   const def = ENEMIES[enemyId]
   const state = world.state
-  const hp = Math.round(def.hp * hpMultiplier(state.wave, world.level.waveCount))
+  const rewards = rewardStats(state)
+  const miniBossHp = def.id === 'ogre' || def.id === 'gorynych' ? rewards.miniBossHpMultiplier : 1
+  const hp = Math.round(def.hp * hpMultiplier(state.wave, world.level.waveCount) * miniBossHp)
   const [x, y] = world.level.path.positionAt(pathDistance)
   state.enemies.push({
     id: state.nextId++,
@@ -46,10 +49,11 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
 export function moveEnemies(world: World, dt: number): boolean {
   const state = world.state
   const { path } = world.level
+  const enemySpeedMultiplier = rewardStats(state).enemySpeedMultiplier
 
   for (const enemy of state.enemies) {
     if (enemy.isDead) continue
-    let speed = enemy.def.speed
+    let speed = enemy.def.speed * enemySpeedMultiplier
     if (enemy.slowTimeLeft > 0) {
       speed *= 1 - enemy.slowFactor
       enemy.slowTimeLeft -= dt

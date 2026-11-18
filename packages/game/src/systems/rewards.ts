@@ -6,6 +6,8 @@ import type {
   RewardId,
   RewardPick,
   RewardStats,
+  Tower,
+  TowerStats,
 } from '../types.ts'
 
 export interface RewardSummary {
@@ -36,11 +38,9 @@ export function isRewardWave(wave: number): boolean {
   return (REWARD_WAVES as readonly number[]).includes(wave)
 }
 
-/** Сколько жизней можно получить за все рубежи, если каждый раз выбирать «Целебный обоз». */
-export function maxRewardLives(): number {
-  const reward = REWARD_LIST.find((candidate) => candidate.effect.kind === 'lives')
-  if (!reward || reward.effect.kind !== 'lives') return 0
-  return reward.effect.amount * REWARD_WAVES.length
+function isRewardAvailable(rewardId: RewardId, wave: number): boolean {
+  const availableWaves = REWARDS[rewardId].availableWaves
+  return !availableWaves || availableWaves.includes(wave)
 }
 
 /**
@@ -60,7 +60,9 @@ export function rollRewardOptions(state: GameState, wave: number, levelId: strin
     ...state.selectedRewards.map((reward) => reward.rewardId),
   ].join(':')
   let seed = hashString(key)
-  const pool = REWARD_LIST.map((reward) => reward.id)
+  const pool = REWARD_LIST.map((reward) => reward.id).filter((rewardId) =>
+    isRewardAvailable(rewardId, wave),
+  )
   const options: RewardId[] = []
   while (options.length < REWARD_OPTION_COUNT) {
     seed = nextRandom(seed)
@@ -77,14 +79,20 @@ function applyEffect(state: GameState, effect: RewardEffect): void {
     case 'gold':
       state.gold += effect.amount
       return
-    case 'lives':
-      state.lives += effect.amount
+    case 'healToFull':
+      state.lives = Math.max(state.lives, state.maxLives)
       return
     // Остальные эффекты сохраняются в selectedRewards и считаются через rewardStats
     case 'damage':
     case 'fireRate':
     case 'killGold':
     case 'waveGold':
+    case 'upgradeDiscount':
+    case 'mageBurn':
+    case 'control':
+    case 'lastStand':
+    case 'enemySlow':
+    case 'miniBossHp':
       return
   }
 }
@@ -110,6 +118,14 @@ export function rewardStats(state: GameState): RewardStats {
     fireRateMultiplier: 1,
     killGoldBonus: 0,
     waveGoldMultiplier: 1,
+    upgradeCostMultiplier: 1,
+    mageBurnMultiplier: 1,
+    frostSlowBonus: 0,
+    trapperRootMultiplier: 1,
+    lastStandDamageMultiplier: 1,
+    lastStandRows: 4,
+    enemySpeedMultiplier: 1,
+    miniBossHpMultiplier: 1,
   }
   for (const { rewardId } of state.selectedRewards) {
     const effect = REWARDS[rewardId]?.effect
@@ -118,8 +134,40 @@ export function rewardStats(state: GameState): RewardStats {
     else if (effect.kind === 'fireRate') stats.fireRateMultiplier += effect.amount
     else if (effect.kind === 'killGold') stats.killGoldBonus += effect.amount
     else if (effect.kind === 'waveGold') stats.waveGoldMultiplier += effect.amount
+    else if (effect.kind === 'upgradeDiscount') stats.upgradeCostMultiplier *= 1 - effect.amount
+    else if (effect.kind === 'mageBurn') stats.mageBurnMultiplier += effect.amount
+    else if (effect.kind === 'control') {
+      stats.frostSlowBonus += effect.slowBonus
+      stats.trapperRootMultiplier += effect.rootBonus
+    } else if (effect.kind === 'lastStand') {
+      stats.lastStandDamageMultiplier += effect.damageBonus
+      stats.lastStandRows = Math.max(stats.lastStandRows, effect.rows)
+    } else if (effect.kind === 'enemySlow') stats.enemySpeedMultiplier *= 1 - effect.amount
+    else if (effect.kind === 'miniBossHp') stats.miniBossHpMultiplier *= 1 - effect.amount
   }
   return stats
+}
+
+/** Характеристики башни с учётом её положения и наград конкретных стражей. */
+export function effectiveTowerStats(state: GameState, tower: Tower, base: TowerStats): TowerStats {
+  const rewards = rewardStats(state)
+  const lastStand = tower.row < rewards.lastStandRows ? rewards.lastStandDamageMultiplier : 1
+  const damage = base.damage * lastStand
+  return {
+    ...base,
+    damage,
+    burnDamage:
+      (base.burnDamage ?? 0) *
+      (tower.def.id === 'mage' ? rewards.mageBurnMultiplier * lastStand : lastStand),
+    slowAmount:
+      base.slowAmount === undefined
+        ? undefined
+        : Math.min(1, base.slowAmount + rewards.frostSlowBonus),
+    rootDuration:
+      base.rootDuration === undefined
+        ? undefined
+        : base.rootDuration * rewards.trapperRootMultiplier,
+  }
 }
 
 /** Группирует выбранные награды и показывает их суммарный действующий эффект. */
@@ -135,8 +183,8 @@ export function summarizeRewards(rewards: readonly RewardPick[]): RewardSummary[
       case 'gold':
         description = `Получено ${reward.effect.amount * count} золота`
         break
-      case 'lives':
-        description = `Получено ${reward.effect.amount * count} жизней`
+      case 'healToFull':
+        description = 'Трон был полностью восстановлен'
         break
       case 'damage':
         description = `+${Math.round(reward.effect.amount * count * 100)}% ко всему урону стражей`
@@ -149,6 +197,28 @@ export function summarizeRewards(rewards: readonly RewardPick[]): RewardSummary[
         break
       case 'waveGold':
         description = `+${Math.round(reward.effect.amount * count * 100)}% золота за отбитую волну`
+        break
+      case 'upgradeDiscount':
+        description = `−${Math.round((1 - (1 - reward.effect.amount) ** count) * 100)}% к цене улучшений`
+        break
+      case 'mageBurn':
+        description = `+${Math.round(reward.effect.amount * count * 100)}% к горению Огневика`
+        break
+      case 'control':
+        description =
+          `+${Math.round(reward.effect.slowBonus * count * 100)} п.п. замедления Морозко; ` +
+          `+${Math.round(reward.effect.rootBonus * count * 100)}% к сети Ловчего`
+        break
+      case 'lastStand':
+        description =
+          `+${Math.round(reward.effect.damageBonus * count * 100)}% урона башням ` +
+          `в верхних ${reward.effect.rows} рядах`
+        break
+      case 'enemySlow':
+        description = `Враги идут на ${Math.round((1 - (1 - reward.effect.amount) ** count) * 100)}% медленнее`
+        break
+      case 'miniBossHp':
+        description = `Огры и Горынычи появляются с −${Math.round((1 - (1 - reward.effect.amount) ** count) * 100)}% здоровья`
         break
     }
     return { rewardId, name: reward.name, description, count }

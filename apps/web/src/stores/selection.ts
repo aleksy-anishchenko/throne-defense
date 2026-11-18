@@ -20,6 +20,7 @@ import {
   treasuryNeighbors,
   isFullRefund,
   refundFor,
+  rewardStats,
   upgradeCost,
 } from '@throne/game'
 import type { TargetMode, Tower } from '@throne/game'
@@ -91,6 +92,8 @@ export const useSelectionStore = defineStore('selection', () => {
     treasuryNeighbors: 0,
     treasuryBonus: 0,
     treasuryIncome: 0,
+    upgradeCost: null as number | null,
+    upgradeCostMultiplier: 1,
   })
 
   /** Снимок предпросмотра: игра не реактивна, как и снимок выбранной башни выше. */
@@ -125,6 +128,8 @@ export const useSelectionStore = defineStore('selection', () => {
     selected.treasuryNeighbors = tower ? treasuryNeighbors(game.state.towers, tower).length : 0
     selected.treasuryBonus = tower ? treasuryBonusOf(game.state.towers, tower) : 0
     selected.treasuryIncome = tower ? treasuryIncomeOf(game.state.towers, tower) : 0
+    selected.upgradeCostMultiplier = rewardStats(game.state).upgradeCostMultiplier
+    selected.upgradeCost = tower ? upgradeCost(tower, selected.upgradeCostMultiplier) : null
 
     const hover = hoverCell.value
     const placementCell = hover ?? cursorCell.value
@@ -272,7 +277,10 @@ export const useSelectionStore = defineStore('selection', () => {
   function upgradeSelected() {
     const tower = selectedTower()
     if (!tower || !gameStore.isPlaying()) return
-    if (!game.upgrade(tower.col, tower.row) && upgradeCost(tower) !== null) {
+    if (
+      !game.upgrade(tower.col, tower.row) &&
+      upgradeCost(tower, selected.upgradeCostMultiplier) !== null
+    ) {
       gameStore.rejectAction('Не хватает золота на улучшение')
     }
   }

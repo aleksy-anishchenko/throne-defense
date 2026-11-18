@@ -31,6 +31,7 @@ export {
   treasuryBonusOf,
   treasuryIncomeOf,
   refundFor,
+  towerInvestedGold,
   towerStats,
   towerAspect,
   displayStatValue,
@@ -40,11 +41,11 @@ export {
 export { maxPossibleScore } from './systems/waves.ts'
 export {
   isRewardWave,
-  maxRewardLives,
   offerReward,
   rewardStats,
   rollRewardOptions,
   summarizeRewards,
+  effectiveTowerStats,
   type RewardSummary,
 } from './systems/rewards.ts'
 // Для замеров баланса (tools/balance): выпустить врага в обход волн

@@ -32,7 +32,7 @@ export function useSelectedTowerInfo() {
     const aspect = def.aspects?.find((candidate) => candidate.id === selection.selected.aspectId)
     const hasAspects = tier === def.tiers.length - 1 && Boolean(def.aspects?.length)
     const nextStats = def.tiers[tier + 1]
-    const upgradeCost = nextStats ? def.upgradeCosts[tier] : null
+    const upgradeCost = selection.selected.upgradeCost
     const lines = def.displayStats.map((statKey) =>
       formatStatLine(statKey, def.tiers[tier], nextStats),
     )

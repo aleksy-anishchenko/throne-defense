@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
+  REWARDS,
+  REWARD_LIST,
   REWARD_WAVES,
   SIMULATION_STEP,
-  maxPossibleScore,
-  maxRewardLives,
+  TOWERS,
+  effectiveTowerStats,
+  refundFor,
   rewardStats,
   summarizeRewards,
+  towerInvestedGold,
+  upgradeCost,
   type RewardId,
 } from '../src/index.ts'
 import { damageEnemy } from '../src/systems/combat.ts'
@@ -30,6 +35,7 @@ function finishWave(game: ReturnType<typeof newGame>, wave: number) {
 describe('благословения после волн', () => {
   it('рубежи — только после волн 5, 10, 15 и 19', () => {
     expect(REWARD_WAVES).toEqual([5, 10, 15, 19])
+    expect(REWARD_LIST).toHaveLength(12)
   })
 
   it.each(REWARD_WAVES)(
@@ -42,8 +48,23 @@ describe('благословения после волн', () => {
       expect(game.state.pendingReward?.wave).toBe(wave)
       expect(game.state.pendingReward?.options).toHaveLength(3)
       expect(new Set(game.state.pendingReward?.options).size).toBe(3)
+      for (const rewardId of game.state.pendingReward!.options) {
+        const availableWaves = REWARDS[rewardId].availableWaves
+        if (availableWaves) expect(availableWaves).toContain(wave)
+      }
     },
   )
+
+  it('развитийные награды не выпадают после 15-й и 19-й волн', () => {
+    expect(REWARDS['bounty'].availableWaves).toEqual([5, 10])
+    expect(REWARDS['royal-tax'].availableWaves).toEqual([5, 10])
+    for (const wave of [15, 19]) {
+      const game = newGame()
+      finishWave(game, wave)
+      expect(game.state.pendingReward?.options).not.toContain('bounty')
+      expect(game.state.pendingReward?.options).not.toContain('royal-tax')
+    }
+  })
 
   it('одинаковое состояние партии даёт одинаковый выбор', () => {
     const first = newGame()
@@ -70,14 +91,15 @@ describe('благословения после волн', () => {
     expect(game.chooseReward(options[0])).toBe(false)
   })
 
-  it('сразу выдаёт золото и жизни', () => {
+  it('сразу выдаёт 140 золота или полностью лечит трон', () => {
     const goldGame = newGame()
     choose(goldGame, 'war-chest')
-    expect(goldGame.state.gold).toBe(270)
+    expect(goldGame.state.gold).toBe(290)
 
     const livesGame = newGame()
+    livesGame.state.lives = 5
     choose(livesGame, 'field-medic')
-    expect(livesGame.state.lives).toBe(22)
+    expect(livesGame.state.lives).toBe(20)
   })
 
   it('«Заточенные клинки» усиливают обычный урон и горение', () => {
@@ -95,9 +117,10 @@ describe('благословения после волн', () => {
     choose(game, 'rapid-orders')
     const tower = game.build('archer', 5, 11)!
     placeEnemy(game, 'rebel', 2)
-    tower.cooldownLeft = 0.105
+    tower.cooldownLeft = 0.113
     updateTowers(worldOf(game), 0.1)
     expect(game.state.shots).toHaveLength(1)
+    expect(rewardStats(game.state).fireRateMultiplier).toBeCloseTo(1.15)
   })
 
   it('«Щедрая награда» добавляет золото за убийство', () => {
@@ -115,14 +138,77 @@ describe('благословения после волн', () => {
     choose(game, 'royal-tax')
     const gold = game.state.gold
     finishWave(game, 2)
-    expect(game.state.gold - gold).toBe(40)
+    expect(game.state.gold - gold).toBe(42)
   })
 
-  it('потолок счёта учитывает возможные восемь дополнительных жизней', () => {
-    expect(maxRewardLives()).toBe(8)
+  it('«Военный инженер» даёт 30% скидки на улучшения с точным возвратом денег', () => {
     const game = newGame()
-    const withoutBonusLives = maxPossibleScore(game.level, 20) - maxRewardLives() * 100
-    expect(withoutBonusLives).toBeGreaterThan(0)
+    choose(game, 'military-engineer')
+    const tower = game.build('archer', 5, 11)!
+    expect(upgradeCost(tower, 0.7)).toBe(28)
+    expect(game.upgrade(tower.col, tower.row)).toBe(true)
+    expect(tower.upgradeGoldPaid).toBe(28)
+    expect(towerInvestedGold(tower)).toBe(78)
+    expect(refundFor(tower)).toBe(78)
+  })
+
+  it('скидка военного инженера не распространяется на аспекты', () => {
+    const game = newGame()
+    game.state.gold = 1000
+    choose(game, 'military-engineer')
+    const tower = game.build('ballista', 5, 11)!
+    expect(game.upgrade(tower.col, tower.row)).toBe(true)
+    expect(game.upgrade(tower.col, tower.row)).toBe(true)
+    const gold = game.state.gold
+    expect(game.specialize(tower.col, tower.row, 'giant-slayer')).toBe(true)
+    expect(game.state.gold).toBe(gold - 180)
+  })
+
+  it('новые награды меняют нужные характеристики башен и врагов', () => {
+    const wildfire = newGame()
+    choose(wildfire, 'wildfire')
+    const mage = wildfire.build('mage', 5, 11)!
+    expect(
+      effectiveTowerStats(wildfire.state, mage, TOWERS['mage'].tiers[0]).burnDamage,
+    ).toBeCloseTo(15.3 * 1.3)
+
+    const control = newGame()
+    choose(control, 'control-master')
+    const frost = control.build('frost', 5, 11)!
+    const trapper = control.build('trapper', 3, 11)!
+    expect(
+      effectiveTowerStats(control.state, frost, TOWERS['frost'].tiers[0]).slowAmount,
+    ).toBeCloseTo(0.55)
+    expect(
+      effectiveTowerStats(control.state, trapper, TOWERS['trapper'].tiers[0]).rootDuration,
+    ).toBeCloseTo(1.8 * 1.2)
+
+    const lastStand = newGame()
+    choose(lastStand, 'last-stand')
+    const front = lastStand.build('archer', 5, 3)!
+    const back = lastStand.build('archer', 0, 4)!
+    expect(
+      effectiveTowerStats(lastStand.state, front, TOWERS['archer'].tiers[0]).damage,
+    ).toBeCloseTo(7 * 1.2)
+    expect(effectiveTowerStats(lastStand.state, back, TOWERS['archer'].tiers[0]).damage).toBe(7)
+  })
+
+  it('«Распутица» замедляет врагов, а «Разгрузочный день» уменьшает огров и Горынычей', () => {
+    const normal = newGame()
+    const normalOgre = placeEnemy(normal, 'ogre', 1)
+    const normalBoss = placeEnemy(normal, 'boss', 2)
+
+    const changed = newGame()
+    choose(changed, 'rasputitsa')
+    choose(changed, 'giant-diet')
+    const slowed = placeEnemy(changed, 'rebel', 1)
+    const dietOgre = placeEnemy(changed, 'ogre', 2)
+    const dietBoss = placeEnemy(changed, 'boss', 3)
+    const before = slowed.pathDistance
+    changed.step(SIMULATION_STEP)
+    expect(slowed.pathDistance - before).toBeCloseTo(slowed.def.speed * 0.85 * SIMULATION_STEP)
+    expect(dietOgre.maxHp / normalOgre.maxHp).toBeCloseTo(0.85, 1)
+    expect(dietBoss.maxHp).toBe(normalBoss.maxHp)
   })
 
   it('сводка показывает суммарный эффект повторно выбранных наград', () => {
@@ -130,8 +216,8 @@ describe('благословения после волн', () => {
       summarizeRewards([
         { wave: 5, rewardId: 'sharpened-steel' },
         { wave: 10, rewardId: 'sharpened-steel' },
-        { wave: 15, rewardId: 'bounty' },
-        { wave: 19, rewardId: 'bounty' },
+        { wave: 15, rewardId: 'military-engineer' },
+        { wave: 19, rewardId: 'military-engineer' },
       ]),
     ).toEqual([
       {
@@ -141,9 +227,9 @@ describe('благословения после волн', () => {
         count: 2,
       },
       {
-        rewardId: 'bounty',
-        name: 'Щедрая награда',
-        description: '+2 золота за каждого убитого врага',
+        rewardId: 'military-engineer',
+        name: 'Военный инженер',
+        description: '−51% к цене улучшений',
         count: 2,
       },
     ])

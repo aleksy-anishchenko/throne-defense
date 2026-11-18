@@ -14,7 +14,7 @@ import {
 } from '../systems/towers.ts'
 import { buildSpawnQueue, finishWave, getWaveGroups, spawnDueEnemies } from '../systems/waves.ts'
 import { updateBurning, updateShots } from '../systems/combat.ts'
-import { applyReward } from '../systems/rewards.ts'
+import { applyReward, rewardStats } from '../systems/rewards.ts'
 import type {
   GameEvents,
   GameState,
@@ -93,6 +93,7 @@ function initialState(level: Level): GameState {
     wavesCleared: 0,
     gold: level.def.startGold,
     lives: level.def.startLives,
+    maxLives: level.def.startLives,
     score: 0,
     kills: 0,
     isEndless: false,
@@ -215,6 +216,7 @@ export function createGame(levelDef: LevelDef): Game {
         targetMode: def.defaultTargetMode,
         // Построена во время волны — сразу в бою, полного возврата нет
         goldSinceLastWave: state.phase === 'build' ? def.cost : 0,
+        upgradeGoldPaid: 0,
       }
       state.towers.push(tower)
       state.towersByCell.set(cellKey(col, row), tower)
@@ -225,10 +227,11 @@ export function createGame(levelDef: LevelDef): Game {
     upgrade(col, row) {
       const tower = towerAt(col, row)
       if (!tower || !isPlaying()) return false
-      const cost = upgradeCost(tower)
+      const cost = upgradeCost(tower, rewardStats(state).upgradeCostMultiplier)
       if (cost === null || state.gold < cost) return false
       state.gold -= cost
       if (state.phase === 'build') tower.goldSinceLastWave += cost
+      tower.upgradeGoldPaid += cost
       tower.tier++
       events.emit('upgrade', tower)
       return true

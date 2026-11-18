@@ -2,7 +2,7 @@
 
 import { REFUND_RATE } from '../data/balance.ts'
 import type { Enemy, StatKey, TargetMode, Tower, TowerDef, TowerStats, World } from '../types.ts'
-import { rewardStats } from './rewards.ts'
+import { effectiveTowerStats, rewardStats } from './rewards.ts'
 
 export const towerStats = (tower: Tower): TowerStats => tower.def.tiers[tower.tier]
 
@@ -18,8 +18,9 @@ export const displayStatValue = (stats: TowerStats, key: StatKey): number | unde
 export const TARGET_MODES: readonly TargetMode[] = ['first', 'strongest']
 
 /** Цена следующего улучшения или null, если ступень максимальная */
-export function upgradeCost(tower: Tower): number | null {
-  return tower.tier < tower.def.tiers.length - 1 ? tower.def.upgradeCosts[tower.tier] : null
+export function upgradeCost(tower: Tower, discountMultiplier = 1): number | null {
+  if (tower.tier >= tower.def.tiers.length - 1) return null
+  return Math.max(1, Math.round(tower.def.upgradeCosts[tower.tier] * discountMultiplier))
 }
 
 /** Сколько вложено в башню: постройка, все обычные улучшения и выбранный аспект. */
@@ -29,18 +30,24 @@ export function investedGold(def: TowerDef, tier: number, aspectId: string | nul
   return sum + (def.aspects?.find((aspect) => aspect.id === aspectId)?.cost ?? 0)
 }
 
+/** Сколько золота реально вложено в конкретную башню с учётом скидки на улучшения. */
+export function towerInvestedGold(tower: Tower): number {
+  const aspect = tower.def.aspects?.find((candidate) => candidate.id === tower.aspectId)
+  return tower.def.cost + tower.upgradeGoldPaid + (aspect?.cost ?? 0)
+}
+
 /**
  * Сколько вернут при продаже: золото, вложенное после начала последней волны, — целиком
  * (башня с ним ещё не была в бою — это «отмена»), остальное — с потерей (REFUND_RATE)
  */
 export function refundFor(tower: Tower): number {
-  const usedGold = investedGold(tower.def, tower.tier, tower.aspectId) - tower.goldSinceLastWave
+  const usedGold = towerInvestedGold(tower) - tower.goldSinceLastWave
   return Math.floor(usedGold * REFUND_RATE) + tower.goldSinceLastWave
 }
 
 /** Вернёт ли продажа всё вложенное: башню ещё ни разу не пускали в бой */
 export const isFullRefund = (tower: Tower): boolean =>
-  tower.goldSinceLastWave === investedGold(tower.def, tower.tier, tower.aspectId)
+  tower.goldSinceLastWave === towerInvestedGold(tower)
 
 /** Квадрат расстояния от башни до врага, клеток² */
 const distanceSquared = (tower: Tower, enemy: Enemy) =>
@@ -154,7 +161,7 @@ export function updateTowers(world: World, dt: number): void {
     tower.cooldownLeft -= dt * (1 + bonus) * rewards.fireRateMultiplier
     if (tower.cooldownLeft > 0) continue
 
-    const stats = towerStats(tower)
+    const stats = effectiveTowerStats(world.state, tower, towerStats(tower))
     const target = findTarget(world, tower, stats)
     if (!target) {
       // Целей нет: башня готова и ждёт. Обнуляем остаток перезарядки, чтобы он не уходил

@@ -1087,7 +1087,7 @@ async function desktop(browser, url) {
   // Второй рубеж показывает описание уже выбранной награды в истории снизу.
   await page.evaluate(() => {
     const { game } = window.__throne
-    game.state.wave = 10
+    game.state.wave = 15
     game.state.waveTime = 0
     game.state.spawnQueue = []
     game.state.enemies = []
@@ -1102,6 +1102,12 @@ async function desktop(browser, url) {
       (await page.locator('.reward-history-effect').textContent())?.trim() ===
         firstRewardDescription?.trim(),
     (await page.locator('.reward-history-effect').textContent()) ?? '',
+  )
+  check(
+    'после 15-й волны нет отложенных экономических наград',
+    !(await page.locator('.reward-card').allTextContents())
+      .join(' ')
+      .match(/Щедрая награда|Военный налог/),
   )
   await rewardCards.first().click()
   await waitForFrames(page)

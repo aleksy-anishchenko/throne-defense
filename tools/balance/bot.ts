@@ -6,6 +6,7 @@ import {
   TOWERS,
   createGame,
   investedGold,
+  rewardStats,
   upgradeCost,
   type Game,
   type LevelDef,
@@ -196,7 +197,7 @@ export function findCellFor(
 function weakestTower(game: Game): Tower | null {
   let weakest: Tower | null = null
   for (const tower of game.state.towers) {
-    if (upgradeCost(tower) === null) continue
+    if (upgradeCost(tower, rewardStats(game.state).upgradeCostMultiplier) === null) continue
     if (!weakest || tower.tier < weakest.tier) weakest = tower
   }
   return weakest
@@ -212,7 +213,7 @@ function spendGold(game: Game, strategy: Strategy, stepIndex: number): number {
 
     if (strategyStep === 'upgrade') {
       const tower = weakestTower(game)
-      const cost = tower ? upgradeCost(tower) : null
+      const cost = tower ? upgradeCost(tower, rewardStats(game.state).upgradeCostMultiplier) : null
       if (!tower || cost === null) {
         stepIndex++ // нечего улучшать — пропускаем шаг
         continue
