@@ -1,9 +1,10 @@
 // Как выглядит каждый враг. Новый враг в @throne/game → добавь его рисунок сюда.
 
-import type { Enemy } from '@throne/game'
+import type { Enemy, Level } from '@throne/game'
 import { GOLD, circle, prefersReducedMotion } from './shapes'
 import { drawStatusMarks, drawStatusRings } from './statuses'
 import type { Canvas2D } from './shapes'
+import { drawEnemySprite, unitSpriteSize } from './unitSprites'
 
 export interface EnemyArt {
   /** Нарисовать врага. (0, 0) — центр, radius — радиус */
@@ -615,10 +616,12 @@ function healthBarColor(healthFraction: number): string {
 /** Кусок полоски здоровья, который ещё сгорит */
 const BURN_PREVIEW_COLOR = '#ff9a2e'
 
-/** Покачивание врага на ходу, клеток. Одно и то же для тела и для полоски здоровья */
-function bobOffset(enemy: Enemy, time: number, bobPhase: number): number {
-  return prefersReducedMotion ? 0 : Math.sin(time * 9 * enemy.def.speed + bobPhase) * 0.02
+/** Фаза шага зависит от пройденного пути. На месте движение замирает. */
+function walkStride(enemy: Enemy, bobPhase: number): number {
+  return prefersReducedMotion ? 0 : Math.sin(enemy.pathDistance * 13 + bobPhase)
 }
+
+const BOB_AMPLITUDE = 0.024
 
 /** Враг целиком: тень, покачивание, сам враг, эффекты на нём, вспышка от удара */
 export function drawEnemy(
@@ -627,12 +630,14 @@ export function drawEnemy(
   time: number,
   bobPhase: number,
   isFlashing: boolean,
+  path: Level['path'],
 ): void {
   const art = getEnemyArt(enemy.def.id)
   const radius = enemy.def.radius
+  const stride = walkStride(enemy, bobPhase)
 
   ctx.save()
-  ctx.translate(enemy.x, enemy.y + bobOffset(enemy, time, bobPhase))
+  ctx.translate(enemy.x, enemy.y + stride * BOB_AMPLITUDE)
   ctx.fillStyle = 'rgba(8,9,18,.35)'
   ctx.beginPath()
   ctx.ellipse(0, radius * 0.8, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2)
@@ -643,7 +648,7 @@ export function drawEnemy(
   drawStatusRings(ctx, enemy, radius, time + bobPhase)
 
   ctx.lineWidth = 0.035
-  art.body(ctx, radius)
+  if (!drawEnemySprite(ctx, enemy, path, stride)) art.body(ctx, radius)
 
   drawStatusMarks(ctx, enemy, radius, time + bobPhase)
   if (isFlashing) {
@@ -662,23 +667,23 @@ const HEALTH_BAR_PADDING = 0.015
  * Полоска здоровья над раненым врагом. Рисуется отдельным проходом — после всех врагов,
  * чтобы соседний враг её не закрыл. Оранжевый хвост — сколько ещё догорит
  */
-export function drawEnemyHealthBar(
-  ctx: Canvas2D,
-  enemy: Enemy,
-  time: number,
-  bobPhase: number,
-): void {
+export function drawEnemyHealthBar(ctx: Canvas2D, enemy: Enemy, bobPhase: number): void {
   if (enemy.hp >= enemy.maxHp) return
   const art = getEnemyArt(enemy.def.id)
   const radius = enemy.def.radius
-  const barY = -radius - (art.healthBarOffset ?? DEFAULT_HEALTH_BAR_OFFSET)
+  const bodyBarY = -radius - (art.healthBarOffset ?? DEFAULT_HEALTH_BAR_OFFSET)
+  const spriteSize = unitSpriteSize(enemy.def.id)
+  const barY =
+    spriteSize === undefined
+      ? bodyBarY
+      : Math.min(bodyBarY, radius * 0.8 - spriteSize * 0.87 - 0.04)
   const barWidth = Math.max(MIN_HEALTH_BAR_WIDTH, radius * 2)
   const left = -barWidth / 2
   const hp = Math.max(0, enemy.hp)
   const healthFraction = hp / enemy.maxHp
 
   ctx.save()
-  ctx.translate(enemy.x, enemy.y + bobOffset(enemy, time, bobPhase))
+  ctx.translate(enemy.x, enemy.y + walkStride(enemy, bobPhase) * BOB_AMPLITUDE)
   ctx.fillStyle = 'rgba(8,9,18,.75)'
   ctx.fillRect(
     left - HEALTH_BAR_PADDING,

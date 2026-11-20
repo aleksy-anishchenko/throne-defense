@@ -1,0 +1,442 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="1152" viewBox="0 0 768 1152" role="img">
+  <title>Стражи и враги «Защиты трона»</title>
+  <style>
+    .ink { stroke: #1a2029; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+    .line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+
+  <g id="archer" transform="scale(1.5)">
+    <path class="ink" fill="#57382e" d="m47 93 15-1 2 15-24 2-1-6zm29-2 15 2 7 11-1 4-24-1z"/>
+    <path class="ink" fill="#184b51" d="M42 50 29 97q13 9 31 6l19-7 17 1-11-44z"/>
+    <path fill="#287069" d="m46 54-13 42q11 5 24 4l6-34z"/>
+    <path class="line" stroke="#e6b36a" stroke-width="3" d="m34 94 11 3 8-4m-9-3 4-4m16 10 6-6"/>
+    <path class="ink" fill="#875533" d="m42 55-13 4-9-28 15-5z"/>
+    <path class="line" stroke="#e6b36a" stroke-width="3" d="m27 39-7-16m12 12-2-20"/>
+    <path fill="#ede0bb" d="m16 20 1-7 7 6 1 9zm10-6 3-8 6 8-4 9z"/>
+    <path class="ink" fill="#235d55" d="M37 47q-1-19 9-29l-3-6q18 0 31 13 9 9 8 25l-21 9z"/>
+    <path class="ink" fill="#d6a473" d="m58 39 13-9q9 7 7 18l-7 6-13-6z"/>
+    <path fill="#674136" d="m61 44 6 4 10-3-2 7-5 3-7-4z"/>
+    <path class="line" stroke="#222329" stroke-width="2.5" d="m70 38 5 1"/>
+    <path class="line" stroke="#f2c574" stroke-width="3.5" d="M48 47q5-15 22-21"/>
+    <path fill="#429082" d="M43 43q0-13 7-20l-2-6q12 3 18 7-15 6-23 19"/>
+    <path class="ink" fill="#2f7873" d="m46 54 17 6 17-7 10 13-17 10-20-8z"/>
+    <circle class="ink" fill="#e7b35f" cx="61" cy="62" r="5"/>
+    <path class="line" stroke="#1a2029" stroke-width="9" d="M75 98q-8-8 1-18 5-6 22-13 15-7 15-19 0-9-8-9"/>
+    <path class="line" stroke="#eca455" stroke-width="5.6" d="M75 98q-8-8 1-18 5-6 22-13 15-7 15-19 0-9-8-9"/>
+    <path class="line" stroke="#ffe0a3" stroke-width="1.6" d="M75 98 105 39"/>
+    <path class="ink" fill="#dfa973" d="m70 70 7-7 9 3-2 8-8 4z"/>
+    <path class="line" stroke="#f1cf90" stroke-width="2.3" d="m59 76 41-15"/>
+    <path fill="#fff0c7" d="m95 57 13 1-10 8z"/>
+  </g>
+
+  <g id="ballista" transform="translate(192 0) scale(1.5)">
+    <path class="ink" fill="#69432f" d="m56 62-25 7-14 23 11 7 28-11 9-15zm17 3-24 28 3 15 16 3 13-7 4-23zm0-6 16-4 20 37-6 7-16-3-14-24z"/>
+    <path class="ink" fill="#ba8147" d="m17 92 15-5 8 9-12 6-11-3zm34 11 17-5 13 5-4 8-9 3-16-3zm42-16 11-4 7 12-8 6-13-3z"/>
+    <path fill="#e3b470" d="m20 92 11-4 4 3-12 4zm35 13 14-5 7 3-13 5zm40-14 9-5 4 6-10 4z"/>
+    <path class="ink" fill="#a36840" d="M40 46 65 40 104 76 87 90 53 67z"/>
+    <path fill="#d59b59" d="m46 47 19-5 31 29-12 8z"/>
+    <path class="ink" fill="#1e6260" d="m51 67 35 13 1 12-35-13z"/>
+    <path fill="#efc46d" d="m64 75 5 6 5-1-4-4-2-5zm8 6 6 5 6-2-4-1-3-5z"/>
+    <path class="ink" fill="#7c4c35" d="m27 39 35-14 14 13-8 13-34 13-9-4-4-10z"/>
+    <path class="line" stroke="#ecbd7a" stroke-width="4" d="m35 40 10 9m-3-12 10 9m-2-12 10 9m-2-13 10 9"/>
+    <ellipse class="ink" fill="#dda85d" cx="27" cy="51" rx="9" ry="12" transform="rotate(19 27 51)"/>
+    <path class="ink" fill="#d3a05c" d="M78 35q21-9 31-3 7 5 6 17-2 17-22 28Q62 96 24 82l-8-6-3-13 6-4 5 11q32 10 60-3 21-10 21-23 0-7-6-7l-17 6z"/>
+    <path class="line" stroke="#ffe0a0" stroke-width="3" d="M17 66q12 14 45 13 38-5 46-28 4-11-4-15"/>
+    <path class="line" stroke="#f0d0a0" stroke-width="2.6" d="m19 64 34-24 48-5"/>
+    <path class="line" stroke="#3e3028" stroke-width="5.5" d="m54 42 37 35"/>
+    <path class="line" stroke="#f6d9a9" stroke-width="3.2" d="m54 42 37 35"/>
+    <path class="ink" fill="#fff0c8" d="m84 70 16 4 9 17-19-6z"/>
+    <path fill="#d5a970" d="m87 72 21 17-16-5z"/>
+  </g>
+
+  <g id="mage" transform="translate(384 0) scale(1.5)">
+    <path class="ink" fill="#d74a2b" d="M65 13c12 13 19 24 17 39q10-5 11-16c10 13 15 27 11 41-5 19-21 28-40 28-21 0-38-11-41-29-2-14 6-27 18-35q-2 13 6 17c8-16 17-26 18-45z"/>
+    <path fill="#f67b38" d="M65 23c8 13 12 25 6 39q14-2 20-12c11 16 9 31-4 41-11 9-34 11-47 3-9-6-12-13-12-21 1-8 5-14 10-20-1 10 5 15 10 16 5-18 14-27 17-46z"/>
+    <path fill="#ffac45" d="M61 43c11 11 13 22 8 33q10-1 18-11c4 10 1 20-7 26-10 7-27 7-35 1-9-7-9-17-3-24q1 7 6 10c1-12 9-21 13-35z"/>
+    <path fill="#ffe397" d="M62 62c8 11 5 16 6 23l9-6c0 9-6 15-16 15-8 0-14-6-13-14 0-2 1-4 2-6l4 5c0-6 5-12 8-17z"/>
+    <path fill="#fff2c2" d="m61 79 5 7-5 5-5-5z"/>
+    <path class="line" stroke="#ffbc66" stroke-width="3" d="M34 74q-1 10 7 16m45-11q6-6 7-13"/>
+    <path fill="#ffb455" d="m31 35 4-8 4 7-4 6zm63-14 4-7 4 6-4 6zm14 34 3-7 4 6-4 6z"/>
+  </g>
+
+  <g id="frost" transform="translate(576 0) scale(1.5)">
+    <defs>
+      <g id="frost-branch">
+        <path class="ink" fill="#6db8d9" d="m-6 1-1-29-11-9 2-7 11 8-1-10 6-6 6 6-1 10 11-8 2 7-11 9L6 1z"/>
+        <path fill="#c8f7ff" d="M0-48v34l-4-16-11-8v-3l11 8-1-12z"/>
+        <path fill="#effcff" d="m0-49 4 5-4 12-3-12z"/>
+        <path fill="#94d7f0" d="m2-29 13-9-10 10-3 14z"/>
+      </g>
+    </defs>
+    <g transform="translate(64 64)">
+      <use href="#frost-branch"/>
+      <use href="#frost-branch" transform="rotate(60)"/>
+      <use href="#frost-branch" transform="rotate(120)"/>
+      <use href="#frost-branch" transform="rotate(180)"/>
+      <use href="#frost-branch" transform="rotate(240)"/>
+      <use href="#frost-branch" transform="rotate(300)"/>
+      <path class="ink" fill="#468cb7" d="m0-21 18 10v22L0 21l-18-10v-22z"/>
+      <path fill="#a4e7f8" d="M0-17 13-8l-3 15L0 15-10 7l-3-15z"/>
+      <path fill="#e6fcff" d="m0-16 8 9L0 6-8-7z"/>
+      <path fill="#69bddc" d="m0 6 10 1-10 8-10-8z"/>
+    </g>
+  </g>
+
+  <g id="rebel" transform="translate(0 192) scale(1.5)">
+    <path class="ink" fill="#573a32" d="m44 95 16-1 4 12-16 5-9-4zm27-1 15 1 8 9-4 5-21-2z"/>
+    <path class="ink" fill="#77503a" d="m46 54 25-7 18 12 9 36-11 7-16-4-10 6-13-4-14 4 6-16-9-4z"/>
+    <path fill="#ba7648" d="m52 58 16-3 15 8-2 29-15 4-11-8-14 5 7-21z"/>
+    <path class="ink" fill="#935139" d="m43 51-12 8-5 17 14-4 7 5 11-12 18 1 14-8-11-8z"/>
+    <path class="line" stroke="#efbf8d" stroke-width="2.7" d="m35 62 3 7m4-10 3 7m4-10 3 7"/>
+    <path class="ink" fill="#ad633e" d="M39 48q-4-11 5-23l-3-7q23-3 36 13l7 10-8 14-15 4z"/>
+    <path fill="#d58557" d="m45 43 2-13 10-9 14 6-13 3-9 15z"/>
+    <path class="ink" fill="#dfaf82" d="m59 44 9-11 10 5 3 8-7 10-13-5z"/>
+    <path fill="#674335" d="m62 45 7 5 10-5-2 7-4 4-8-3z"/>
+    <path class="line" stroke="#262632" stroke-width="2.3" d="m69 41 5 1"/>
+    <path class="line" stroke="#f4cea2" stroke-width="2.6" d="m52 29 1 8m-4-4 8-2"/>
+    <path class="line" stroke="#25252a" stroke-width="7" d="m28 91 24-19"/>
+    <path class="line" stroke="#b17c4b" stroke-width="4.1" d="m28 91 24-19"/>
+    <path class="ink" fill="#aab3bc" d="m25 78 11 5 4 12-5 7-14-5-2-11z"/>
+    <path fill="#dbd7ca" d="m23 89 13 7-3 4-10-5z"/>
+    <path class="ink" fill="#d3a474" d="m41 73 9 1 3 8-9 4-6-5z"/>
+    <ellipse class="ink" fill="#62514b" cx="86" cy="77" rx="18" ry="23" transform="rotate(15 86 77)"/>
+    <ellipse class="ink" fill="#ad7448" cx="86" cy="77" rx="14.5" ry="19.5" transform="rotate(15 86 77)"/>
+    <path class="line" stroke="#dcb484" stroke-width="2" d="m80 60-7 30m13-34-9 38m18-33-8 34"/>
+    <path class="ink" fill="#aab0b9" d="m83 71 7-1 3 6-3 7-7-1-3-4z"/>
+  </g>
+
+  <g id="scout" transform="translate(192 192) scale(1.5)">
+    <path class="ink" fill="#553b32" d="m41 94 14 2-5 13-21 1-3-6zm29-1 13-3 8 12 12 2v6H82l-11-5z"/>
+    <path class="ink" fill="#233e50" d="m50 65 25-4 17 12-9 16-12 9-13-1-5-5-12 3-14-4 15-15z"/>
+    <path fill="#376875" d="m48 69 21-6 8 10-17 18-8-4-17 4z"/>
+    <path class="ink" fill="#315362" d="m48 54-5-7 7-12-11-16q20 1 38 11 12 8 16 24l-13 10-19-3z"/>
+    <path fill="#568489" d="m47 24 21 6 17 15-12-3-15-8-6 7 2-8z"/>
+    <path class="ink" fill="#d8a67c" d="m65 49 13-7 12 6 1 11-13 9-15-7z"/>
+    <path class="line" stroke="#22252c" stroke-width="2.5" d="m76 51 7 1"/>
+    <path class="ink" fill="#e5cfaa" d="M85 54q-3 6-15 5l-9-5q-16-12-33-9L19 51l7 6q16-5 27 5-16-1-30 6l7 6q17-7 31-5l16 4 10-6 6-12z"/>
+    <path fill="#fcf0d3" d="m25 51 5-4 15 2 11 8-15-5zm41 11 10 1 10-5-3 6-10 3z"/>
+    <path class="ink" fill="#365f70" d="m58 72 10-5 10 8-10 11-10-6zm28-6 8 1 10 13-6 9-8-7z"/>
+    <path class="line" stroke="#d7ad79" stroke-width="3" d="m47 85 18 3 11-4"/>
+    <path class="ink" fill="#59737c" d="m54 82 9 5-10 16-8 4 1-10z"/>
+    <path class="line" stroke="#e1b274" stroke-width="3" d="m52 84 8 4"/>
+    <path class="ink" fill="#9b6744" d="m99 80 7 3v7l-7 2-5-6z"/>
+  </g>
+
+  <g id="armor" transform="translate(384 192) scale(1.5)">
+    <path class="ink" fill="#465063" d="m38 91 22 1-1 14-22 5-6-6zm33-2 21 3 4 17-24 1-4-7z"/>
+    <path class="ink" fill="#5a5964" d="m39 49 27-10 29 13 7 30-8 21-46-3-22-14 3-22z"/>
+    <path class="ink" fill="#913f36" d="m50 55 17 4 15-4 6 43-17 6-9-12-14 8z"/>
+    <path class="ink" fill="#778292" d="m28 54 17-7 13 11-8 14-17 5-11-10z"/>
+    <path class="line" stroke="#b2b7bb" stroke-width="3" d="m26 65 9 7 13-4 7-10"/>
+    <path class="ink" fill="#233149" d="m44 36 6-13 17-13 19 12 7 15-6 23-16 3-24-10z"/>
+    <path fill="#667083" d="m47 35 5-10 15-12 8 13-9 13-6 20-11-7z"/>
+    <path fill="#a8adbb" d="m67 13 17 11 7 13-19 2 4-12z"/>
+    <path class="ink" fill="#cd7945" d="m53 38 20 5 15-5-2 7-10 4-5 7-3-9-15-3z"/>
+    <path fill="#f8c27b" d="m55 38 18 5 12-4-2 3-11 4-16-5z"/>
+    <path class="ink" fill="#748091" d="m29 76 9-5 12 10-3 10-13 7-10-10z"/>
+    <path class="ink" fill="#aeb5bd" d="m28 83 11 8 19 15 7-2-6-13-19-10z"/>
+    <path class="line" stroke="#e4e8e7" stroke-width="2.5" d="m40 84 19 12"/>
+    <path class="ink" fill="#a7a7a2" d="m75 59 36-11 6 3-1 41-7 11-23 8-11-10z"/>
+    <path class="ink" fill="#48566a" d="m80 63 32-10-1 36-5 8-18 7-8-7z"/>
+    <path fill="#9b493a" d="m93 61 8-3 1 38-8 4z"/>
+    <path fill="#efc48f" d="m96 62 5 8-3 5v7l8-10-1 7-7 10-2 6-2-5-7-5-1-7 8 5-1-7-4-4z"/>
+    <path fill="#e6dec4" d="M80 61a2 2 0 1 0 0 4 2 2 0 0 0 0-4m32-12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m1 39a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-32 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/>
+  </g>
+
+  <g id="healer" transform="translate(576 192) scale(1.5)">
+    <path class="ink" fill="#503551" d="m44 93 16 1 3 13-15 5-10-5zm22 0 18 1 8 13-4 4-21-3z"/>
+    <path class="ink" fill="#603b6b" d="m45 48 19-8 17 10 9 23 2 29-13 5-15-5-11 6-24-8 11-35z"/>
+    <path fill="#8d5a88" d="m47 55 15 9-3 33-8 6-17-6zm21 10 10-13 9 43-12-2-7 7z"/>
+    <path class="line" stroke="#e0a5a3" stroke-width="3.4" d="m35 96 16 6 13-9 6 5m7 2 10-4"/>
+    <path fill="#f1beb3" d="m45 94 4-7 4 7-4 5zm-4-8 4-5 1 7zm14-3 4-5 1 8z"/>
+    <path class="ink" fill="#55395f" d="m39 47-7-9 11-17 19-10 20 11 6 13-9 15-15 8z"/>
+    <path fill="#a16b9a" d="m36 37 11-14 15-8 16 8-15 3-9 12-7 3z"/>
+    <path class="ink" fill="#e0a87e" d="m63 34 12-6 8 9 1 9 4 12-8-1-8-8-10-4z"/>
+    <path class="line" stroke="#f2bfad" stroke-width="4" d="M48 45q9-17 28-20"/>
+    <path class="line" stroke="#2d2530" stroke-width="2.5" d="m73 36 5 1"/>
+    <path fill="#efd3c0" d="m66 43 6 4 7 14-10-7z"/>
+    <path class="ink" fill="#81528a" d="m45 54 20 8 16-5 7 12-21 9-21-12z"/>
+    <path class="line" stroke="#ebb5ab" stroke-width="3" d="m50 62 17 9 16-6"/>
+    <path class="line" stroke="#1a2029" stroke-width="8.4" d="m96 104 1-66q-5-11 1-19 6-6 12-1 5 4 1 10"/>
+    <path class="line" stroke="#ad7a4b" stroke-width="5" d="m96 104 1-66q-5-11 1-19 6-6 12-1 5 4 1 10"/>
+    <path class="line" stroke="#e5bc7e" stroke-width="2.1" d="M111 26v13"/>
+    <path class="ink" fill="#dca857" d="m111 36 13 7-3 18-10 7-11-6-3-17z"/>
+    <path fill="#639a65" d="m101 46 9 2 1 15-8-3zm12 2 8-3-2 14-6 4z"/>
+    <path fill="#d8f8a3" d="m106 49 2 6-1 4-4-6zm10 1 3 4-3 5-2-5z"/>
+    <path class="ink" fill="#d8a87b" d="m88 71 8-6 7 3 1 7-8 5-8-3z"/>
+  </g>
+
+  <defs>
+    <g id="gun-carriage-wheel">
+      <path class="ink" fill="#614235" d="M29 25h31l7 6-2 14-8 5H29l-6-7V31z"/>
+      <path fill="#a5764f" d="M28 28h31l5 5-2 6H27l-1-5z"/>
+      <path class="line" stroke="#d3a673" stroke-width="2.6" d="M30 31h25"/>
+      <path class="line" stroke="#84593f" stroke-width="2.6" d="M36 41h20"/>
+      <path class="ink" fill="#857870" d="M29 25h7v25h-7l-6-7V31zm24 0h7l7 6-2 14-8 5h-4z"/>
+      <path fill="#b2a795" d="M25 32l4-5h5v5zm30-5h4l5 5h-9z"/>
+    </g>
+
+    <g id="gun-tube">
+      <path class="ink" d="M23 59q-9 0-9 5t9 5l4 6 11 3 7-4 54-1 3-18-57-2-7-4-11 3z"/>
+      <path fill="#161e2b" opacity=".31" d="m24 66 13 5 62-3v5l-54 1-7 4-11-3-4-6z"/>
+      <path fill="#fff4df" opacity=".31" d="m28 55 9-3 8 4 52 2v5l-56-2-6-4-9 3z"/>
+      <path class="ink" d="M46 53q-3 11 0 22l7-1q-3-11 0-21zm35 1q-3 10 0 20h7q-3-10 0-20z"/>
+      <path class="line" stroke="#f6e2c0" stroke-width="1.9" opacity=".56" d="m49 56-1 7m36-6-1 6"/>
+      <path class="ink" d="M97 54q5-6 11-3 8 4 8 13t-8 13q-6 3-11-3-3-10 0-20z"/>
+      <ellipse class="ink" fill="#25303a" cx="107" cy="64" rx="7" ry="10"/>
+      <path class="line" stroke="#e9d4b2" stroke-width="2.3" opacity=".65" d="M101 56q4-4 8-2"/>
+      <path fill="#222632" d="M50 49h7l3 5-7 1z"/>
+    </g>
+
+    <g id="trapper-body">
+      <path class="ink" fill="#574036" d="m30 93 16 1 5 14-12 5-19-4 2-8zm26 1 15-1 9 12-2 6H57l-4-8z"/>
+      <path class="ink" fill="#60583e" d="M33 52l22-8 18 12 7 30-5 15-22-2-16 5-20-7 8-28z"/>
+      <path fill="#8b7850" d="m34 59 14-7 13 7-13 38-12 3-15-5zm25 10 11-8 5 28-8 6-14 1z"/>
+      <path class="ink" fill="#c6aa78" d="m29 54 14-9 10 9 17-3 8 12-15 9-15-5-7 8-17-8z"/>
+      <path fill="#f0d4a0" d="m30 56 12-7 7 8 11 2 9-5 5 6-13 7-15-5-7 8-12-5z"/>
+      <path class="ink" fill="#72573e" d="M30 44q-5-14 7-25 7-7 20-5 13 4 17 16l3 13-24 10z"/>
+      <path fill="#a68255" d="M35 35q0-9 10-15 12-6 23 5l-13-3-10 7-3 9z"/>
+      <path class="ink" fill="#d7ad82" d="m50 35 14-9 12 11 1 11-7 10-17-7z"/>
+      <path class="ink" fill="#dfc294" d="M30 39q13 3 25-8l10-6 7 5-8 7q-14 14-30 10z"/>
+      <path fill="#674639" d="m55 46 8-7 13 5-2 8-6 6-12-7z"/>
+      <path class="line" stroke="#1d2228" stroke-width="2.4" d="m65 36 6 2"/>
+      <path class="ink" fill="#694933" d="m23 87 20 5 29-6 3 7-29 8-25-6z"/>
+      <path fill="#d1a35d" d="m47 92 8-2 3 6-8 2z"/>
+      <path class="line" stroke="#28252a" stroke-width="9.5" d="M29 66q-11 6-8 17 2 5 10 2 9-4 8-14-1-7-10-5z"/>
+      <path class="line" stroke="#ba975e" stroke-width="5.3" d="M29 66q-11 6-8 17 2 5 10 2 9-4 8-14-1-7-10-5z"/>
+      <path class="line" stroke="#e7cca1" stroke-width="2.2" d="M25 70q-6 7-3 13m6 2q4-1 7-7"/>
+    </g>
+    <clipPath id="trapper-net-shape">
+      <ellipse cx="90" cy="72" rx="23" ry="20"/>
+    </clipPath>
+
+    <g id="chest-front">
+      <path class="ink" fill="#653d32" d="m18 66 16-12 61 2 16 12-1 29-18 13H31l-14-9z"/>
+      <path fill="#9d6340" d="m21 69 15 6h56v27l-5 5H31l-11-8z"/>
+      <path fill="#bd8154" d="m25 78 10 4h55v12H26z"/>
+      <path class="line" stroke="#603e32" stroke-width="2.5" d="M25 94h65m-64-12h64"/>
+      <path fill="#4a3030" d="m94 75 15-7-2 28-13 10z"/>
+      <path class="ink" fill="#d2a456" d="m29 69 9 2v37h-7l-3-2zm51 3h9v34l-5 2h-4z"/>
+      <path class="line" stroke="#f2ce83" stroke-width="2.1" d="M32 78v23m51-23v24"/>
+      <path fill="#ffda83" d="M28 101h11v7h-7l-3-2zm51 1h10v3l-5 3h-5z"/>
+      <path class="ink" fill="#dcaa58" d="m52 72 11-4 11 5-1 13-10 8-11-6z"/>
+      <path fill="#ffe2a1" d="m55 74 8-4 8 4-1 4-7-3-8 4z"/>
+      <path fill="#48302b" d="M61 78a3 3 0 1 1 5 2l1 7h-7l1-6a3 3 0 0 1 0-3z"/>
+    </g>
+    <g id="chest-coin">
+      <ellipse class="ink" fill="#edae4f" rx="7" ry="4.7"/>
+      <path class="line" stroke="#ffe7a0" stroke-width="1.8" d="M-4 0q4-3 8-1"/>
+    </g>
+
+    <g id="dragon-head">
+      <path class="ink" fill="#45735a" d="m-15-6-3-13 9 4 1-9 8 12 11 2 5 8 10 2 1 8-13 7-15 1-12-7z"/>
+      <path fill="#7c9a63" d="m-12-5 5-6 12 1 7 7 11 3 1 4-11 1L0 3-7 5z"/>
+      <path fill="#d7b879" d="m-12-7-2-9 6 4zm5-6-1-7 5 8z"/>
+      <path class="line" stroke="#263531" stroke-width="2.4" d="M5-2l8 2m7 4 2 1m-9 6 10-3"/>
+      <path fill="#ffd077" d="m5-2 6 2-4 3z"/>
+      <path fill="#fff0bf" d="m16 10 1 4 4-5z"/>
+    </g>
+  </defs>
+
+  <g id="cannon" transform="translate(0 384) scale(1.5)">
+    <use href="#gun-carriage-wheel"/>
+    <use href="#gun-carriage-wheel" transform="translate(0 128) scale(1 -1)"/>
+    <path class="ink" fill="#6e4939" d="M30 36h31l21 12 8 16-8 16-21 12H30l-9-11V47z"/>
+    <path fill="#a8734b" d="M33 40h27l19 11 7 13-19 4-40-7V48z"/>
+    <path class="ink" fill="#c18855" d="M25 40h48l11 5-4 10-53-1-7-7zm0 34 55-1 4 10-11 5H25l-5-7z"/>
+    <path class="line" stroke="#efd1a0" stroke-width="2.7" d="M26 43h43l7 3M27 78h49"/>
+    <path class="ink" fill="#6d7885" d="m37 38 12 2-2 14-13-1zm-3 36 13-1 2 14-12 2zm35-31 10 5 8 10-7 5-9-4z"/>
+    <path fill="#ddc9a4" d="m39 42 4-1 1 4-4 1zm0 38 4-1 1 4-4 1zm37-30 4 3-2 3-4-3z"/>
+  </g>
+
+  <g id="trapper" transform="translate(192 384) scale(1.5)">
+    <use href="#trapper-body"/>
+    <path class="ink" fill="#826c48" d="m55 65 13-5 13 5-2 11-18 6-9-8z"/>
+    <ellipse class="ink" fill="#343a37" cx="90" cy="72" rx="26" ry="23"/>
+    <g clip-path="url(#trapper-net-shape)">
+      <path class="line" stroke="#b79261" stroke-width="2.8" d="M55 64l40 43m-31-52 40 43M74 46l41 42M85 38l40 42m-58 8 43-39m-36 50 43-39m-35 48 43-39m-68 9 43-39"/>
+      <path class="line" stroke="#f3d7a6" stroke-width="1.15" d="m67 86 40-36m-33 46 40-36m-50-5 35 37m-27-44 35 37"/>
+    </g>
+    <ellipse class="line" stroke="#d8b277" stroke-width="3.1" cx="90" cy="72" rx="23.9" ry="20.7"/>
+    <path fill="#eed4a1" d="m90 49 3 3-3 3-4-4zm23 20 3 3-3 4-3-4zm-23 22 4 3-4 3-3-3z"/>
+    <path class="ink" fill="#d2a479" d="m64 71 7-4 7 4 1 7-6 5-9-4z"/>
+  </g>
+
+  <g id="warlock" transform="translate(384 384) scale(1.5)">
+    <path class="ink" fill="#372c46" d="m35 94 19 1-3 15H30l-6-5zm31 1 17-2 7 14-14 5-15-4z"/>
+    <path class="ink" fill="#382846" d="m37 49 20-12 22 13 7 27 9 24-21 8-11-7-16 8-25-7 7-22z"/>
+    <path fill="#5f4276" d="m41 53 19 9-6 38-9 6-18-5 9-25zm22 11 11-10 6 24 10 21-14 5-8-7z"/>
+    <path class="line" stroke="#a98cba" stroke-width="2.8" d="m29 99 15 5 13-8m13 3 7 5 11-4"/>
+    <path class="ink" fill="#513967" d="M29 51q-1-12 11-23L56 8l9 11q14 5 20 21l1 9-26 15z"/>
+    <path fill="#7b588e" d="m34 47 3-10 9-10 11-14 5 8-14 20-9 9z"/>
+    <path class="ink" fill="#241e36" d="M40 48q8-14 21-19 15 6 18 19l-19 12z"/>
+    <path fill="#bb93d0" d="m51 43 7 3-5 2-4-3zm14 3 7-4-1 5-5 2z"/>
+    <path class="ink" fill="#684d7b" d="m37 54 21 12 20-9 10 11-15 9-13-2-11 4-18-10z"/>
+    <path fill="#cfabd5" d="m60 64 6 4-6 8-6-8z"/>
+    <path class="line" stroke="#b08cb9" stroke-width="3" d="m48 88 4-6 4 6-4 6zm17 8 4-9 5 6"/>
+    <path class="line" stroke="#1a2029" stroke-width="8.7" d="m99 108 2-67"/>
+    <path class="line" stroke="#876c93" stroke-width="5.7" d="m99 108 2-67"/>
+    <path class="ink" fill="#675372" d="m89 33 9 8 4-6 6 5 7-10-2 15-11 7-12-7z"/>
+    <path class="ink" fill="#8757bc" d="m102 12 12 10-2 15-11 8-11-9 1-15z"/>
+    <path fill="#cf9be7" d="m102 15 8 9-4 10-6-9z"/>
+    <path fill="#edd0f4" d="m101 16 5 8-7 1z"/>
+    <path class="ink" fill="#b798bd" d="m82 72 10-6 9 3 2 8-5 7-12-4z"/>
+  </g>
+
+  <g id="bell" transform="translate(576 384) scale(1.5)">
+    <path class="ink" fill="#9f703b" d="M57 34h14l3 12-6 6H60l-6-7z"/>
+    <path class="ink" fill="#c89144" d="M43 56q5-12 21-12t21 12l4 19 8 12 5 8-6 7H32l-6-7 5-8 8-12z"/>
+    <path fill="#efb958" d="M47 55q7-8 17-8l-5 11-3 18-10 11H33l10-14z"/>
+    <path fill="#916038" d="M75 48q7 3 10 10l5 19 11 16H81l-9-16z"/>
+    <path class="line" stroke="#ffe4a3" stroke-width="3.4" d="M49 57q-4 9-4 18m-8 12q17-6 28-5l17 2"/>
+    <path class="ink" fill="#d2a04d" d="M30 91q13-6 34-6 22 0 34 6l3 5q-9 7-37 7-28 0-37-7z"/>
+    <ellipse class="ink" fill="#654639" cx="64" cy="98" rx="33" ry="8"/>
+    <path class="line" stroke="#f5cc79" stroke-width="2.6" d="M33 95q13-4 31-4 18 0 31 4"/>
+    <path class="ink" fill="#e4ad54" d="m61 98 7 1 5 8-4 5H59l-4-5z"/>
+    <path fill="#ffe6a8" d="m62 102 5 1 1 4-6 1z"/>
+  </g>
+
+  <g id="treasury" transform="translate(0 576) scale(1.5)">
+    <use href="#chest-front"/>
+    <path class="ink" fill="#be8452" d="M17 65q0-15 15-26l53-6q17 0 25 21l3 14-19 11-61 1-16-8z"/>
+    <path fill="#d79d65" d="M22 63q2-13 12-21l48-6q13 2 18 17l-12 13-55 3z"/>
+    <path fill="#83513b" d="m91 63 12-10 7 15-16 9-10-2z"/>
+    <path class="line" stroke="#a6714b" stroke-width="2.8" d="m29 55 54-7m-57 14 54-7"/>
+    <path class="ink" fill="#d6a659" d="m25 43 8-5 7 3-6 10-4 19 8 7v4l-12-3-5-7zm50-8 9-2 6 3-5 10-3 23 7 8-2 4-8-3-5-8z"/>
+    <path class="line" stroke="#ffe2a0" stroke-width="2.4" d="m29 46-5 20m55-25-3 23"/>
+    <path class="ink" fill="#e4ad57" d="m53 65 10-4 10 5-2 14-8 7-10-5z"/>
+    <path fill="#4f342b" d="M60 72a3 3 0 1 1 5 2l1 7h-7l1-6a3 3 0 0 1 0-3z"/>
+    <use href="#chest-coin" transform="translate(49 39) rotate(-12)"/>
+    <use href="#chest-coin" transform="translate(62 35) rotate(9)"/>
+    <use href="#chest-coin" transform="translate(54 32) rotate(-13)"/>
+  </g>
+
+  <g id="ogre" transform="translate(192 576) scale(1.5)">
+    <path class="ink" fill="#74503a" d="m90 73 9-5 7-23 11-8 4-14-5-7-12-4-9 5-3 11 2 12-13 28z"/>
+    <path fill="#a9754b" d="m101 20 7-4 9 6-2 11-8 8-2-13-5 3z"/>
+    <path class="line" stroke="#d1a573" stroke-width="2.6" d="m109 20-4 11m8-3-4 7"/>
+    <path class="ink" fill="#5a4739" d="M27 93l23 2 4 14-7 5-25-2-7-6zm35 0 22-4 14 15-2 8-27 2-10-5z"/>
+    <path class="ink" fill="#856f57" d="M33 47q19-13 43-7l20 15 7 25-17 19-20 4-18-4-19 5-12-16 3-25z"/>
+    <path fill="#ae9371" d="m39 51 29-9 18 13 6 19-18 16H43l-9-13z"/>
+    <path class="ink" fill="#906445" d="M25 56l12-9 33 43-6 15-17-7-13 5-17-9 4-10 32 6z"/>
+    <path class="line" stroke="#c99d69" stroke-width="3.2" d="m26 57 27 29m-32 7 19 8"/>
+    <path class="ink" fill="#796d55" d="m87 71 9-14 11 1 6 9-5 15-12 7-10-6z"/>
+    <path fill="#b59c7b" d="m93 70 7-9 7 3-3 7-9 8-5-3z"/>
+    <path class="ink" fill="#6a5949" d="m33 40-12-5-8 4 6 10 14 3zm52-2 13-1 7 6-6 7-13-1z"/>
+    <path class="ink" fill="#a18667" d="M32 36q-1-17 13-22 16-8 31 1l15 16 2 19-12 17-21 4-20-7-11-13z"/>
+    <path fill="#c1a483" d="m35 35 6-14 14-5 15 3 10 9-18-3-13 7-6 16-13-3z"/>
+    <path fill="#806754" d="m38 53 14 2 11 7 16-1-7 6-13 2-15-7z"/>
+    <path class="ink" fill="#806450" d="m59 42 9-8 13 4 6 9-12 10-15-5z"/>
+    <path fill="#c29d7e" d="m66 40 9-1 6 5-10 4-8-3z"/>
+    <path class="line" stroke="#40342e" stroke-width="4" d="m42 36 13 5m16-6 12-4"/>
+    <path fill="#f2bd62" d="m46 40 9 3-5 4-6-3zm27-3 9-2-2 5-6 2z"/>
+    <path class="line" stroke="#4b3831" stroke-width="3" d="m49 55 12 6 14-4"/>
+    <path class="ink" fill="#ead7b3" d="m48 58 6-10 4 10-2 5zm24 1 6-9 2 7-3 5z"/>
+  </g>
+
+  <g id="gorynych" transform="translate(384 576) scale(1.5)">
+    <path class="ink" fill="#355d4c" d="M56 88q-9 11-25 10l-12-4 8 14q18 8 35-7l6-6z"/>
+    <path fill="#638565" d="m26 101 12 1 16-8 5 1q-11 13-23 12z"/>
+    <path class="ink" fill="#47695d" d="M49 67Q30 44 7 42l7 17-5 15 14 4 6 15q11-6 27-9zm28 0q18-24 42-27l-5 17 7 13-12 5-5 15q-13-7-30-6z"/>
+    <path fill="#627f70" d="m45 68-28-23 3 17-6 10 17 4 1 10 19-6zm34 1 32-23-3 16 8 5-14 6-2 10-20-5z"/>
+    <path class="line" stroke="#375749" stroke-width="3" d="M14 50q9 18 29 27M115 45q-6 20-28 30"/>
+    <path class="ink" fill="#355946" d="m43 88 14 6-5 14-15 4-9-5zm29 2 14-4 13 15-5 8-14 1-9-9z"/>
+    <path class="ink" fill="#4c795d" d="M41 69q7-12 24-14 20-2 28 15l4 14-10 16-23 9-21-11-9-13z"/>
+    <path fill="#9eaa6b" d="m60 62 16 1 12 12v16l-10 9-15 5-17-10-5-9 9-13z"/>
+    <path class="line" stroke="#647a57" stroke-width="3.2" d="m47 82 14 4 22-4m-34 9 13 5 20-6"/>
+    <path class="ink" fill="#4c795a" d="M52 75q-5-16-21-15l-9-8 12-9q20 3 32 24z"/>
+    <path class="ink" fill="#5c8662" d="M54 73q2-24 0-38l10-9 15 8q-2 21-10 42z"/>
+    <path class="ink" fill="#3e6d53" d="M71 79q2-22 19-30l12 4 2 10-12 6-6 15z"/>
+    <path class="line" stroke="#9bac73" stroke-width="3" d="m60 43 10 4m-10 6 8 3m-8 6 7 3m22-2 7 2"/>
+    <use href="#dragon-head" transform="translate(24 48) rotate(16) scale(.81)"/>
+    <use href="#dragon-head" transform="translate(63 31) rotate(-7)"/>
+    <use href="#dragon-head" transform="translate(93 53) rotate(6) scale(.77)"/>
+    <path fill="#c2c082" d="m40 103 5 5-8 3-4-3zm47-2 6 3-5 5-6-1z"/>
+  </g>
+
+  <g id="snakelet" transform="translate(576 576) scale(1.5)">
+    <path class="ink" fill="#466e55" d="M55 78q-15 13-29 5l-10-9 1 17q13 16 34 11l21-14z"/>
+    <path fill="#83a575" d="m23 88 9 4 15-2 9-5 4 3q-19 14-33 8z"/>
+    <path class="ink" fill="#476755" d="m51 75-12-15 16 3 9 13zm24 3 15-19 12 1-7 13-6 14z"/>
+    <path class="ink" fill="#5f895e" d="M47 64q10-9 25-5 24 6 27 23l-7 13-20 9-17-2-12-10z"/>
+    <path fill="#abb174" d="m60 75 15-9 11 8 7 11-8 11-16 6-13-3-8-9z"/>
+    <path class="line" stroke="#71865f" stroke-width="3" d="m54 88 13 5 18-5m-23 9 12 1"/>
+    <path class="ink" fill="#4f7556" d="m48 87 9 5 4 14-8 6-13-4-3-7zm30 4 9-4 13 10-2 9-16 4-7-8z"/>
+    <path fill="#d8c48d" d="m44 103 4 4-6 1-2-3zm44-1 5 1-3 4-6 1z"/>
+    <use href="#dragon-head" transform="translate(61 49) rotate(6) scale(1.47)"/>
+  </g>
+
+  <g id="boss" transform="translate(0 768) scale(1.5)">
+    <path class="ink" fill="#473144" d="m33 94 23 2 2 15-21 4-11-7zm33 2 19-3 13 14-7 7-25-2-4-7z"/>
+    <path class="ink" fill="#522c52" d="m33 50 26-12 29 10 9 17 4 32-16 15-22-9-17 9-28-11 5-27z"/>
+    <path fill="#824259" d="m31 61 18-8 12 8-12 43-8 5-18-10 6-19zm39 1 15-10 9 18 4 25-12 13-14-6z"/>
+    <path class="line" stroke="#d59886" stroke-width="3" d="m24 97 17 10 13-8m20 1 11 8 11-12"/>
+    <path class="ink" fill="#46435b" d="m41 68 20-10 21 8-4 31-16 11-24-15z"/>
+    <path fill="#777087" d="m44 73 17-10 5 10-2 24-6 6-16-12z"/>
+    <path class="line" stroke="#cea877" stroke-width="3" d="m51 72 10 9 14-8m-14 9 1 17"/>
+    <path class="ink" fill="#e0c9b3" d="m26 58 15-10 20 4 20-5 13 11-11 15-20 7-24-7z"/>
+    <path fill="#fff0d9" d="m30 58 13-7 18 5 18-6 11 7-7 6-21 7-21-7z"/>
+    <path class="line" stroke="#6c5157" stroke-width="2.9" d="m39 62 1 4m9-2-1 4m34-7-1 4m-9 2-1 4"/>
+    <path class="ink" fill="#d5a780" d="m38 36 13-15 22 1 14 17-5 17-16 11-18-7-11-9z"/>
+    <path fill="#efc19b" d="m43 38 9-13 10 2-3 12-10 10-10-4z"/>
+    <path class="ink" fill="#675261" d="m41 48 10 4 11-4 11 3 12-7-5 13-13 11-17-6z"/>
+    <path fill="#907481" d="m43 50 14 5 7-3 9 3 9-5-8 7-11 3 2 5-10-6z"/>
+    <path class="line" stroke="#422f38" stroke-width="3.2" d="m46 39 10 3m13 0 10-4"/>
+    <path fill="#e47665" d="m47 42 9 3-4 4-7-3zm23 3 9-4 1 5-7 3z"/>
+    <path class="ink" fill="#c8944f" d="m37 32-8-19 16 5 7-10 12 10L77 7l5 13 14-6-8 21-24 2z"/>
+    <path fill="#f5c777" d="m33 16 14 5 5-9 12 10L76 11l4 12 13-7-5 10-24 6-25-3z"/>
+    <path fill="#a75156" d="m64 22 7 6-6 7-7-6z"/>
+    <path fill="#f49e86" d="m64 23 4 4-5 1-3 3z"/>
+    <path fill="#9278a0" d="m42 25 5 1-1 5-5-1zm40 0 5-2-1 5-5 2z"/>
+    <path class="line" stroke="#1a2029" stroke-width="9" d="m94 110 18-69"/>
+    <path class="line" stroke="#d1a05f" stroke-width="5.8" d="m94 110 18-69"/>
+    <path class="ink" fill="#d99f57" d="m104 36 3-9 8-4 8 8-1 9-10 7z"/>
+    <path fill="#b14f58" d="m112 29 7 3-2 7-6 3-4-6z"/>
+    <path fill="#ffb093" d="m112 29 4 2-5 6-2-2z"/>
+    <path class="ink" fill="#7c7084" d="m87 72 9-5 8 3 1 7-7 9-11-5z"/>
+  </g>
+
+  <g id="treasury-open" transform="translate(192 768) scale(1.5)">
+    <path class="ink" fill="#794e3d" d="M21 62l1-28 14-16 58 5 16 13 2 25-20 13-55 1z"/>
+    <path fill="#a66d4b" d="m27 35 11-13 54 4 12 11-15 11-54-1z"/>
+    <path class="line" stroke="#d89661" stroke-width="3.2" d="m36 30 58 4m-63 4 59 5"/>
+    <path class="ink" fill="#d2a158" d="m35 18 8 1-10 19 1 16-8-1-2-17zm49 4 9 1-9 20 2 14-8 1-2-16z"/>
+    <path class="ink" fill="#513329" d="m18 53 14-10 68 2 13 15-2 16-18 12-56-2-19-13z"/>
+    <path class="ink" fill="#d29a48" d="m25 66 7-8 11-5 9-7 13-1 8 8 13-1 11 8 7 8-13 14-58-4z"/>
+    <use href="#chest-coin" transform="translate(43 61) rotate(-13)"/>
+    <use href="#chest-coin" transform="translate(56 50) rotate(7)"/>
+    <use href="#chest-coin" transform="translate(68 54) rotate(-12)"/>
+    <use href="#chest-coin" transform="translate(85 59) rotate(13)"/>
+    <use href="#chest-coin" transform="translate(62 64) rotate(10)"/>
+    <use href="#chest-coin" transform="translate(93 69) rotate(-7)"/>
+    <use href="#chest-front" transform="translate(0 15) scale(1 .86)"/>
+    <path class="line" stroke="#e7bd77" stroke-width="3" d="m20 73 15 7 57 2 15-10"/>
+  </g>
+
+  <g id="cannon-barrel" transform="translate(384 768) scale(1.5)">
+    <use href="#gun-tube" fill="#667285"/>
+  </g>
+  <g id="cannon-barrel-bronze" transform="translate(576 768) scale(1.5)">
+    <use href="#gun-tube" fill="#b0824c"/>
+  </g>
+
+  <g id="trapper-reloading" transform="translate(0 960) scale(1.5)">
+    <use href="#trapper-body"/>
+    <path class="ink" fill="#806747" d="m54 67 13-8 17 9 4 12-10 9-15-3-13-11z"/>
+    <path class="line" stroke="#b3936b" stroke-width="3" d="m57 69 14-7 12 8"/>
+    <path class="line" stroke="#a68f66" stroke-width="3.1" d="M78 84q1 11 11 10 6-1 5-6-1-5-6-3"/>
+    <path class="ink" fill="#d2a479" d="m75 72 8-3 8 5v7l-6 5-10-3-3-6z"/>
+  </g>
+
+  <g id="bell-mount" transform="translate(192 960) scale(1.5)">
+    <path class="ink" fill="#6d473e" d="M20 38l11-7 6 7-6 59-8 11-10-3 3-14zm77-6 11 5 5 55 3 13-12 4-8-10z"/>
+    <path fill="#ad7851" d="m23 42 7-5-5 54-7 14 2-29zm77-5 6 3 4 50 3 11-8-8z"/>
+    <path class="ink" fill="#63443b" d="m15 94 14-4 9 7v9l-11 7-15-5zm83-4 14 3 6 11-10 8-13-5-5-7z"/>
+    <path fill="#9b694a" d="m17 97 12-4 6 5-9 5-11-2zm82-4 12 3 3 6-12 1-8-5z"/>
+    <path class="ink" fill="#ac774d" d="M17 29l47-7 47 7 7 9-6 8-48-5-48 5-6-8z"/>
+    <path fill="#d6a269" d="m19 32 45-7 45 7 5 5-50-4-50 5z"/>
+    <path class="ink" fill="#9f805f" d="m23 28 9-1 2 16-9 2zm73-1 10 1-3 17-9-2z"/>
+    <path fill="#e4ba7d" d="m26 30 4-1 1 5-5 1zm72-1 5 1-1 5-5-1z"/>
+    <path class="line" stroke="#513d37" stroke-width="4.5" d="m25 56-4 33m82-33 3 34"/>
+  </g>
+</svg>

@@ -212,6 +212,6 @@ export const HALLS: readonly LevelDef[] = [
       [3, 9],
       [7, 2],
     ],
-    ['anubis', 'egyptObelisk', 'papyrusColumn'],
+    ['anubis', 'ankh', 'papyrusColumn'],
   ),
 ]

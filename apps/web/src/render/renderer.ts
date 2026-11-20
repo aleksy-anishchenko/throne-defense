@@ -27,6 +27,7 @@ import { drawPropFlames } from './props'
 import { drawShot } from './shots'
 import { BUFF_RGB, drawBuffRing } from './statuses'
 import { drawTower } from './towers'
+import { loadUnitSprites, unitSpritesLoaded } from './unitSprites'
 import {
   drawBellConnections,
   drawBellIndicators,
@@ -86,6 +87,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   const ctx = canvas.getContext('2d')!
   let { cols, rows } = game.level.def
   const effects = createEffects(game)
+  void loadUnitSprites()
 
   let cellCssPx = INITIAL_CELL_CSS_PX // размер клетки в CSS-пикселях
   let pixelRatio = 1 // сколько настоящих пикселей экрана в одном CSS-пикселе
@@ -115,6 +117,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       state.towers.length,
       state.enemies.length,
       state.shots.length,
+      unitSpritesLoaded(),
       JSON.stringify(boardView),
     ].join('|')
   }
@@ -284,7 +287,16 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         ctx.stroke()
       }
       const isReady = tower.cooldownLeft < towerStats(tower).cooldown * READY_COOLDOWN_SHARE
-      drawTower(ctx, tower.def.id, tower.tier, tower.aimAngle, time, isReady, tower.aspectId)
+      drawTower(
+        ctx,
+        tower.def.id,
+        tower.tier,
+        tower.aimAngle,
+        time,
+        isReady,
+        tower.aspectId,
+        effects.towerRecoil(tower),
+      )
       ctx.restore()
     }
   }
@@ -297,15 +309,22 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         // Без «?? false» сравнение undefined с false не сошлось бы, и враг не нарисовался бы вовсе
         const drawOnTop = getEnemyArt(enemy.def.id).drawOnTop ?? false
         if (drawOnTop !== isTopLayer) continue
-        drawEnemy(ctx, enemy, time, effects.bobPhase(enemy), effects.isFlashing(enemy))
+        drawEnemy(
+          ctx,
+          enemy,
+          time,
+          effects.bobPhase(enemy),
+          effects.isFlashing(enemy),
+          game.level.path,
+        )
       }
     }
   }
 
   /** Полоски здоровья — поверх всех врагов, искр и снарядов */
-  function drawHealthBars(time: number) {
+  function drawHealthBars() {
     for (const enemy of game.state.enemies) {
-      drawEnemyHealthBar(ctx, enemy, time, effects.bobPhase(enemy))
+      drawEnemyHealthBar(ctx, enemy, effects.bobPhase(enemy))
     }
   }
 
@@ -475,7 +494,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
 
       for (const shot of state.shots) drawShot(ctx, shot)
       effects.draw(ctx)
-      drawHealthBars(time)
+      drawHealthBars()
 
       const ghostCell =
         isPlaying && boardView.armedTowerId ? (boardView.hoverCell ?? boardView.cursorCell) : null

@@ -11,9 +11,8 @@ import type { Canvas2D } from './shapes'
 export interface HallTheme {
   /** Нарисовать плиту пола в клетке (col, row) */
   drawTile(ctx: Canvas2D, col: number, row: number): void
-  /** Ковёр: основной цвет и тёмная середина */
-  carpet: string
-  carpetInner: string
+  /** Переход цвета ткани от трона к входу и цвет канта */
+  carpet: { light: string; dark: string; trim: string }
   /** Узор на ковре — в координатах отрезка: x вдоль ковра, y поперёк, (0,0) — начало отрезка */
   carpetPattern: { step: number; draw(ctx: Canvas2D, along: number): void }[]
   /** Помост: основа, верх, полоса по краю */
@@ -28,35 +27,82 @@ export interface HallTheme {
 const noise = (col: number, row: number, key: number) =>
   cellNoise(col * 1.7 + key * 13.1, row + key)
 
-/** Светлый край сверху и тень снизу — плита выглядит чуть выпуклой */
+const TILE_INSET = 0.02
+const TILE_SIZE = 1 - TILE_INSET * 2
+
+function tilePath(ctx: Canvas2D, col: number, row: number) {
+  roundedRect(ctx, col + TILE_INSET, row + TILE_INSET, TILE_SIZE, TILE_SIZE, 0.042)
+}
+
+function tileFace(
+  ctx: Canvas2D,
+  col: number,
+  row: number,
+  hue: number,
+  saturation: number,
+  lightness: number,
+) {
+  const face = ctx.createLinearGradient(col, row, col + 0.8, row + 1)
+  face.addColorStop(0, `hsl(${hue},${saturation}%,${lightness + 2.4}%)`)
+  face.addColorStop(1, `hsl(${hue},${saturation}%,${lightness - 2.5}%)`)
+  ctx.fillStyle = face
+  tilePath(ctx, col, row)
+  ctx.fill()
+}
+
+/** Тонкий светлый край и тень подчёркивают границы клетки */
 function tileBevel(ctx: Canvas2D, col: number, row: number) {
-  ctx.fillStyle = 'rgba(255,255,255,.04)'
-  ctx.fillRect(col + 0.025, row + 0.025, 0.95, 0.04)
-  ctx.fillStyle = 'rgba(0,0,0,.18)'
-  ctx.fillRect(col + 0.025, row + 0.935, 0.95, 0.04)
+  ctx.strokeStyle = 'rgba(235,231,226,.09)'
+  ctx.lineWidth = 0.014
+  ctx.beginPath()
+  ctx.moveTo(col + 0.054, row + 0.9)
+  ctx.lineTo(col + 0.054, row + 0.072)
+  ctx.lineTo(col + 0.927, row + 0.072)
+  ctx.stroke()
+  ctx.strokeStyle = 'rgba(8,8,13,.23)'
+  ctx.lineWidth = 0.018
+  ctx.beginPath()
+  ctx.moveTo(col + 0.074, row + 0.948)
+  ctx.lineTo(col + 0.948, row + 0.948)
+  ctx.lineTo(col + 0.948, row + 0.09)
+  ctx.stroke()
 }
 
 // ——— Плитки ———
 
-/** Синий камень «Тронного зала» — как было */
+/** Сланец Тронного зала с лёгкой зернистостью и прожилками */
 function stoneTile(ctx: Canvas2D, col: number, row: number) {
-  const lightness = 22 + ((col + row) & 1) * 2.4 + (cellNoise(col, row) - 0.5) * 2.6
-  ctx.fillStyle = `hsl(231,24%,${lightness}%)`
-  ctx.fillRect(col + 0.025, row + 0.025, 0.95, 0.95)
+  const lightness = 19 + (noise(col, row, 1) - 0.5) * 3.8
+  tileFace(ctx, col, row, 222, 13, lightness)
+  for (let i = 0; i < 13; i++) {
+    const x = col + 0.08 + noise(col, row, i + 3) * 0.81
+    const y = row + 0.08 + noise(col, row, i + 19) * 0.81
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(224,226,235,.06)' : 'rgba(8,8,13,.16)'
+    ctx.fillRect(x, y, 0.008 + noise(col, row, i + 33) * 0.015, 0.009)
+  }
+  if (noise(col, row, 4) < 0.56) {
+    const y = row + 0.28 + noise(col, row, 6) * 0.43
+    ctx.strokeStyle = 'rgba(224,226,235,.075)'
+    ctx.lineWidth = 0.011
+    ctx.beginPath()
+    ctx.moveTo(col + 0.13, y)
+    ctx.lineTo(col + 0.29, y - 0.035)
+    ctx.lineTo(col + 0.41, y - 0.026)
+    ctx.lineTo(col + 0.58, y - 0.093)
+    ctx.stroke()
+  }
   tileBevel(ctx, col, row)
 }
 
-/** Мрамор: тёплый серый с тонкими светлыми прожилками и тёмными ромбиками на стыках */
+/** Мрамор с тонкими светлыми прожилками */
 function marbleTile(ctx: Canvas2D, col: number, row: number) {
-  const lightness = 30 + (noise(col, row, 1) - 0.5) * 3
-  ctx.fillStyle = `hsl(38,7%,${lightness}%)`
-  ctx.fillRect(col + 0.025, row + 0.025, 0.95, 0.95)
+  const lightness = 28 + (noise(col, row, 1) - 0.5) * 4.6
+  tileFace(ctx, col, row, 38, 8, lightness)
   ctx.save()
-  ctx.beginPath()
-  ctx.rect(col + 0.025, row + 0.025, 0.95, 0.95)
+  tilePath(ctx, col, row)
   ctx.clip()
-  ctx.strokeStyle = 'rgba(235,228,212,.13)'
-  ctx.lineWidth = 0.01
+  ctx.strokeStyle = 'rgba(235,228,212,.11)'
+  ctx.lineWidth = 0.012
   for (let i = 0; i < 2; i++) {
     const startY = row + noise(col, row, i + 2) * 0.9
     const endY = row + noise(col, row, i + 5) * 0.9
@@ -67,23 +113,18 @@ function marbleTile(ctx: Canvas2D, col: number, row: number) {
   }
   ctx.restore()
   tileBevel(ctx, col, row)
-  ctx.fillStyle = 'hsl(30,10%,17%)'
-  ctx.beginPath()
-  ctx.moveTo(col, row - 0.07)
-  ctx.lineTo(col + 0.07, row)
-  ctx.lineTo(col, row + 0.07)
-  ctx.lineTo(col - 0.07, row)
-  ctx.closePath()
-  ctx.fill()
 }
 
 /** Доски: три в клетке, с волокнами и швами вразбежку */
 function woodTile(ctx: Canvas2D, col: number, row: number) {
+  ctx.save()
+  tilePath(ctx, col, row)
+  ctx.clip()
   for (let plank = 0; plank < 3; plank++) {
-    const lightness = 20 + (noise(col, row, plank) - 0.5) * 4
-    ctx.fillStyle = `hsl(26,30%,${lightness}%)`
-    ctx.fillRect(col + plank / 3 + 0.01, row + 0.025, 1 / 3 - 0.02, 0.95)
-    ctx.strokeStyle = 'rgba(0,0,0,.16)'
+    const lightness = 22 + (noise(col, row, plank) - 0.5) * 4.5
+    ctx.fillStyle = `hsl(26,25%,${lightness}%)`
+    ctx.fillRect(col + plank / 3 + 0.008, row, 1 / 3 - 0.016, 1)
+    ctx.strokeStyle = 'rgba(10,7,7,.21)'
     ctx.lineWidth = 0.01
     ctx.beginPath()
     for (const grain of [0.3, 0.6]) {
@@ -96,6 +137,7 @@ function woodTile(ctx: Canvas2D, col: number, row: number) {
   ctx.fillStyle = 'rgba(0,0,0,.3)'
   const seamPlank = noise(col, row, 9) < 0.5 ? 0 : 1
   ctx.fillRect(col + seamPlank / 3 + 0.01, row + 0.45, 1 / 3 - 0.02, 0.015)
+  ctx.restore()
   tileBevel(ctx, col, row)
 }
 
@@ -129,9 +171,8 @@ function drawHieroglyph(ctx: Canvas2D, x: number, y: number, kind: number) {
 
 /** Песчаник: потёртости, на каждой третьей плите — выцветший иероглиф */
 function sandstoneTile(ctx: Canvas2D, col: number, row: number) {
-  const lightness = 28 + (noise(col, row, 1) - 0.5) * 3
-  ctx.fillStyle = `hsl(38,28%,${lightness}%)`
-  ctx.fillRect(col + 0.025, row + 0.025, 0.95, 0.95)
+  const lightness = 27 + (noise(col, row, 1) - 0.5) * 4.4
+  tileFace(ctx, col, row, 37, 19, lightness)
   ctx.fillStyle = 'rgba(0,0,0,.08)'
   for (let i = 0; i < 4; i++) {
     const x = col + 0.1 + noise(col, row, i + 1) * 0.8
@@ -151,25 +192,28 @@ function sandstoneTile(ctx: Canvas2D, col: number, row: number) {
 const DIAMONDS = {
   step: 0.5,
   draw(ctx: Canvas2D, along: number) {
-    ctx.fillStyle = 'rgba(227,178,74,.6)'
     ctx.beginPath()
-    ctx.moveTo(along, -0.075)
-    ctx.lineTo(along + 0.075, 0)
-    ctx.lineTo(along, 0.075)
-    ctx.lineTo(along - 0.075, 0)
+    ctx.moveTo(along, -0.072)
+    ctx.lineTo(along + 0.054, 0)
+    ctx.lineTo(along, 0.072)
+    ctx.lineTo(along - 0.054, 0)
     ctx.closePath()
+    ctx.fillStyle = 'rgba(234,163,108,.23)'
     ctx.fill()
+    ctx.strokeStyle = 'rgba(234,163,108,.44)'
+    ctx.lineWidth = 0.016
+    ctx.stroke()
   },
 }
 
 /** Меандр по обоим краям: ступенька-крючок */
 const MEANDER = {
-  step: 0.2,
+  step: 0.27,
   draw(ctx: Canvas2D, along: number) {
-    ctx.strokeStyle = 'rgba(227,178,74,.75)'
-    ctx.lineWidth = 0.02
+    ctx.strokeStyle = 'rgba(229,182,128,.47)'
+    ctx.lineWidth = 0.016
     for (const side of [-1, 1]) {
-      const y = side * 0.26
+      const y = side * 0.282
       ctx.beginPath()
       ctx.moveTo(along - 0.1, y)
       ctx.lineTo(along - 0.1, y - side * 0.06)
@@ -181,11 +225,11 @@ const MEANDER = {
   },
 }
 
-/** Цветочки: четыре золотых лепестка с красной серединкой, точки по краям */
+/** Цветы из четырёх лепестков с красной серединкой */
 const FLOWERS = {
   step: 0.5,
   draw(ctx: Canvas2D, along: number) {
-    ctx.fillStyle = 'rgba(232,210,122,.7)'
+    ctx.fillStyle = 'rgba(232,190,144,.48)'
     for (const [dx, dy] of [
       [0.05, 0],
       [-0.05, 0],
@@ -195,14 +239,9 @@ const FLOWERS = {
       circle(ctx, along + dx, dy, 0.035)
       ctx.fill()
     }
-    ctx.fillStyle = '#c23b4a'
+    ctx.fillStyle = '#a44c59'
     circle(ctx, along, 0, 0.025)
     ctx.fill()
-    ctx.fillStyle = 'rgba(232,210,122,.45)'
-    for (const side of [-1, 1]) {
-      circle(ctx, along + 0.25, side * 0.25, 0.02)
-      ctx.fill()
-    }
   },
 }
 
@@ -210,8 +249,8 @@ const FLOWERS = {
 const ZIGZAG = {
   step: 0.24,
   draw(ctx: Canvas2D, along: number) {
-    ctx.strokeStyle = 'rgba(227,178,74,.75)'
-    ctx.lineWidth = 0.025
+    ctx.strokeStyle = 'rgba(222,183,127,.49)'
+    ctx.lineWidth = 0.018
     ctx.beginPath()
     ctx.moveTo(along - 0.12, 0.06)
     ctx.lineTo(along, -0.06)
@@ -223,7 +262,7 @@ const ZIGZAG = {
 const LOTUS_EDGES = {
   step: 0.3,
   draw(ctx: Canvas2D, along: number) {
-    ctx.fillStyle = 'rgba(58,143,134,.85)'
+    ctx.fillStyle = 'rgba(111,157,147,.53)'
     for (const side of [-1, 1]) {
       ctx.beginPath()
       ctx.moveTo(along - 0.05, side * 0.29)
@@ -395,37 +434,33 @@ function pharaohThrone(ctx: Canvas2D) {
 const THEMES: Record<string, HallTheme> = {
   throne: {
     drawTile: stoneTile,
-    carpet: CRIMSON,
-    carpetInner: '#8c1826',
+    carpet: { light: '#a03a4b', dark: '#70263b', trim: '#b78a66' },
     carpetPattern: [DIAMONDS],
-    dais: { base: '#4c5378', top: '#5f6790', band: GOLD },
+    dais: { base: '#53434a', top: '#6a5b61', band: '#bba17a' },
     drawThrone: goldThrone,
     torchBowl: '#20233a',
   },
   antique: {
     drawTile: marbleTile,
-    carpet: CRIMSON,
-    carpetInner: '#8c1826',
+    carpet: { light: '#9d4b47', dark: '#6c3039', trim: '#c29a76' },
     carpetPattern: [MEANDER],
-    dais: { base: '#8f897b', top: '#b8b2a3', band: '#6e6a60' },
+    dais: { base: '#70655a', top: '#a19889', band: '#c1af91' },
     drawThrone: marbleThrone,
     torchBowl: '#20233a',
   },
   chambers: {
     drawTile: woodTile,
-    carpet: '#74213d',
-    carpetInner: '#55162b',
+    carpet: { light: '#8b4661', dark: '#582942', trim: '#b28472' },
     carpetPattern: [FLOWERS],
-    dais: { base: '#4a3220', top: '#5e4128', band: '#a8823a' },
+    dais: { base: '#50382d', top: '#725041', band: '#a9865e' },
     drawThrone: woodenThrone,
     torchBowl: '#20233a',
   },
   egypt: {
     drawTile: sandstoneTile,
-    carpet: '#2b4f8f',
-    carpetInner: '#1f3b6e',
+    carpet: { light: '#426589', dark: '#293c5e', trim: '#bd956d' },
     carpetPattern: [ZIGZAG, LOTUS_EDGES],
-    dais: { base: '#9a8250', top: '#b9a06a', band: '#2b4f8f' },
+    dais: { base: '#78634c', top: '#9f875e', band: '#5a7284' },
     drawThrone: pharaohThrone,
     torchBowl: '#6b4a1e',
   },

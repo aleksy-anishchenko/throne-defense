@@ -1,11 +1,18 @@
 <script setup lang="ts">
 // Значок башни: тот же рисунок, что на поле, только крупно (canvas 96×96 сжимается стилями)
-import { onMounted, useTemplateRef } from 'vue'
+import { onMounted, useTemplateRef, watchEffect } from 'vue'
 import { drawTowerIcon } from '@/render/towers'
+import { loadUnitSprites, unitSpritesLoaded } from '@/render/unitSprites'
 
 const props = defineProps<{ towerId: string }>()
 const iconCanvas = useTemplateRef('iconCanvas')
-onMounted(() => drawTowerIcon(iconCanvas.value!, props.towerId))
+function draw() {
+  if (iconCanvas.value) drawTowerIcon(iconCanvas.value, props.towerId)
+}
+watchEffect(draw)
+onMounted(async () => {
+  if (!unitSpritesLoaded() && (await loadUnitSprites())) draw()
+})
 </script>
 
 <template>

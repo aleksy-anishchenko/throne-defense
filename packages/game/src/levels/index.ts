@@ -10,7 +10,14 @@ import { throneHall } from './throne-hall.ts'
 export const LEVELS: readonly LevelDef[] = [throneHall, ...HALLS, compactThroneHall]
 
 /** Залы, доступные для новых партий. Старые результаты сохраняют названия и проверку. */
-const RETIRED_LEVEL_IDS = new Set(['granovitaya', 'embassy-hall', 'library', 'compact-throne-hall'])
+const RETIRED_LEVEL_IDS = new Set([
+  'granovitaya',
+  'pharaoh-hall',
+  'colonnade',
+  'embassy-hall',
+  'library',
+  'compact-throne-hall',
+])
 export const PLAYABLE_LEVELS: readonly LevelDef[] = LEVELS.filter(
   (level) => !RETIRED_LEVEL_IDS.has(level.id),
 ).map(compactHall)

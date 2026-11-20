@@ -106,15 +106,19 @@ describe('залы', () => {
   const hallLevels = LEVELS.filter((level) => level.id !== 'compact-throne-hall').map(createLevel)
   const throne = createLevel(throneHall)
 
-  it('для новых партий доступны только выбранные шесть залов', () => {
+  it('для новых партий доступны только четыре выбранных зала', () => {
     expect(PLAYABLE_LEVELS.map((level) => level.id)).toEqual([
       'throne-hall',
       'marble-hall',
       'svetlitsa',
-      'pharaoh-hall',
-      'colonnade',
       'anubis-temple',
     ])
+  })
+
+  it('в Храме Анубиса анкх занимает клетку нижнего обелиска', () => {
+    const def = PLAYABLE_LEVELS.find((level) => level.id === 'anubis-temple')!
+    expect(def.props).toContainEqual({ kind: 'ankh', cell: [2, 7] })
+    expect(createGame(def).isCellFree(2, 7)).toBe(false)
   })
 
   it('доступные залы компактны, имеют корректный путь и препятствия', () => {

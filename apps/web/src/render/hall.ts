@@ -6,12 +6,16 @@
 
 import type { Level, Point } from '@throne/game'
 import { drawProps } from './props'
-import { FLOOR_COLOR, GOLD, circle, prefersReducedMotion, roundedRect } from './shapes'
+import { FLOOR_COLOR, circle, prefersReducedMotion, roundedRect } from './shapes'
 import type { Canvas2D } from './shapes'
 import { hallTheme, type HallTheme } from './themes'
 
-/** Узор ковра не доходит до конца отрезка на столько клеток — у трона и на поворотах не налезает */
-const CARPET_PATTERN_END_GAP = 0.05
+/** Размеры ковра в долях клетки */
+const CARPET_WIDTH = 0.92
+const CARPET_CORNER_RADIUS = 0.16
+const CARPET_PATTERN_END_GAP = 0.22
+const TORCH_OFFSET = 1.08
+const TEMPLE_STEP_DEPTH = 0.08
 
 /** Пол: плиты по теме зала (themes.ts) */
 function drawFloor(ctx: Canvas2D, cols: number, rows: number, theme: HallTheme): void {
@@ -22,60 +26,79 @@ function drawFloor(ctx: Canvas2D, cols: number, rows: number, theme: HallTheme):
   }
 }
 
-/** Тёплый свет от факелов у трона */
-function drawTorchGlow(ctx: Canvas2D, throne: Point, cols: number, rows: number): void {
+/** По мягкому пятну света от каждого факела у трона */
+function drawTorchGlow(ctx: Canvas2D, throne: Point): void {
   const [throneX, throneY] = throne
-  const torchGlow = ctx.createRadialGradient(
-    throneX,
-    throneY + 0.14,
-    0.2,
-    throneX,
-    throneY + 0.14,
-    6,
-  )
-  torchGlow.addColorStop(0, 'rgba(240,150,70,.3)')
-  torchGlow.addColorStop(1, 'rgba(240,150,70,0)')
-  ctx.fillStyle = torchGlow
-  ctx.fillRect(0, 0, cols, rows)
+  const y = throneY + 0.04
+  const radius = 2.7
+  for (const x of [throneX - TORCH_OFFSET, throneX + TORCH_OFFSET]) {
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, radius)
+    glow.addColorStop(0, 'rgba(246,174,110,.29)')
+    glow.addColorStop(0.55, 'rgba(246,174,110,.075)')
+    glow.addColorStop(1, 'rgba(246,174,110,0)')
+    ctx.fillStyle = glow
+    ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
+  }
 }
 
 /** Помост под троном — цвета по теме */
 function drawDais(ctx: Canvas2D, throne: Point, theme: HallTheme): void {
   const [throneX, throneY] = throne
+  ctx.fillStyle = 'rgba(12,12,20,.35)'
+  roundedRect(ctx, throneX - 1.53, throneY - 0.4, 3.06, 0.97, 0.095)
+  ctx.fill()
   ctx.fillStyle = theme.dais.base
-  roundedRect(ctx, throneX - 1.45, throneY - 0.41, 2.9, 0.92, 0.08)
+  roundedRect(ctx, throneX - 1.48, throneY - 0.42, 2.96, 0.92, 0.08)
   ctx.fill()
   ctx.fillStyle = theme.dais.top
-  roundedRect(ctx, throneX - 1.32, throneY - 0.41, 2.64, 0.76, 0.06)
+  roundedRect(ctx, throneX - 1.4, throneY - 0.39, 2.8, 0.72, 0.06)
   ctx.fill()
   ctx.fillStyle = theme.dais.band
-  ctx.fillRect(throneX - 1.32, throneY + 0.34, 2.64, 0.03)
+  ctx.fillRect(throneX - 1.4, throneY + 0.34, 2.8, 0.024)
+  ctx.fillStyle = 'rgba(234,193,143,.23)'
+  ctx.fillRect(throneX - 1.43, throneY + 0.44, 2.86, 0.012)
 }
 
-/**
- * Ковёр вдоль дороги: несколько обводок одной и той же линии разной толщины, потом узор темы.
- * Узор рисуется по каждому прямому отрезку в его координатах: x — вдоль ковра, y — поперёк
- */
-function drawCarpet(ctx: Canvas2D, path: Level['path'], theme: HallTheme): void {
-  const { points } = path
-  const trace = () => {
-    ctx.beginPath()
-    ctx.moveTo(points[0][0], points[0][1])
-    for (const [x, y] of points.slice(1)) ctx.lineTo(x, y)
+function roundedRoute(points: readonly Point[]): Path2D {
+  const route = new Path2D()
+  route.moveTo(...points[0])
+  for (let index = 1; index < points.length - 1; index++) {
+    route.arcTo(...points[index], ...points[index + 1], CARPET_CORNER_RADIUS)
   }
-  ctx.lineJoin = 'miter'
+  route.lineTo(...points[points.length - 1])
+  return route
+}
+
+/** Ковёр идёт по маршруту врагов. Скругление, кант и вышивка рисуются на фоне. */
+function drawCarpet(
+  ctx: Canvas2D,
+  level: Level,
+  theme: HallTheme,
+  points = level.path.points,
+): void {
+  const { cols, rows } = level.def
+  const route = roundedRoute(points)
+  const fabric = ctx.createLinearGradient(0, 0, cols, rows)
+  fabric.addColorStop(0, theme.carpet.light)
+  fabric.addColorStop(1, theme.carpet.dark)
+  ctx.save()
+  ctx.lineJoin = 'round'
   ctx.lineCap = 'butt'
   for (const [color, lineWidth] of [
-    ['rgba(8,9,18,.5)', 0.9],
-    [GOLD, 0.8],
-    [theme.carpet, 0.69],
-    [theme.carpetInner, 0.34],
+    ['rgba(8,9,18,.5)', CARPET_WIDTH + 0.04],
+    ['#342a32', CARPET_WIDTH],
+    [theme.carpet.trim, CARPET_WIDTH - 0.035],
+    [theme.carpet.dark, CARPET_WIDTH - 0.086],
+    [fabric, CARPET_WIDTH - 0.134],
+    ['rgba(27,11,24,.12)', CARPET_WIDTH - 0.23],
   ] as const) {
-    trace()
     ctx.strokeStyle = color
     ctx.lineWidth = lineWidth
-    ctx.stroke()
+    ctx.stroke(route)
   }
+
+  // В координатах отрезка x идёт вдоль ковра, y — поперёк.
+  const stitchOffset = CARPET_WIDTH / 2 - 0.106
   for (let i = 0; i < points.length - 1; i++) {
     const [startX, startY] = points[i]
     const [endX, endY] = points[i + 1]
@@ -84,28 +107,88 @@ function drawCarpet(ctx: Canvas2D, path: Level['path'], theme: HallTheme): void 
     ctx.translate(startX, startY)
     ctx.rotate(Math.atan2(endY - startY, endX - startX))
     for (const { step, draw } of theme.carpetPattern) {
-      for (let along = step / 2; along < length - CARPET_PATTERN_END_GAP; along += step) {
+      for (
+        let along = Math.max(step / 2, CARPET_PATTERN_END_GAP);
+        along < length - CARPET_PATTERN_END_GAP;
+        along += step
+      ) {
         draw(ctx, along)
       }
     }
+    ctx.fillStyle = 'rgba(239,186,137,.24)'
+    for (let along = 0.33; along < length - 0.33; along += 0.1) {
+      ctx.fillRect(along, -stitchOffset, 0.026, 0.012)
+      ctx.fillRect(along, stitchOffset - 0.012, 0.026, 0.012)
+    }
     ctx.restore()
   }
+  ctx.restore()
 }
 
 /** Дверь — там, где начинается ковёр (у нижнего края) */
 function drawDoor(ctx: Canvas2D, path: Level['path'], rows: number): void {
   const doorX = path.points[0][0]
-  const doorGradient = ctx.createLinearGradient(0, rows - 0.75, 0, rows)
-  doorGradient.addColorStop(0, 'rgba(6,6,14,0)')
-  doorGradient.addColorStop(1, 'rgba(6,6,14,.9)')
+  const halfWidth = CARPET_WIDTH / 2
+  const doorGradient = ctx.createLinearGradient(0, rows - 0.65, 0, rows)
+  doorGradient.addColorStop(0, 'rgba(9,9,16,0)')
+  doorGradient.addColorStop(1, 'rgba(9,9,16,.85)')
   ctx.fillStyle = doorGradient
-  ctx.fillRect(doorX - 0.48, rows - 0.75, 0.96, 0.75)
-  ctx.fillStyle = '#565d85'
-  ctx.fillRect(doorX - 0.62, rows - 0.5, 0.16, 0.5)
-  ctx.fillRect(doorX + 0.46, rows - 0.5, 0.16, 0.5)
-  ctx.fillStyle = '#7880ab'
-  ctx.fillRect(doorX - 0.62, rows - 0.5, 0.16, 0.05)
-  ctx.fillRect(doorX + 0.46, rows - 0.5, 0.16, 0.05)
+  ctx.fillRect(doorX - halfWidth, rows - 0.65, CARPET_WIDTH, 0.65)
+  for (const x of [doorX - halfWidth - 0.13, doorX + halfWidth]) {
+    ctx.fillStyle = '#51464d'
+    ctx.fillRect(x, rows - 0.4, 0.13, 0.4)
+    ctx.fillStyle = '#796b6c'
+    ctx.fillRect(x - 0.015, rows - 0.42, 0.16, 0.06)
+  }
+}
+
+/** Каменный вход повторяет первый изгиб пути и стыкуется с ковром. */
+function drawTempleEntrance(ctx: Canvas2D, points: readonly Point[], rows: number): void {
+  const [x] = points[0]
+  const [endX, endY] = points[points.length - 1]
+  const route = roundedRoute(points)
+  const stone = ctx.createLinearGradient(0, rows - 0.85, 0, rows)
+  stone.addColorStop(0, '#847155')
+  stone.addColorStop(1, '#504134')
+  ctx.save()
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'butt'
+  for (const [color, width] of [
+    ['rgba(8,9,18,.5)', CARPET_WIDTH + 0.04],
+    ['#45392d', CARPET_WIDTH],
+    ['#9a825d', CARPET_WIDTH - 0.04],
+    [stone, CARPET_WIDTH - 0.087],
+  ] as const) {
+    ctx.strokeStyle = color
+    ctx.lineWidth = width
+    ctx.stroke(route)
+  }
+  ctx.restore()
+
+  ctx.fillStyle = '#ad936c'
+  ctx.fillRect(endX - 0.026, endY - 0.425, 0.026, 0.85)
+
+  const stepColors = ['#7d694e', '#6a5843', '#554637']
+  const y = rows - TEMPLE_STEP_DEPTH * stepColors.length
+  const stepWidth = CARPET_WIDTH - 0.11
+  for (const [index, color] of stepColors.entries()) {
+    const stepY = y + TEMPLE_STEP_DEPTH * index
+    ctx.fillStyle = color
+    ctx.fillRect(x - stepWidth / 2, stepY, stepWidth, TEMPLE_STEP_DEPTH)
+    ctx.fillStyle = 'rgba(226,200,149,.3)'
+    ctx.fillRect(x - stepWidth / 2, stepY, stepWidth, 0.014)
+  }
+
+  for (const left of [x - 0.56, x + 0.43]) {
+    ctx.fillStyle = '#4a3b30'
+    roundedRect(ctx, left - 0.02, rows - 0.19, 0.17, 0.21, 0.026)
+    ctx.fill()
+    ctx.fillStyle = '#927b57'
+    roundedRect(ctx, left, rows - 0.163, 0.13, 0.18, 0.021)
+    ctx.fill()
+    ctx.fillStyle = '#b49a71'
+    ctx.fillRect(left + 0.02, rows - 0.135, 0.09, 0.02)
+  }
 }
 
 /** Затемнение по краям */
@@ -119,7 +202,7 @@ function drawEdgeShadow(ctx: Canvas2D, cols: number, rows: number): void {
     (rows * 9.5) / 13,
   )
   edgeShadow.addColorStop(0, 'rgba(8,9,18,0)')
-  edgeShadow.addColorStop(1, 'rgba(8,9,18,.55)')
+  edgeShadow.addColorStop(1, 'rgba(8,9,18,.31)')
   ctx.fillStyle = edgeShadow
   ctx.fillRect(0, 0, cols, rows)
 }
@@ -142,10 +225,17 @@ export function buildHall(
 
   const theme = hallTheme(level.def.theme)
   drawFloor(ctx, cols, rows, theme)
-  drawTorchGlow(ctx, throne, cols, rows)
+  if (level.def.id === 'anubis-temple') {
+    const [entrance, firstTurn, nextTurn] = path.points
+    const join: Point = [firstTurn[0] + (nextTurn[0] - firstTurn[0]) * 0.375, firstTurn[1]]
+    drawTempleEntrance(ctx, [entrance, firstTurn, join], rows)
+    drawCarpet(ctx, level, theme, [join, ...path.points.slice(2)])
+  } else {
+    drawCarpet(ctx, level, theme)
+    drawDoor(ctx, path, rows)
+  }
   drawDais(ctx, throne, theme)
-  drawCarpet(ctx, path, theme)
-  drawDoor(ctx, path, rows)
+  drawTorchGlow(ctx, throne)
   drawProps(ctx, level.def.props ?? [])
   drawEdgeShadow(ctx, cols, rows)
 
@@ -170,7 +260,7 @@ export function drawThrone(ctx: Canvas2D, level: Level, time: number, hurtTime: 
   ctx.restore()
 
   // Факелы
-  for (const x of [throneX - 1.08, throneX + 1.08]) {
+  for (const x of [throneX - TORCH_OFFSET, throneX + TORCH_OFFSET]) {
     const flicker = prefersReducedMotion
       ? 1
       : 0.92 + Math.sin(time * 11 + x) * 0.08 + Math.sin(time * 17 + x * 3) * 0.05

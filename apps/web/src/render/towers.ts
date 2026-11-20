@@ -9,12 +9,14 @@ import {
   TOWER_IDLE_AIM_ANGLE,
   circle,
   drawNet,
+  drawTwinkle,
   prefersReducedMotion,
   roundedRect,
 } from './shapes'
 import type { Canvas2D } from './shapes'
 import { TWIN_BOLT_OFFSET } from './shots'
 import { BELL_SWING_SPEED } from './statuses'
+import { drawTowerSprite, unitSpriteSize } from './unitSprites'
 
 export interface TowerArt {
   /**
@@ -196,22 +198,6 @@ function drawCoin(ctx: Canvas2D, x: number, y: number, radius: number) {
   circle(ctx, x, y, radius)
   ctx.fill()
   ctx.stroke()
-}
-
-/** Четырёхлучевой блеск (Казна III): x, y — центр, size — длина луча */
-function drawTwinkle(ctx: Canvas2D, x: number, y: number, size: number) {
-  ctx.fillStyle = '#fff8dc'
-  ctx.beginPath()
-  ctx.moveTo(x, y - size)
-  ctx.lineTo(x + size * 0.25, y - size * 0.25)
-  ctx.lineTo(x + size, y)
-  ctx.lineTo(x + size * 0.25, y + size * 0.25)
-  ctx.lineTo(x, y + size)
-  ctx.lineTo(x - size * 0.25, y + size * 0.25)
-  ctx.lineTo(x - size, y)
-  ctx.lineTo(x - size * 0.25, y - size * 0.25)
-  ctx.closePath()
-  ctx.fill()
 }
 
 /** Колдун: свечение шара на посохе. strength — 0..1, насколько ярко */
@@ -572,14 +558,6 @@ export const TOWER_ART: Record<string, TowerArt> = {
   warlock: {
     body(ctx, _aimAngle, time, _isReady, tier) {
       const pulse = prefersReducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(time * 3)
-      // круг рун под колдуном (II и III)
-      if (tier >= TIER_II) {
-        ctx.strokeStyle = `rgba(${WARLOCK_ORB_RGB},${0.35 + pulse * 0.3})`
-        ctx.lineWidth = 0.02
-        circle(ctx, 0, 0, 0.29)
-        ctx.stroke()
-      }
-      if (tier >= TIER_III) drawFloatingRunes(ctx, time, 0.29, 5)
       // балахон с капюшоном: тёмно-фиолетовый, остроконечный кверху
       ctx.fillStyle = '#3d2a5c'
       ctx.strokeStyle = '#1b1230'
@@ -825,6 +803,7 @@ export function drawTower(
   time: number,
   isReady: boolean,
   aspectId: string | null = null,
+  recoil = 0,
 ) {
   ctx.fillStyle = 'rgba(8,9,18,.45)'
   circle(ctx, 0, 0.05, 0.39)
@@ -838,10 +817,23 @@ export function drawTower(
   circle(ctx, 0, 0, 0.3)
   ctx.fill()
 
-  const art = TOWER_ART[towerId] ?? FALLBACK_TOWER_ART
-  ctx.save()
-  art.body(ctx, aimAngle, time, isReady, tier)
-  ctx.restore()
+  if (towerId === 'warlock' && tier >= TIER_II) {
+    ctx.save()
+    const pulse = prefersReducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(time * 3)
+    ctx.strokeStyle = `rgba(${WARLOCK_ORB_RGB},${0.35 + pulse * 0.3})`
+    ctx.lineWidth = 0.02
+    circle(ctx, 0, 0, 0.29)
+    ctx.stroke()
+    if (tier >= TIER_III) drawFloatingRunes(ctx, time, 0.29, 5)
+    ctx.restore()
+  }
+
+  if (!drawTowerSprite(ctx, towerId, tier, aimAngle, time, isReady, recoil)) {
+    const art = TOWER_ART[towerId] ?? FALLBACK_TOWER_ART
+    ctx.save()
+    art.body(ctx, aimAngle, time, isReady, tier)
+    ctx.restore()
+  }
 
   // точки ступени — с тёмной обводкой, чтобы не сливались с золотыми деталями башни
   ctx.fillStyle = GOLD
@@ -859,6 +851,8 @@ export function drawTower(
 // Масштаб и центр рисунка на холсте 96×96: башня размером в 1 клетку занимает 104 px,
 // её центр стоит в точке (48, 46) px
 const ICON_SCALE = 104
+/** Векторные фигурки выше значков на постаментах, поэтому им оставляем больше полей. */
+const ICON_SPRITE_SCALE = 87
 const ICON_CENTER_X = 48
 const ICON_CENTER_Y = 46
 
@@ -868,6 +862,7 @@ export function drawTowerIcon(canvas: HTMLCanvasElement, towerId: string): void 
   if (!ctx) return
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.setTransform(ICON_SCALE, 0, 0, ICON_SCALE, ICON_CENTER_X, ICON_CENTER_Y)
+  const scale = unitSpriteSize(towerId) === undefined ? ICON_SCALE : ICON_SPRITE_SCALE
+  ctx.setTransform(scale, 0, 0, scale, ICON_CENTER_X, ICON_CENTER_Y)
   drawTower(ctx, towerId, 0, TOWER_IDLE_AIM_ANGLE, 0, true)
 }

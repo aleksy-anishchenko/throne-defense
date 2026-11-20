@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { TowerDef } from '@throne/game'
-import { onMounted, useTemplateRef } from 'vue'
-import { drawTowerIcon } from '@/render/towers'
+import TowerIcon from './TowerIcon.vue'
 
-const props = defineProps<{
+defineProps<{
   def: TowerDef
   /** Выбран в магазине */
   isArmed: boolean
@@ -11,9 +10,6 @@ const props = defineProps<{
   isUnaffordable: boolean
 }>()
 const emit = defineEmits<{ pick: [] }>()
-
-const iconCanvas = useTemplateRef('iconCanvas')
-onMounted(() => drawTowerIcon(iconCanvas.value!, props.def.id))
 </script>
 
 <template>
@@ -27,7 +23,7 @@ onMounted(() => drawTowerIcon(iconCanvas.value!, props.def.id))
     :aria-description="`${def.description}. ${def.interactionHint ?? ''}`"
     @click="emit('pick')"
   >
-    <canvas ref="iconCanvas" width="96" height="96" aria-hidden="true"></canvas>
+    <TowerIcon :tower-id="def.id" />
     <span class="card-name">{{ def.name }}</span>
     <span class="cost">
       <svg viewBox="0 0 24 24" aria-hidden="true">

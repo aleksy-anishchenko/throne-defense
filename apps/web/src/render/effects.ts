@@ -107,6 +107,8 @@ export interface Effects extends EffectSink {
   update(simDt: number, realDt: number): void
   /** Сколько ещё длится «подпрыгивание» башни после постройки/улучшения */
   popTimeLeft(tower: Tower): number
+  /** Сила отдачи после выстрела, от 1 до 0 */
+  towerRecoil(tower: Tower): number
   /** Белая вспышка врага от удара */
   isFlashing(enemy: Enemy): boolean
   /** Сдвиг фазы покачивания, чтобы враги шагали не в ногу */
@@ -121,6 +123,8 @@ export interface Effects extends EffectSink {
 const MAX_EFFECTS = 260
 /** Сколько длится «подпрыгивание» башни после постройки/улучшения, с */
 const POP_DURATION = 0.25
+/** Сколько длится отдача башни после выстрела, с */
+const RECOIL_DURATION = 0.2
 /** Сколько длится белая вспышка врага от удара, с */
 const HIT_FLASH_DURATION = 0.09
 /** Сколько живёт всплывающая надпись «+6», с */
@@ -269,6 +273,7 @@ export function createEffects(game: Game): Effects {
   let throneHurtTime = 0
   // До какого игрового времени длится эффект. WeakMap — чтобы не мешать сборщику мусора
   const popEndTime = new WeakMap<Tower, number>()
+  const recoilEndTime = new WeakMap<Tower, number>()
   const flashEndTime = new WeakMap<Enemy, number>()
   // Случайная фаза покачивания каждого врага — чтобы шагали не в ногу
   const bobPhases = new WeakMap<Enemy, number>()
@@ -498,7 +503,10 @@ export function createEffects(game: Game): Effects {
       const art = getEnemyArt(enemy.def.id)
       spawnSparks(enemy.x, enemy.y, art.sparkColor, art.sparkCount)
     }),
-    game.on('fire', ({ tower, stats }) => TOWER_ART[tower.def.id]?.onFire?.({ add }, tower, stats)),
+    game.on('fire', ({ tower, stats }) => {
+      recoilEndTime.set(tower, gameTime() + RECOIL_DURATION)
+      TOWER_ART[tower.def.id]?.onFire?.({ add }, tower, stats)
+    }),
     game.on('splash', ({ x, y, radius, look }) => {
       const isDust = look === 'cannonball'
       add({ kind: 'boom', x, y, radius, isDust, timeLeft: BOOM_DURATION, duration: BOOM_DURATION })
@@ -600,6 +608,8 @@ export function createEffects(game: Game): Effects {
     },
 
     popTimeLeft: (tower) => (popEndTime.get(tower) ?? 0) - gameTime(),
+    towerRecoil: (tower) =>
+      Math.max(0, ((recoilEndTime.get(tower) ?? 0) - gameTime()) / RECOIL_DURATION),
     isFlashing: (enemy) => (flashEndTime.get(enemy) ?? 0) > gameTime(),
     bobPhase(enemy) {
       let phase = bobPhases.get(enemy)

@@ -50,6 +50,22 @@ export function cellNoise(col: number, row: number): number {
 export const prefersReducedMotion =
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
+/** Четырёхлучевой блеск монеты. size — длина луча. */
+export function drawTwinkle(ctx: Canvas2D, x: number, y: number, size: number) {
+  ctx.fillStyle = '#fff8dc'
+  ctx.beginPath()
+  ctx.moveTo(x, y - size)
+  ctx.lineTo(x + size * 0.25, y - size * 0.25)
+  ctx.lineTo(x + size, y)
+  ctx.lineTo(x + size * 0.25, y + size * 0.25)
+  ctx.lineTo(x, y + size)
+  ctx.lineTo(x - size * 0.25, y + size * 0.25)
+  ctx.lineTo(x - size, y)
+  ctx.lineTo(x - size * 0.25, y - size * 0.25)
+  ctx.closePath()
+  ctx.fill()
+}
+
 /**
  * Сеть: круг из верёвок с ячейками. x, y — центр, radius — радиус, rotation — поворот,
  * weightColor — цвет грузил по краю (пустая строка — без грузил)
