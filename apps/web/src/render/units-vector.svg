@@ -1,8 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="768" height="1152" viewBox="0 0 768 1152" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="2304" viewBox="0 0 768 2304" role="img">
   <title>Стражи и враги «Защиты трона»</title>
+  <!-- Ячейки 192×192 в четыре столбца. Индексы ячеек заданы в unitSprites.ts. -->
   <style>
     .ink { stroke: #1a2029; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
     .line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .piece { stroke: #1a2029; stroke-width: 3.4; stroke-linejoin: round; }
+    .cord { fill: none; stroke: #e0c497; stroke-width: 3.1; stroke-linejoin: round; stroke-linecap: round; }
   </style>
 
   <g id="archer" transform="scale(1.5)">
@@ -30,23 +33,21 @@
   </g>
 
   <g id="ballista" transform="translate(192 0) scale(1.5)">
-    <path class="ink" fill="#69432f" d="m56 62-25 7-14 23 11 7 28-11 9-15zm17 3-24 28 3 15 16 3 13-7 4-23zm0-6 16-4 20 37-6 7-16-3-14-24z"/>
-    <path class="ink" fill="#ba8147" d="m17 92 15-5 8 9-12 6-11-3zm34 11 17-5 13 5-4 8-9 3-16-3zm42-16 11-4 7 12-8 6-13-3z"/>
-    <path fill="#e3b470" d="m20 92 11-4 4 3-12 4zm35 13 14-5 7 3-13 5zm40-14 9-5 4 6-10 4z"/>
-    <path class="ink" fill="#a36840" d="M40 46 65 40 104 76 87 90 53 67z"/>
-    <path fill="#d59b59" d="m46 47 19-5 31 29-12 8z"/>
-    <path class="ink" fill="#1e6260" d="m51 67 35 13 1 12-35-13z"/>
-    <path fill="#efc46d" d="m64 75 5 6 5-1-4-4-2-5zm8 6 6 5 6-2-4-1-3-5z"/>
-    <path class="ink" fill="#7c4c35" d="m27 39 35-14 14 13-8 13-34 13-9-4-4-10z"/>
-    <path class="line" stroke="#ecbd7a" stroke-width="4" d="m35 40 10 9m-3-12 10 9m-2-12 10 9m-2-13 10 9"/>
-    <ellipse class="ink" fill="#dda85d" cx="27" cy="51" rx="9" ry="12" transform="rotate(19 27 51)"/>
-    <path class="ink" fill="#d3a05c" d="M78 35q21-9 31-3 7 5 6 17-2 17-22 28Q62 96 24 82l-8-6-3-13 6-4 5 11q32 10 60-3 21-10 21-23 0-7-6-7l-17 6z"/>
-    <path class="line" stroke="#ffe0a0" stroke-width="3" d="M17 66q12 14 45 13 38-5 46-28 4-11-4-15"/>
-    <path class="line" stroke="#f0d0a0" stroke-width="2.6" d="m19 64 34-24 48-5"/>
-    <path class="line" stroke="#3e3028" stroke-width="5.5" d="m54 42 37 35"/>
-    <path class="line" stroke="#f6d9a9" stroke-width="3.2" d="m54 42 37 35"/>
-    <path class="ink" fill="#fff0c8" d="m84 70 16 4 9 17-19-6z"/>
-    <path fill="#d5a970" d="m87 72 21 17-16-5z"/>
+    <g id="ballista-i-stand">
+      <path class="piece" fill="#5c4337" d="M70 61 82 63 96 101 84 108 74 102 66 76Z" />
+      <path fill="#986a4b" d="m75 70 5-2 11 31-6 4Z" />
+      <path class="piece" fill="#865738" d="m62 59 14 2-8 35-13 18-19-4 16-16Z" />
+      <path fill="#bd8856" d="m64 64 8 1-10 31-13 12-9-1 15-13Z" />
+    </g>
+    <g id="ballista-i-launcher">
+      <path class="cord" d="M53 37 34 82 101 64" />
+      <path class="piece" fill="#744d38" d="m18 86 66-42 14 5-2 11-65 42-13-5Z" />
+      <path class="piece" fill="#ad7648" d="m18 86 66-42 14 5-67 43Z" />
+      <path fill="#d5a165" d="m24 86 60-39 8 3-62 39Z" />
+      <path class="piece" fill="#cf9757" d="M53 33c13 1 23 10 35 15 9 4 16 9 18 17l-7 3c-5-7-12-10-20-13-10-4-17-12-28-16Z" />
+      <path fill="#edc180" d="M55 35c12 3 20 10 32 15 7 4 12 7 15 12-7-5-12-6-20-10-9-4-19-12-27-13Z" />
+      <path class="piece" fill="#f1d5a4" d="m30 82 66-42-2-4 18-5-9 16-4-3-66 42Z" />
+    </g>
   </g>
 
   <g id="mage" transform="translate(384 0) scale(1.5)">
@@ -236,6 +237,148 @@
       <path fill="#ffd077" d="m5-2 6 2-4 3z"/>
       <path fill="#fff0bf" d="m16 10 1 4 4-5z"/>
     </g>
+
+    <g id="chest-front-iii">
+      <path class="ink" fill="#623d36" d="m18 66 16-12 61 2 16 12-1 29-18 13H31l-14-9z" />
+      <path fill="#986447" d="m21 69 15 6h56v27l-5 5H31l-11-8z" />
+      <path fill="#bc8758" d="m25 78 10 4h55v12H26z" />
+      <path class="line" stroke="#603e32" stroke-width="2.5" d="M25 94h65m-64-12h64" />
+      <path fill="#4a3030" d="m94 75 15-7-2 28-13 10z" />
+      <path class="ink" fill="#ce9c53" d="m29 69 9 2v37h-7l-3-2zm51 3h9v34l-5 2h-4z" />
+      <path class="line" stroke="#ffe099" stroke-width="2.1" d="M32 78v23m51-23v24" />
+      <path fill="#ffdfa0" d="M28 101h11v7h-7l-3-2zm51 1h10v3l-5 3h-5z" />
+      <path class="ink" fill="#dca454" d="m52 72 11-4 11 5-1 13-10 8-11-6z" />
+      <path fill="#ffeab2" d="m55 74 8-4 8 4-1 4-7-3-8 4z" />
+      <path fill="#48302b" d="M61 78a3 3 0 1 1 5 2l1 7h-7l1-6a3 3 0 0 1 0-3z" />
+    </g>
+
+    <g id="archer-royal-bow">
+      <path class="line" stroke="#1a2029" stroke-width="12.5" d="M70 109q-9-4-6-13 3-13 18-22 21-12 29-24 5-8 0-14-4-5-10-2l10-10" />
+      <path class="line" stroke="#d99d51" stroke-width="8.8" d="M70 109q-9-4-6-13 3-13 18-22 21-12 29-24 5-8 0-14-4-5-10-2l10-10" />
+      <path class="line" stroke="#ffe6ab" stroke-width="3.5" d="M70 107q-7-4-4-11 4-12 19-22 21-12 28-26 4-8-2-13" />
+      <path class="ink" fill="#f6d48d" d="m62 97 7 2 2 5 7 4-3 7-11-5zm44-71 6-6 8 3-6 11-5-2z" />
+      <path class="ink" fill="#e5c17c" d="m83 74 6-5 5 2 1 5-8 5z" />
+      <path class="line" stroke="#ffebc0" stroke-width="1.6" d="M71 110 113 23" />
+    </g>
+
+    <g id="drawing-archer-iii">
+      <path class="ink" fill="#57382e" d="m47 93 15-1 2 15-24 2-1-6zm29-2 15 2 7 11-1 4-24-1z" />
+      <path class="ink" fill="#123e49" d="M42 50 29 97q13 9 31 6l19-7 17 1-11-44z" />
+      <path fill="#196d70" d="m46 54-13 42q11 5 24 4l6-34z" />
+      <path class="line" stroke="#e9ba6d" stroke-width="3" d="m34 94 11 3 8-4m-9-3 4-4m16 10 6-6" />
+      <path class="ink" fill="#876144" d="m42 55-13 4-9-28 15-5z" />
+      <path class="line" stroke="#e9ba6d" stroke-width="3" d="m27 39-7-16m12 12-2-20" />
+      <path fill="#ede0bb" d="m16 20 1-7 7 6 1 9zm10-6 3-8 6 8-4 9z" />
+      <path class="ink" fill="#155952" d="M37 47q-1-19 9-29l-3-6q18 0 31 13 9 9 8 25l-21 9z" />
+      <path class="ink" fill="#d6a473" d="m58 39 13-9q9 7 7 18l-7 6-13-6z" />
+      <path fill="#674136" d="m61 44 6 4 10-3-2 7-5 3-7-4z" />
+      <path class="line" stroke="#222329" stroke-width="2.5" d="m70 38 5 1" />
+      <path class="line" stroke="#ffda8b" stroke-width="3.5" d="M48 47q5-15 22-21" />
+      <path fill="#49a48e" d="M43 43q0-13 7-20l-2-6q12 3 18 7-15 6-23 19" />
+      <path class="ink" fill="#2b8174" d="m46 54 17 6 17-7 10 13-17 10-20-8z" />
+      <circle class="ink" fill="#ffe3a0" cx="61" cy="62" r="5" />
+      <path class="ink" fill="#b88b53" d="m30 57 12-8 13 6 3 8-9 8-12 1-10-6z" />
+      <path fill="#f3cf8a" d="m31 57 11-6 10 5-7 4-7-1-6 6-3-2z" />
+      <path fill="#e7be6e" d="m39 79 5-7 5 6-6 8zm-5 9 4-4 5 4-4 5zm15 1 5-6 3 4-4 5z" />
+      <path class="line" stroke="#ffe3a1" stroke-width="3.8" d="m35 94 9 5 12-4m-23-1 6-22" />
+      <path class="ink" fill="#806448" d="m25 36 8-4 5 5-8 9z" />
+      <use href="#archer-royal-bow" />
+      <path class="ink" fill="#dfa973" d="m70 70 7-7 9 3-2 8-8 4z" />
+      <path class="line" stroke="#f1cf90" stroke-width="2.3" d="m59 76 41-15" />
+      <path fill="#fff0c7" d="m95 57 13 1-10 8z" />
+    </g>
+
+    <g id="ice-arm-ii">
+      <path class="ink" fill="#73b4ce" d="m-7 2-1-21-10-10-1-8 12 6-1-12 8-13 8 13-1 12 12-6-1 8L8-19 7 2z" />
+      <path fill="#c8eff6" d="M0-53v42l-4-14-9-7 8 3-1-13z" />
+      <path fill="#effcff" d="m0-54 6 12-6 15-5-14z" />
+      <path fill="#3192b8" d="m3-23 12-9-9 15L7-2z" />
+    </g>
+
+    <g id="ice-arm-iii">
+      <path class="ink" fill="#5ca9ca" d="m-8 3 1-15-13-6-3-9 14 4-2-8-11-9 1-8 14 7-1-6 8-13 8 13-1 6 14-7 1 8-11 9-2 8 14-4-3 9-13 6 1 15z" />
+      <path fill="#a7e7f6" d="M0-58v47l-7-18-11-10 12 5-1-12z" />
+      <path fill="#e8ffff" d="m0-58 6 12-6 13-5-14zM-20-45l12 9-8-1zm40 0-12 9 8-1z" />
+      <path fill="#3989aa" d="m2-24 16-14-8 12-3 10 12-5-12 11L6 3z" />
+    </g>
+
+    <g id="trapper-coat-ii">
+      <path class="ink" fill="#574036" d="m30 93 16 1 5 14-12 5-19-4 2-8zm26 1 15-1 9 12-2 6H57l-4-8z" />
+      <path class="ink" fill="#555d44" d="M33 52l22-8 18 12 7 30-5 15-22-2-16 5-20-7 8-28z" />
+      <path fill="#7c875c" d="m34 59 14-7 13 7-13 38-12 3-15-5zm25 10 11-8 5 28-8 6-14 1z" />
+      <path class="ink" fill="#afa17a" d="m29 54 14-9 10 9 17-3 8 12-15 9-15-5-7 8-17-8z" />
+      <path fill="#ded4ad" d="m30 56 12-7 7 8 11 2 9-5 5 6-13 7-15-5-7 8-12-5z" />
+      <path class="ink" fill="#6e6342" d="M30 44q-5-14 7-25 7-7 20-5 13 4 17 16l3 13-24 10z" />
+      <path fill="#9c8b62" d="M35 35q0-9 10-15 12-6 23 5l-13-3-10 7-3 9z" />
+      <path class="ink" fill="#d7ad82" d="m50 35 14-9 12 11 1 11-7 10-17-7z" />
+      <path class="ink" fill="#d9ce9d" d="M30 39q13 3 25-8l10-6 7 5-8 7q-14 14-30 10z" />
+      <path fill="#674639" d="m55 46 8-7 13 5-2 8-6 6-12-7z" />
+      <path class="line" stroke="#1d2228" stroke-width="2.4" d="m65 36 6 2" />
+      <path class="ink" fill="#694933" d="m23 87 20 5 29-6 3 7-29 8-25-6z" />
+      <path fill="#c2cebd" d="m47 92 8-2 3 6-8 2z" />
+      <path class="line" stroke="#28252a" stroke-width="9.5" d="M29 66q-11 6-8 17 2 5 10 2 9-4 8-14-1-7-10-5z" />
+      <path class="line" stroke="#ba975e" stroke-width="5.3" d="M29 66q-11 6-8 17 2 5 10 2 9-4 8-14-1-7-10-5z" />
+      <path class="line" stroke="#e7cca1" stroke-width="2.2" d="M25 70q-6 7-3 13m6 2q4-1 7-7" />
+    </g>
+
+    <g id="net-ii">
+      <path class="ink" fill="#303d37" d="M67 57 101 49 119 68 113 85 83 95 64 78z" />
+      <g clip-path="url(#net-ii-clip)">
+        <path class="line" stroke="#d9c79c" stroke-width="2.85" d="M53 57l56 57m-47-65 58 58m-48-67 58 58m-47-68 58 58m-75-2 59-52m-55 65 57-52m-43 57 56-50m-81 20 51-44" />
+      </g>
+      <path class="line" stroke="#d7d0a9" stroke-width="3.2" d="M67 57 101 49 119 68 113 85 83 95 64 78z" />
+      <path class="ink" fill="#abbcba" d="m63 55 7-3 4 5-4 6-6-2zm34-8 8-3 4 5-2 7-8 1zm15 20 7-4 5 5-4 7-7-1zm-34 26 6-4 7 2-1 7-7 2z" />
+    </g>
+
+    <clipPath id="net-ii-clip">
+      <path fill="#ffffff" d="M67 57 101 49 119 68 113 85 83 95 64 78z" />
+    </clipPath>
+
+    <g id="trapper-coat-iii">
+      <path class="ink" fill="#574036" d="m30 93 16 1 5 14-12 5-19-4 2-8zm26 1 15-1 9 12-2 6H57l-4-8z" />
+      <path class="ink" fill="#634937" d="M33 52l22-8 18 12 7 30-5 15-22-2-16 5-20-7 8-28z" />
+      <path fill="#96704b" d="m34 59 14-7 13 7-13 38-12 3-15-5zm25 10 11-8 5 28-8 6-14 1z" />
+      <path class="ink" fill="#ccaa70" d="m29 54 14-9 10 9 17-3 8 12-15 9-15-5-7 8-17-8z" />
+      <path fill="#f4d797" d="m30 56 12-7 7 8 11 2 9-5 5 6-13 7-15-5-7 8-12-5z" />
+      <path class="ink" fill="#756144" d="M30 44q-5-14 7-25 7-7 20-5 13 4 17 16l3 13-24 10z" />
+      <path fill="#af9561" d="M35 35q0-9 10-15 12-6 23 5l-13-3-10 7-3 9z" />
+      <path class="ink" fill="#d7ad82" d="m50 35 14-9 12 11 1 11-7 10-17-7z" />
+      <path class="ink" fill="#e9d099" d="M30 39q13 3 25-8l10-6 7 5-8 7q-14 14-30 10z" />
+      <path fill="#674639" d="m55 46 8-7 13 5-2 8-6 6-12-7z" />
+      <path class="line" stroke="#1d2228" stroke-width="2.4" d="m65 36 6 2" />
+      <path class="ink" fill="#694933" d="m23 87 20 5 29-6 3 7-29 8-25-6z" />
+      <path fill="#f3c875" d="m47 92 8-2 3 6-8 2z" />
+      <path class="line" stroke="#28252a" stroke-width="9.5" d="M29 66q-11 6-8 17 2 5 10 2 9-4 8-14-1-7-10-5z" />
+      <path class="line" stroke="#d0a665" stroke-width="5.3" d="M29 66q-11 6-8 17 2 5 10 2 9-4 8-14-1-7-10-5z" />
+      <path class="line" stroke="#e7cca1" stroke-width="2.2" d="M25 70q-6 7-3 13m6 2q4-1 7-7" />
+    </g>
+
+    <g id="net-iii">
+      <path class="ink" fill="#303d37" d="M77 48 103 44 123 63 118 84 96 103 71 97 59 77 63 60z" />
+      <g clip-path="url(#net-iii-clip)">
+        <path class="line" stroke="#e7c88b" stroke-width="2.85" d="M53 57l56 57m-47-65 58 58m-48-67 58 58m-47-68 58 58m-75-2 59-52m-55 65 57-52m-43 57 56-50m-81 20 51-44" />
+      </g>
+      <path class="line" stroke="#ffe2a1" stroke-width="3.2" d="M77 48 103 44 123 63 118 84 96 103 71 97 59 77 63 60z" />
+      <path class="ink" fill="#e4b568" d="m63 56 6-7 7 2-1 8-8 5zm34-11 7-7 9 6-3 6-10 1zm21 14 5 1 1 9-5 5-4-4zm-24 40 5-5 7 1-1 7-7 6zm-29-5 3-7 8 3 2 8-7 4z" />
+    </g>
+
+    <clipPath id="net-iii-clip">
+      <path fill="#ffffff" d="M77 48 103 44 123 63 118 84 96 103 71 97 59 77 63 60z" />
+    </clipPath>
+
+    <g id="chest-front-ii">
+      <path class="ink" fill="#633d32" d="m18 66 16-12 61 2 16 12-1 29-18 13H31l-14-9z" />
+      <path fill="#875642" d="m21 69 15 6h56v27l-5 5H31l-11-8z" />
+      <path fill="#a56f50" d="m25 78 10 4h55v12H26z" />
+      <path class="line" stroke="#603e32" stroke-width="2.5" d="M25 94h65m-64-12h64" />
+      <path fill="#4a3030" d="m94 75 15-7-2 28-13 10z" />
+      <path class="ink" fill="#879d9f" d="m29 69 9 2v37h-7l-3-2zm51 3h9v34l-5 2h-4z" />
+      <path class="line" stroke="#cedbd5" stroke-width="2.1" d="M32 78v23m51-23v24" />
+      <path fill="#c8d3c5" d="M28 101h11v7h-7l-3-2zm51 1h10v3l-5 3h-5z" />
+      <path class="ink" fill="#d6ab65" d="m52 72 11-4 11 5-1 13-10 8-11-6z" />
+      <path fill="#f2d394" d="m55 74 8-4 8 4-1 4-7-3-8 4z" />
+      <path fill="#48302b" d="M61 78a3 3 0 1 1 5 2l1 7h-7l1-6a3 3 0 0 1 0-3z" />
+    </g>
   </defs>
 
   <g id="cannon" transform="translate(0 384) scale(1.5)">
@@ -396,28 +539,44 @@
     <path class="ink" fill="#7c7084" d="m87 72 9-5 8 3 1 7-7 9-11-5z"/>
   </g>
 
-  <g id="treasury-open" transform="translate(192 768) scale(1.5)">
-    <path class="ink" fill="#794e3d" d="M21 62l1-28 14-16 58 5 16 13 2 25-20 13-55 1z"/>
-    <path fill="#a66d4b" d="m27 35 11-13 54 4 12 11-15 11-54-1z"/>
-    <path class="line" stroke="#d89661" stroke-width="3.2" d="m36 30 58 4m-63 4 59 5"/>
-    <path class="ink" fill="#d2a158" d="m35 18 8 1-10 19 1 16-8-1-2-17zm49 4 9 1-9 20 2 14-8 1-2-16z"/>
-    <path class="ink" fill="#513329" d="m18 53 14-10 68 2 13 15-2 16-18 12-56-2-19-13z"/>
-    <path class="ink" fill="#d29a48" d="m25 66 7-8 11-5 9-7 13-1 8 8 13-1 11 8 7 8-13 14-58-4z"/>
-    <use href="#chest-coin" transform="translate(43 61) rotate(-13)"/>
-    <use href="#chest-coin" transform="translate(56 50) rotate(7)"/>
-    <use href="#chest-coin" transform="translate(68 54) rotate(-12)"/>
-    <use href="#chest-coin" transform="translate(85 59) rotate(13)"/>
-    <use href="#chest-coin" transform="translate(62 64) rotate(10)"/>
-    <use href="#chest-coin" transform="translate(93 69) rotate(-7)"/>
-    <use href="#chest-front" transform="translate(0 15) scale(1 .86)"/>
-    <path class="line" stroke="#e7bd77" stroke-width="3" d="m20 73 15 7 57 2 15-10"/>
+  <g id="treasury-iii" transform="translate(192 768) scale(1.5)">
+    <path class="ink" fill="#6b4037" d="M21 62l1-28 14-16 58 5 16 13 2 25-20 13-55 1z" />
+    <path fill="#a06e4a" d="m27 35 11-13 54 4 12 11-15 11-54-1z" />
+    <path class="line" stroke="#d39460" stroke-width="3.2" d="m36 30 58 4m-63 4 59 5" />
+    <path class="ink" fill="#e3ac58" d="m35 18 8 1-10 19 1 16-8-1-2-17zm49 4 9 1-9 20 2 14-8 1-2-16z" />
+    <path class="ink" fill="#513329" d="m18 53 14-10 68 2 13 15-2 16-18 12-56-2-19-13z" />
+    <path class="ink" fill="#e7a949" d="m25 66 7-8 11-5 9-7 13-1 8 8 13-1 11 8 7 8-13 14-58-4z" />
+    <use href="#chest-coin" transform="translate(43 61) rotate(-13)" />
+    <use href="#chest-coin" transform="translate(56 50) rotate(7)" />
+    <use href="#chest-coin" transform="translate(68 54) rotate(-12)" />
+    <use href="#chest-coin" transform="translate(85 59) rotate(13)" />
+    <use href="#chest-coin" transform="translate(62 64) rotate(10)" />
+    <use href="#chest-coin" transform="translate(93 69) rotate(-7)" />
+    <use href="#chest-front-iii" transform="translate(0 15) scale(1 .86)" />
+    <path class="line" stroke="#f7cf83" stroke-width="3" d="m20 73 15 7 57 2 15-10" />
+    <path class="ink" fill="#e3ac59" d="m17 92 12-4 10 9-1 12-13 1-10-8zm72 5 6-10 13-6 6 9-4 12-16 9-7-4z" />
+    <path fill="#fff0b3" d="m19 95 10-4 6 7-4 4-10-1zm76 2 12-11 4 4-3 8-13 5z" />
+    <path class="ink" fill="#ccaa5d" d="m54 80 10-5 11 5-1 12-10 7-12-6z" />
+    <path fill="#8e493e" d="m64 80 6 5-6 8-6-6z" />
+    <path fill="#ffc78d" d="m64 80 3 4-4 1-2 4-2-3z" />
+    <use href="#chest-coin" transform="translate(47 53) rotate(-11)" />
+    <use href="#chest-coin" transform="translate(61 44) rotate(10)" />
+    <use href="#chest-coin" transform="translate(74 46) rotate(-14)" />
+    <path fill="#fff0b2" d="m53 33 3 6 6 2-6 2-2 7-3-7-6-2 6-2zm34 17 2 4 5 2-5 2-2 4-2-4-4-2 4-2z" />
   </g>
 
   <g id="cannon-barrel" transform="translate(384 768) scale(1.5)">
     <use href="#gun-tube" fill="#667285"/>
   </g>
-  <g id="cannon-barrel-bronze" transform="translate(576 768) scale(1.5)">
-    <use href="#gun-tube" fill="#b0824c"/>
+  <g id="cannon-barrel-iii" transform="translate(576 768) scale(1.5)">
+    <path class="ink" fill="#ae7846" d="M20 54q-8 2-9 10t9 10l17 8 14-4 56 1 10-16-11-16-56 3-14-5z" />
+    <path fill="#dca767" d="m20 56 16-7 15 5 54-3 5 9-61 4-12-4-19 5z" />
+    <path fill="#865b3d" d="m18 72 17-4 15 5 54-3 5 6-59 0-14 5z" />
+    <path class="ink" fill="#d6a352" d="m36 47 10 4-4 12 3 16-11 2-5-15zm34 1 10 1-4 12 2 18-10 1-3-16z" />
+    <path class="line" stroke="#ffe0a0" stroke-width="3.4" d="m37 51-3 10m37-8-2 10m-22-3 17-2m17 0 16-1" />
+    <path class="ink" fill="#d2a35d" d="m100 46 12-3 11 9 2 20-10 13-14-5-5-12z" />
+    <ellipse class="ink" fill="#302b30" cx="114" cy="64" rx="8.5" ry="11.8" />
+    <path class="line" stroke="#ffe0a1" stroke-width="2.8" d="M105 55q5-6 11-5" />
   </g>
 
   <g id="trapper-reloading" transform="translate(0 960) scale(1.5)">
@@ -438,5 +597,400 @@
     <path class="ink" fill="#9f805f" d="m23 28 9-1 2 16-9 2zm73-1 10 1-3 17-9-2z"/>
     <path fill="#e4ba7d" d="m26 30 4-1 1 5-5 1zm72-1 5 1-1 5-5-1z"/>
     <path class="line" stroke="#513d37" stroke-width="4.5" d="m25 56-4 33m82-33 3 34"/>
+  </g>
+
+  <g id="archer-ii" transform="translate(384 960) scale(1.5)">
+    <path class="ink" fill="#57382e" d="m47 93 15-1 2 15-24 2-1-6zm29-2 15 2 7 11-1 4-24-1z" />
+    <path class="ink" fill="#174f52" d="M42 50 29 97q13 9 31 6l19-7 17 1-11-44z" />
+    <path fill="#338b86" d="m46 54-13 42q11 5 24 4l6-34z" />
+    <path class="line" stroke="#a9d5bc" stroke-width="3" d="m34 94 11 3 8-4m-9-3 4-4m16 10 6-6" />
+    <path class="ink" fill="#875533" d="m42 55-13 4-9-28 15-5z" />
+    <path class="line" stroke="#a9d5bc" stroke-width="3" d="m27 39-7-16m12 12-2-20" />
+    <path fill="#ede0bb" d="m16 20 1-7 7 6 1 9zm10-6 3-8 6 8-4 9z" />
+    <path class="ink" fill="#237568" d="M37 47q-1-19 9-29l-3-6q18 0 31 13 9 9 8 25l-21 9z" />
+    <path class="ink" fill="#d6a473" d="m58 39 13-9q9 7 7 18l-7 6-13-6z" />
+    <path fill="#674136" d="m61 44 6 4 10-3-2 7-5 3-7-4z" />
+    <path class="line" stroke="#222329" stroke-width="2.5" d="m70 38 5 1" />
+    <path class="line" stroke="#b8ddc5" stroke-width="3.5" d="M48 47q5-15 22-21" />
+    <path fill="#60ad9d" d="M43 43q0-13 7-20l-2-6q12 3 18 7-15 6-23 19" />
+    <path class="ink" fill="#267c79" d="m46 54 17 6 17-7 10 13-17 10-20-8z" />
+    <circle class="ink" fill="#b4c8ca" cx="61" cy="62" r="5" />
+    <path class="ink" fill="#7a9d9d" d="m33 58 11-9 14 7-4 12-12 2-11-5z" />
+    <path fill="#bedbd3" d="m37 58 7-6 11 5-10 7-9-2z" />
+    <path class="line" stroke="#d2e5d1" stroke-width="3.7" d="m33 90 11 5 12-5" />
+    <path class="line" stroke="#1a2029" stroke-width="11" d="M76 106q-11-7-5-20 6-10 22-18 17-9 20-19 4-11-6-18" />
+    <path class="line" stroke="#b78453" stroke-width="7" d="M76 106q-11-7-5-20 6-10 22-18 17-9 20-19 4-11-6-18" />
+    <path class="line" stroke="#f8d38e" stroke-width="2.5" d="M74 102q-7-6-2-15m26-23q12-7 14-17 3-10-5-16" />
+    <path class="ink" fill="#b7d4d1" d="m70 100 6 3 5 5-5 4-7-5z M103 29l7-3 6 6-4 6-6-2z" />
+    <path class="line" stroke="#f4e8cc" stroke-width="1.75" d="M76 107 108 31" />
+    <path class="ink" fill="#dfa973" d="m70 70 7-7 9 3-2 8-8 4z" />
+    <path class="line" stroke="#f1cf90" stroke-width="2.3" d="m59 76 41-15" />
+    <path fill="#fff0c7" d="m95 57 13 1-10 8z" />
+  </g>
+
+  <g id="archer-iii" transform="translate(576 960) scale(1.5)">
+    <use href="#drawing-archer-iii" />
+  </g>
+
+  <g id="archer-hunter-mark" transform="translate(0 1152) scale(1.5)">
+    <use href="#drawing-archer-iii" />
+    <path class="ink" fill="#72394b" d="m35 57 10-9 13 7-1 12-15 5-10-6z" />
+    <circle fill="#edc481" cx="45" cy="60" r="6.1" />
+    <circle fill="#883f53" cx="45" cy="60" r="3.5" />
+    <circle fill="#fff0cc" cx="45" cy="60" r="1.5" />
+    <path class="line" stroke="#c86b64" stroke-width="3.6" d="M88 73l6-5m9-9 4-5m-39 45 5 4" />
+  </g>
+
+  <g id="archer-ricochet" transform="translate(192 1152) scale(1.5)">
+    <use href="#drawing-archer-iii" />
+    <path class="ink" fill="#397983" d="m35 58 10-10 14 8-2 12-14 5-11-7z" />
+    <path class="line" stroke="#d3f1eb" stroke-width="2.6" d="m39 63 6-5 4 5 4-5m-4 1 4-2 1 4" />
+    <path class="line" stroke="#bce9e5" stroke-width="3.5" d="m73 106-4-6q2-10 15-21m17-12q11-8 14-22m-6-12 7-9" />
+    <path fill="#d9f8ee" d="m97 58 10-2-4 6-6 2z" />
+  </g>
+
+  <g id="ballista-ii" transform="translate(384 1152) scale(1.5)">
+    <g id="ballista-ii-stand">
+      <path class="piece" fill="#5b4d43" d="m69 56 15 2 17 43-15 9-12-7-10-31Z" />
+      <path class="piece" fill="#80949b" d="m82 96 16-4 5 9-6 7-12 3-5-6Z" />
+      <path class="piece" fill="#8b633f" d="m60 56 18 2-9 37-14 20-23-5 16-16Z" />
+      <path fill="#b5875a" d="m63 60 10 2-10 33-13 14-12-2 14-13Z" />
+      <path class="piece" fill="#9bacad" d="m34 105 14-9 13 5-6 12-10 3-14-5Z" />
+    </g>
+    <g id="ballista-ii-launcher">
+      <path class="cord" d="M51 30 31 80 107 61" />
+      <path class="piece" fill="#684c3a" d="m14 83 73-45 15 5v11l-22 15-53 34-13-6Z" />
+      <path class="piece" fill="#aa8059" d="m14 83 73-45 15 5-75 47Z" />
+      <path class="piece" fill="#7f949b" d="m25 92 76-48v10l-75 48Z" />
+      <path fill="#b5c7bc" d="m31 91 62-40 5-1-1 4-66 42Z" />
+      <path class="piece" fill="#94aaae" d="M51 25c12-2 28 9 39 15 11 6 19 10 22 21l-8 5c-4-7-13-12-22-16-11-7-23-16-34-16Z" />
+      <path fill="#d9e6d8" d="M52 27c11 0 24 8 38 16 8 5 15 9 18 16-6-6-14-8-22-13-12-6-25-15-35-15Z" />
+      <path class="piece" fill="#fff1cd" d="m27 80 74-48-3-5 19-5-9 19-4-4-73 48Z" />
+    </g>
+  </g>
+
+  <g id="ballista-iii" transform="translate(576 1152) scale(1.5)">
+    <g id="ballista-iii-stand">
+      <path class="piece" fill="#594c48" d="m68 51 19 4 17 46-15 9-14-6-12-35Z" />
+      <path fill="#9b805b" d="m78 61 6-2 16 40-8 4Z" />
+      <path class="piece" fill="#a48151" d="m46 99 41-11 8 10-42 13-14-4Z" />
+      <path class="piece" fill="#815736" d="m59 51 20 4-9 40-16 21-25-4 17-18Z" />
+      <path fill="#ce9e5d" d="m63 57 11 2-9 35-15 17-16-1 18-17Z" />
+      <path class="piece" fill="#cb9f5f" d="m29 107 15-9 16 5-6 12-14 3-14-5Z" />
+    </g>
+    <g id="ballista-iii-launcher">
+      <path class="cord" d="M51 24 28 78 111 60" />
+      <path class="piece" fill="#694936" d="m11 80 75-47 19 5 1 15-83 53-13-9Z" />
+      <path class="piece" fill="#af7b48" d="m11 80 75-47 19 5-82 53Z" />
+      <path class="piece" fill="#c49656" d="m22 91 83-52 1 14-83 53Z" />
+      <path fill="#efca87" d="m28 91 71-45v4l-71 45Z" />
+      <path class="piece" fill="#d5ab66" d="M51 18c15-1 28 8 44 17 11 6 20 14 21 24l-9 6c-6-8-12-13-24-19-14-6-25-16-36-17Z" />
+      <path fill="#ffe0a0" d="M52 21c13 0 29 10 42 17 9 5 16 11 18 18-9-7-14-11-23-16-12-6-25-13-39-15Z" />
+      <path class="piece" fill="#fff0c2" d="m23 78 79-52-2-6 22-5-12 20-4-4-80 53Z" />
+    </g>
+  </g>
+
+  <g id="ballista-giant-slayer" transform="translate(0 1344) scale(1.5)">
+    <g id="ballista-giant-slayer-stand">
+      <path class="piece" fill="#633e34" d="m66 52 23 5 21 45-19 10-15-7-16-37Z" />
+      <path fill="#a6573d" d="m78 60 8 1 19 38-11 5Z" />
+      <path class="piece" fill="#ad754d" d="m34 100 67-4 3 10-17 9-54-4-6-6Z" />
+      <path class="piece" fill="#92583d" d="m56 52 23 3-9 39-15 23-30-4 19-19Z" />
+      <path fill="#dd9c5a" d="m60 58 13 1-10 34-14 17-17-2 18-16Z" />
+      <path class="piece" fill="#eab071" d="m25 107 18-9 20 4-8 15-16 2-17-5Z" />
+    </g>
+    <g id="ballista-giant-slayer-launcher">
+      <path class="cord" d="M49 25 25 77 112 62" />
+      <path class="piece" fill="#733f35" d="M9 79 84 34l23 3 3 16-86 55-15-10Z" />
+      <path class="piece" fill="#b0744a" d="M9 79 84 34l23 3-83 54Z" />
+      <path class="piece" fill="#bd6747" d="m24 91 83-54 3 16-86 55Z" />
+      <path fill="#f0aa68" d="m30 91 73-47 1 6-74 48Z" />
+      <path class="piece" fill="#cc8951" d="M49 18c14-4 31 5 47 14 12 7 21 16 23 27l-12 8c-7-9-12-14-25-20-14-7-27-15-38-16Z" />
+      <path fill="#ffc182" d="M50 21c13-3 30 7 44 14 11 6 18 13 20 21-9-8-15-11-24-16-14-7-28-14-42-14Z" />
+      <path class="piece" fill="#ffdda5" d="m20 77 75-48-5-6 34-6-18 27-5-6-77 49Z" />
+      <path fill="#dda267" d="m99 28 24-10-16 21-5-5Z" />
+    </g>
+  </g>
+
+  <g id="ballista-armor-breaker" transform="translate(192 1344) scale(1.5)">
+    <g id="ballista-armor-breaker-stand">
+      <path class="piece" fill="#526875" d="m70 47 16 5 16 49-14 9-11-8-10-36Z" />
+      <path fill="#a2bdc2" d="m80 57 5 1 13 41-8 3Z" />
+      <path class="piece" fill="#6b8790" d="m41 101 48-17 5 9-45 20-13-3Z" />
+      <path class="piece" fill="#526874" d="m59 50 20 4-11 42-17 21-24-4 16-15Z" />
+      <path fill="#9cb5b7" d="m63 54 11 3-14 37-15 16-13-1 17-16Z" />
+      <path class="piece" fill="#b7cfd0" d="m29 106 12-8 13 4-4 11-10 5-14-5Z" />
+    </g>
+    <g id="ballista-armor-breaker-launcher">
+      <path class="cord" stroke="#c9e8df" d="M50 20 28 82 111 57" />
+      <path class="piece" fill="#45616e" d="m14 86 74-57 14 3 4 12-81 63-13-8Z" />
+      <path class="piece" fill="#74959e" d="m14 86 74-57 14 3-79 62Z" />
+      <path class="piece" fill="#6da1ae" d="m23 94 79-62 4 12-81 63Z" />
+      <path fill="#bce5e4" d="m28 94 71-55 2 4-71 55Z" />
+      <path class="piece" fill="#78a8b5" d="m50 14 19 5 20 12 14 9 13 15-9 8-12-13-14-8-19-13-16-5Z" />
+      <path fill="#d1f0ee" d="m51 17 17 5 20 12 13 9 11 12-9-6-15-10-23-14-16-5Z" />
+      <path class="piece" fill="#edfff4" d="m23 83 83-64-3-5 20-7-10 22-4-5-83 64Z" />
+    </g>
+  </g>
+
+  <g id="mage-ii" transform="translate(384 1344) scale(1.5)">
+    <path class="ink" fill="#ca482b" d="M46 14q10 12 12 30 11-7 20-33 17 19 16 42l8-9q12 15 9 33-5 31-43 34-35 2-47-20-10-19 2-40 3 10 9 12-2-25 14-49z" />
+    <path fill="#ed6d32" d="M47 22q10 19 5 37 18-9 28-37 13 18 5 44l15-9q8 11 4 24-10 25-38 25-29 1-40-22-4-12 1-21 6 9 13 8-4-27 7-49z" />
+    <path fill="#ffab44" d="M48 47q8 9 6 24 14-8 24-27 8 15 4 30l13-4q-1 22-26 31-23 3-34-13-5-7-2-16l9 6q-2-17 6-31z" />
+    <path fill="#ffe195" d="M57 68q9 9 6 20 12-7 16-14 6 12-3 20-13 10-24-2-6-9 5-24z" />
+    <path fill="#fff2c6" d="m59 82 7-7 4 11-8 7z" />
+    <path class="line" stroke="#ffc36f" stroke-width="3" d="M31 76q-1 11 10 17m49-1 9-12" />
+    <path fill="#ffbe67" d="m22 37 4-8 5 7-4 7zm76-17 4-8 4 8-4 7zm13 34 4-8 4 6-4 7z" />
+  </g>
+
+  <g id="mage-iii" transform="translate(576 1344) scale(1.5)">
+    <path class="ink" fill="#b63d2d" d="M30 18q15 12 16 36Q58 39 66 6q13 18 17 43 14-8 15-30 19 21 12 45 7-2 9-9 7 27-9 45-14 16-44 17-28 0-43-17Q7 82 14 58l9 10q-5-27 7-50z" />
+    <path fill="#e75c30" d="M30 26q13 17 9 43Q57 54 66 16q15 23 9 49 17-4 26-31 13 19 0 43l13-8q-2 27-25 36-24 13-50 2-21-9-22-32l12 9q-7-27 1-58z" />
+    <path fill="#fc952f" d="M42 56q9 8 7 25 12-11 18-39 13 15 10 36 13-4 20-19 3 21-11 39-17 14-35 6-18-8-19-21l10 5q-4-15 0-32z" />
+    <path fill="#ffd16b" d="M65 59q13 12 11 33l11-12q-4 22-21 25-17-1-20-14l8 6q0-22 11-38z" />
+    <path fill="#fff3b8" d="M65 75c5 8 1 12 4 18 3-1 6-4 7-7 1 9-4 15-11 16-8 1-12-5-11-12 2 3 5 5 7 5-2-8 0-14 4-20z" />
+    <path class="line" stroke="#ffd58b" stroke-width="3.5" d="M27 83q4 15 18 20m49-8q11-7 14-17" />
+    <path fill="#ffda87" d="m23 18 4-9 4 6-4 8zM86 9l5-8 4 7-5 8zm29 27 4-9 4 8-5 8zM10 46l3-8 5 6-4 7z" />
+  </g>
+
+  <g id="frost-ii" transform="translate(0 1536) scale(1.5)">
+    <g transform="translate(64 64)">
+      <use href="#ice-arm-ii" transform="rotate(0)" />
+      <use href="#ice-arm-ii" transform="rotate(60)" />
+      <use href="#ice-arm-ii" transform="rotate(120)" />
+      <use href="#ice-arm-ii" transform="rotate(180)" />
+      <use href="#ice-arm-ii" transform="rotate(240)" />
+      <use href="#ice-arm-ii" transform="rotate(300)" />
+      <path class="ink" fill="#427b9c" d="m0-25 22 12v25L0 25-22 12v-25z" />
+      <path fill="#8ddef0" d="m0-20 16 10-4 18L0 20-13 9l-4-18z" />
+      <path fill="#e0ffff" d="m0-19 7 11L0 8-10-5z" />
+      <path fill="#4da5c6" d="m0 8 13 0L0 21-12 10z" />
+    </g>
+  </g>
+
+  <g id="frost-iii" transform="translate(192 1536) scale(1.5)">
+    <g transform="translate(64 64)">
+      <use href="#ice-arm-iii" transform="rotate(0)" />
+      <use href="#ice-arm-iii" transform="rotate(60)" />
+      <use href="#ice-arm-iii" transform="rotate(120)" />
+      <use href="#ice-arm-iii" transform="rotate(180)" />
+      <use href="#ice-arm-iii" transform="rotate(240)" />
+      <use href="#ice-arm-iii" transform="rotate(300)" />
+      <path class="ink" fill="#31688d" d="m0-27 24 13V14L0 27-24 14v-28z" />
+      <path fill="#badbe1" d="m0-23 20 11v24L0 23-20 12v-24z" />
+      <path class="ink" fill="#60bddd" d="m0-21 16 9 2 19L0 21-17 8l1-19z" />
+      <path fill="#98e7f5" d="m0-18 10 7 1 15L0 14-11 4l2-15z" />
+      <path fill="#e8ffff" d="m0-18 8 9L0 6-10-4z" />
+      <path fill="#2e92b7" d="m0 14 12-7 4 1L0 21-16 8l5-1z" />
+    </g>
+  </g>
+
+  <g id="cannon-ii" transform="translate(384 1536) scale(1.5)">
+    <use href="#gun-carriage-wheel" />
+    <use href="#gun-carriage-wheel" transform="translate(0 128) scale(1 -1)" />
+    <path class="ink" fill="#664c44" d="M30 36h31l21 12 8 16-8 16-21 12H30l-9-11V47z" />
+    <path fill="#a98261" d="M33 40h27l19 11 7 13-19 4-40-7V48z" />
+    <path class="ink" fill="#b28963" d="M25 40h48l11 5-4 10-53-1-7-7zm0 34 55-1 4 10-11 5H25l-5-7z" />
+    <path class="line" stroke="#d0ac83" stroke-width="2.7" d="M26 43h43l7 3M27 78h49" />
+    <path class="ink" fill="#83959c" d="m37 38 12 2-2 14-13-1zm-3 36 13-1 2 14-12 2zm35-31 10 5 8 10-7 5-9-4z" />
+    <path fill="#dae6df" d="m39 42 4-1 1 4-4 1zm0 38 4-1 1 4-4 1zm37-30 4 3-2 3-4-3z" />
+    <path class="ink" fill="#7a9098" d="m21 39 13-3 4 9-2 11-13 1-6-8zm-4 39 7-7 12 2 2 11-6 7-11-3zm46-37 10 1 12 5 7 10-7 7-7-5-4-9-13-1zm-2 38 13-1 5-10 7-4 6 8-9 11-12 5-9-2z" />
+    <path class="line" stroke="#cddedb" stroke-width="2.8" d="m22 43 8-3 3 6m-13 33 5-5 7 2m35-32 11 4 6 8m-17 28 13-5 5-7" />
+  </g>
+
+  <g id="cannon-iii" transform="translate(576 1536) scale(1.5)">
+    <use href="#gun-carriage-wheel" />
+    <use href="#gun-carriage-wheel" transform="translate(0 128) scale(1 -1)" />
+    <path class="ink" fill="#5d4037" d="M30 36h31l21 12 8 16-8 16-21 12H30l-9-11V47z" />
+    <path fill="#95734e" d="M33 40h27l19 11 7 13-19 4-40-7V48z" />
+    <path class="ink" fill="#bf935a" d="M25 40h48l11 5-4 10-53-1-7-7zm0 34 55-1 4 10-11 5H25l-5-7z" />
+    <path class="line" stroke="#ffdf9e" stroke-width="2.7" d="M26 43h43l7 3M27 78h49" />
+    <path class="ink" fill="#a48c69" d="m37 38 12 2-2 14-13-1zm-3 36 13-1 2 14-12 2zm35-31 10 5 8 10-7 5-9-4z" />
+    <path fill="#ffe1a2" d="m39 42 4-1 1 4-4 1zm0 38 4-1 1 4-4 1zm37-30 4 3-2 3-4-3z" />
+    <path class="ink" fill="#ab8050" d="m19 42 15-9 14 2 3 12-6 10-23 1-6-7zm-3 37 6-8 22 1 7 9-4 12-13 2-15-7zm44-40 16 1 16 9 5 15-8 4-9-7-5-9-15-3zm0 46 15-6 6-10 10-5 7 7-6 13-16 8-16 1z" />
+    <path class="line" stroke="#f5d390" stroke-width="3" d="m20 45 15-8 9 1m-24 42 12 9 12-1m19-44 12 2 12 6m-24 35 14-5 12-9" />
+    <path fill="#cfab6b" d="m33 42 5-4 6 5-4 7-6-2zm0 43 6-5 6 5-5 6-6-1z" />
+  </g>
+
+  <g id="cannon-barrel-ii" transform="translate(0 1728) scale(1.5)">
+    <path class="ink" fill="#687e8a" d="M19 56q-7 1-7 8t7 8l13 7 13-3 61 1 7-10-5-16-62 1-14-3z" />
+    <path fill="#92abb0" d="m19 58 15-6 14 3 58-1 3 6-58 4-17-6-12 5z" />
+    <path fill="#455561" d="m20 70 13-4 16 6 57-5 3 6-60 2-16 3z" />
+    <path class="ink" fill="#99adb0" d="m45 51 11 1-2 24-11 2-2-8zm32 0h9l-2 25-9 1-2-10z" />
+    <path class="line" stroke="#e0e8db" stroke-width="2.7" d="m47 55-1 11m34-11-1 11m-22-8 17-1" />
+    <ellipse class="ink" fill="#8198a0" cx="108" cy="64" rx="13" ry="16" />
+    <ellipse class="ink" fill="#25303a" cx="110" cy="64" rx="7" ry="10" />
+    <path class="line" stroke="#d7e5e1" stroke-width="2.4" d="M102 55q4-5 8-4" />
+  </g>
+
+  <g id="trapper-ii" transform="translate(192 1728) scale(1.5)">
+    <use href="#trapper-coat-ii" />
+    <path class="ink" fill="#879c9b" d="m27 55 13-8 12 5-1 11-13 4-9-3z" />
+    <path fill="#c1d1bc" d="m31 55 9-5 8 3-10 8-6-2z" />
+    <path class="ink" fill="#727f75" d="m55 65 13-5 13 5-2 11-18 6-9-8z" />
+    <use href="#net-ii" />
+    <path class="ink" fill="#d2a479" d="m64 71 7-4 7 4 1 7-6 5-9-4z" />
+  </g>
+
+  <g id="trapper-iii" transform="translate(384 1728) scale(1.5)">
+    <use href="#trapper-coat-iii" />
+    <path class="ink" fill="#b4955a" d="m24 55 13-9 14 2 4 10-8 11-14 3-10-5z" />
+    <path fill="#eed69a" d="m26 56 11-7 12 3-7 6-10 1-6 5z" />
+    <path class="line" stroke="#e0b46b" stroke-width="4" d="m20 95 17 6 16-6" />
+    <path class="ink" fill="#926b49" d="m55 65 13-5 13 5-2 11-18 6-9-8z" />
+    <use href="#net-iii" />
+    <path class="ink" fill="#d2a479" d="m64 71 7-4 7 4 1 7-6 5-9-4z" />
+  </g>
+
+  <g id="trapper-reloading-ii" transform="translate(576 1728) scale(1.5)">
+    <use href="#trapper-coat-ii" />
+    <path class="ink" fill="#879c9b" d="m27 55 13-8 12 5-1 11-13 4-9-3z" />
+    <path fill="#c1d1bc" d="m31 55 9-5 8 3-10 8-6-2z" />
+    <path class="ink" fill="#727f75" d="m55 65 13-5 13 5-2 11-18 6-9-8z" />
+    <path class="ink" fill="#6c7767" d="m54 67 13-8 17 9 4 12-10 9-15-3-13-11z" />
+    <path class="line" stroke="#b3bea0" stroke-width="3" d="m57 69 14-7 12 8" />
+    <path class="line" stroke="#b3bcab" stroke-width="3.1" d="M78 84q1 11 11 10 6-1 5-6-1-5-6-3" />
+    <path class="ink" fill="#d2a479" d="m75 72 8-3 8 5v7l-6 5-10-3-3-6z" />
+  </g>
+
+  <g id="trapper-reloading-iii" transform="translate(0 1920) scale(1.5)">
+    <use href="#trapper-coat-iii" />
+    <path class="ink" fill="#b4955a" d="m24 55 13-9 14 2 4 10-8 11-14 3-10-5z" />
+    <path fill="#eed69a" d="m26 56 11-7 12 3-7 6-10 1-6 5z" />
+    <path class="line" stroke="#e0b46b" stroke-width="4" d="m20 95 17 6 16-6" />
+    <path class="ink" fill="#926b49" d="m55 65 13-5 13 5-2 11-18 6-9-8z" />
+    <path class="ink" fill="#926b49" d="m54 67 13-8 17 9 4 12-10 9-15-3-13-11z" />
+    <path class="line" stroke="#e0b46b" stroke-width="3" d="m57 69 14-7 12 8" />
+    <path class="line" stroke="#d0a665" stroke-width="3.1" d="M78 84q1 11 11 10 6-1 5-6-1-5-6-3" />
+    <path class="ink" fill="#d2a479" d="m75 72 8-3 8 5v7l-6 5-10-3-3-6z" />
+  </g>
+
+  <g id="warlock-ii" transform="translate(192 1920) scale(1.5)">
+    <path class="ink" fill="#372c46" d="m35 94 19 1-3 15H30l-6-5zm31 1 17-2 7 14-14 5-15-4z" />
+    <path class="ink" fill="#322b4d" d="m37 49 20-12 22 13 7 27 9 24-21 8-11-7-16 8-25-7 7-22z" />
+    <path fill="#50517a" d="m41 53 19 9-6 38-9 6-18-5 9-25zm22 11 11-10 6 24 10 21-14 5-8-7z" />
+    <path class="line" stroke="#a6a2ce" stroke-width="2.8" d="m29 99 15 5 13-8m13 3 7 5 11-4" />
+    <path class="ink" fill="#4f4776" d="M29 51q-1-12 11-23L56 8l9 11q14 5 20 21l1 9-26 15z" />
+    <path fill="#766890" d="m34 47 3-10 9-10 11-14 5 8-14 20-9 9z" />
+    <path class="ink" fill="#241e36" d="M40 48q8-14 21-19 15 6 18 19l-19 12z" />
+    <path fill="#bb93d0" d="m51 43 7 3-5 2-4-3zm14 3 7-4-1 5-5 2z" />
+    <path class="ink" fill="#64618b" d="m37 54 21 12 20-9 10 11-15 9-13-2-11 4-18-10z" />
+    <path fill="#e0bbee" d="m60 64 6 4-6 8-6-8z" />
+    <path class="line" stroke="#aaa9d9" stroke-width="3" d="m48 88 4-6 4 6-4 6zm17 8 4-9 5 6" />
+    <path class="ink" fill="#8c8caf" d="m31 52 10-7 12 5-4 13-10 4-12-7zm38 4 10-7 13 6 3 11-15 7-12-10z" />
+    <path class="line" stroke="#d6cce9" stroke-width="2.6" d="m30 57 10-8 8 4m24 9 8-9 11 4" />
+    <path class="line" stroke="#1a2029" stroke-width="10" d="m97 109 7-64" />
+    <path class="line" stroke="#9d99af" stroke-width="6.8" d="m97 109 7-64" />
+    <path class="ink" fill="#777293" d="m89 39 10 3 5-5 7 5 9-10-4 19-12 6-12-5z" />
+    <path class="ink" fill="#9b67d0" d="m104 8 16 17-4 18-13 7-12-10V22z" />
+    <path fill="#d4a9ea" d="m104 11 10 15-5 14-8-8z" />
+    <path fill="#f7defa" d="m104 12 4 11-10 3z" />
+    <path class="ink" fill="#b798bd" d="m82 72 10-6 9 3 2 8-5 7-12-4z" />
+  </g>
+
+  <g id="warlock-iii" transform="translate(384 1920) scale(1.5)">
+    <path class="ink" fill="#372c46" d="m35 94 19 1-3 15H30l-6-5zm31 1 17-2 7 14-14 5-15-4z" />
+    <path class="ink" fill="#382953" d="m37 49 20-12 22 13 7 27 9 24-21 8-11-7-16 8-25-7 7-22z" />
+    <path fill="#614882" d="m41 53 19 9-6 38-9 6-18-5 9-25zm22 11 11-10 6 24 10 21-14 5-8-7z" />
+    <path class="line" stroke="#dab296" stroke-width="2.8" d="m29 99 15 5 13-8m13 3 7 5 11-4" />
+    <path class="ink" fill="#56397e" d="M29 51q-1-12 11-23L56 8l9 11q14 5 20 21l1 9-26 15z" />
+    <path fill="#9870ad" d="m34 47 3-10 9-10 11-14 5 8-14 20-9 9z" />
+    <path class="ink" fill="#241e36" d="M40 48q8-14 21-19 15 6 18 19l-19 12z" />
+    <path fill="#bb93d0" d="m51 43 7 3-5 2-4-3zm14 3 7-4-1 5-5 2z" />
+    <path class="ink" fill="#68467c" d="m37 54 21 12 20-9 10 11-15 9-13-2-11 4-18-10z" />
+    <path fill="#f2d2a9" d="m60 64 6 4-6 8-6-8z" />
+    <path class="line" stroke="#c3a1d2" stroke-width="3" d="m48 88 4-6 4 6-4 6zm17 8 4-9 5 6" />
+    <path class="ink" fill="#9e7a71" d="m26 54 12-8 13 2 4 8-10 13-15-2-7-7zm45 1 12-7 11 5 4 11-10 10-12-5z" />
+    <path fill="#ecd1ba" d="m27 54 10-6 12 3-3 5-9-1-7 6zm47 5 10-8 10 4-5 5-8-3z" />
+    <path class="line" stroke="#1a2029" stroke-width="11.5" d="m95 109 8-57" />
+    <path class="line" stroke="#ad8b69" stroke-width="7.5" d="m95 109 8-57" />
+    <path class="ink" fill="#c4a17c" d="M103 60q-12-1-17-13-4-8-2-19l5-7 3 3q-4 11 4 19l8 6q11-3 15-13l1-14 5 5q2 12-4 22-7 10-18 11z" />
+    <path fill="#f4d4a0" d="M88 29q-1 13 7 20l8 4 9-3q-2 4-9 6-15-4-17-19zm33 2q1 12-8 18l5-2q7-9 5-16z" />
+    <path class="ink" fill="#a15bc9" d="m103 9 14 13-3 16-11 9-12-10 1-14z" />
+    <path fill="#eab9f0" d="m103 13 9 10-4 13-7-7z" />
+    <path fill="#ffe3fc" d="m103 13 5 10-10 3z" />
+    <path class="line" stroke="#d9a0e9" stroke-width="2.8" d="m45 83 4-5m-4 23 4-5m21 3 4-5m-8-75 3 4" />
+    <path class="ink" fill="#c1a0cb" d="m82 72 10-6 9 3 2 8-5 7-12-4z" />
+  </g>
+
+  <g id="bell-ii" transform="translate(576 1920) scale(1.5)">
+    <path class="ink" fill="#9f703b" d="M57 34h14l3 12-6 6H60l-6-7z" />
+    <path class="ink" fill="#cda053" d="M43 56q5-12 21-12t21 12l4 19 8 12 5 8-6 7H32l-6-7 5-8 8-12z" />
+    <path fill="#f3c765" d="M47 55q7-8 17-8l-5 11-3 18-10 11H33l10-14z" />
+    <path fill="#997253" d="M75 48q7 3 10 10l5 19 11 16H81l-9-16z" />
+    <path class="line" stroke="#fff1be" stroke-width="3.4" d="M49 57q-4 9-4 18m-8 12q17-6 28-5l17 2" />
+    <path class="ink" fill="#a2a9ab" d="M30 91q13-6 34-6 22 0 34 6l3 5q-9 7-37 7-28 0-37-7z" />
+    <ellipse class="ink" fill="#654639" cx="64" cy="98" rx="33" ry="8" />
+    <path class="line" stroke="#e6ded1" stroke-width="2.6" d="M33 95q13-4 31-4 18 0 31 4" />
+    <path class="ink" fill="#e4ad54" d="m61 98 7 1 5 8-4 5H59l-4-5z" />
+    <path fill="#ffe6a8" d="m62 102 5 1 1 4-6 1z" />
+    <path class="line" stroke="#f8d893" stroke-width="2.7" d="m47 81q15-4 33-1" />
+  </g>
+
+  <g id="bell-iii" transform="translate(0 2112) scale(1.5)">
+    <path class="ink" fill="#9f703b" d="M57 34h14l3 12-6 6H60l-6-7z" />
+    <path class="ink" fill="#dc9d44" d="M43 56q5-12 21-12t21 12l4 19 8 12 5 8-6 7H32l-6-7 5-8 8-12z" />
+    <path fill="#ffcf6c" d="M47 55q7-8 17-8l-5 11-3 18-10 11H33l10-14z" />
+    <path fill="#a56e37" d="M75 48q7 3 10 10l5 19 11 16H81l-9-16z" />
+    <path class="line" stroke="#ffe4a3" stroke-width="3.4" d="M49 57q-4 9-4 18m-8 12q17-6 28-5l17 2" />
+    <path class="ink" fill="#e8b457" d="M30 91q13-6 34-6 22 0 34 6l3 5q-9 7-37 7-28 0-37-7z" />
+    <ellipse class="ink" fill="#775039" cx="64" cy="98" rx="33" ry="8" />
+    <path class="line" stroke="#ffe2a0" stroke-width="2.6" d="M33 95q13-4 31-4 18 0 31 4" />
+    <path class="ink" fill="#e4ad54" d="m61 98 7 1 5 8-4 5H59l-4-5z" />
+    <path fill="#ffe6a8" d="m62 102 5 1 1 4-6 1z" />
+    <path class="line" stroke="#f6cd81" stroke-width="3.1" d="M39 83q26-8 50-1" />
+    <path fill="#fff0bb" d="m63 54 6 10-5 10-6-10z" />
+  </g>
+
+  <g id="bell-mount-ii" transform="translate(192 2112) scale(1.5)">
+    <path class="ink" fill="#61544a" d="M20 38l11-7 6 7-6 59-8 11-10-3 3-14zm77-6 11 5 5 55 3 13-12 4-8-10z" />
+    <path fill="#a38a62" d="m23 42 7-5-5 54-7 14 2-29zm77-5 6 3 4 50 3 11-8-8z" />
+    <path class="ink" fill="#5c5147" d="m15 94 14-4 9 7v9l-11 7-15-5zm83-4 14 3 6 11-10 8-13-5-5-7z" />
+    <path fill="#a58362" d="m17 97 12-4 6 5-9 5-11-2zm82-4 12 3 3 6-12 1-8-5z" />
+    <path class="ink" fill="#9f885f" d="M17 29l47-7 47 7 7 9-6 8-48-5-48 5-6-8z" />
+    <path fill="#c5ab7c" d="m19 32 45-7 45 7 5 5-50-4-50 5z" />
+    <path class="ink" fill="#849398" d="m23 28 9-1 2 16-9 2zm73-1 10 1-3 17-9-2z" />
+    <path fill="#cdd4c6" d="m26 30 4-1 1 5-5 1zm72-1 5 1-1 5-5-1z" />
+    <path class="line" stroke="#513d37" stroke-width="4.5" d="m25 56-4 33m82-33 3 34" />
+    <path class="ink" fill="#81929b" d="m15 93 14-5 9 8-3 10-9 7-15-5zm83-4 15 4 7 11-11 8-13-4-6-8z" />
+    <path fill="#c7d3c8" d="m16 96 12-5 6 5-9 5-11-2zm83-3 12 3 4 6-11 2-10-5z" />
+    <path class="ink" fill="#748b96" d="m17 48 13-2-1 13-14 4zm80-3 12 3 1 14-13-3z" />
+    <path fill="#c9d7cb" d="m20 51 7-2-1 5-8 4zm81-3 6 2v6l-6-1z" />
+  </g>
+
+  <g id="bell-mount-iii" transform="translate(384 2112) scale(1.5)">
+    <path class="ink" fill="#625048" d="M20 38l11-7 6 7-6 59-8 11-10-3 3-14zm77-6 11 5 5 55 3 13-12 4-8-10z" />
+    <path fill="#96734d" d="m23 42 7-5-5 54-7 14 2-29zm77-5 6 3 4 50 3 11-8-8z" />
+    <path class="ink" fill="#5a4136" d="m15 94 14-4 9 7v9l-11 7-15-5zm83-4 14 3 6 11-10 8-13-5-5-7z" />
+    <path fill="#9e764d" d="m17 97 12-4 6 5-9 5-11-2zm82-4 12 3 3 6-12 1-8-5z" />
+    <path class="ink" fill="#bb8a54" d="M17 29l47-7 47 7 7 9-6 8-48-5-48 5-6-8z" />
+    <path fill="#f0ce90" d="m19 32 45-7 45 7 5 5-50-4-50 5z" />
+    <path class="ink" fill="#b09260" d="m23 28 9-1 2 16-9 2zm73-1 10 1-3 17-9-2z" />
+    <path fill="#ffde9f" d="m26 30 4-1 1 5-5 1zm72-1 5 1-1 5-5-1z" />
+    <path class="line" stroke="#513d37" stroke-width="4.5" d="m25 56-4 33m82-33 3 34" />
+    <path class="ink" fill="#ca9f58" d="m11 34 8-8 45-9 45 7 11 10-4 9-12-2-7-12-33-5-33 6-5 12-9 2z" />
+    <path fill="#f7d194" d="m18 32 46-11 42 7 10 6-52-9-49 13z" />
+    <path class="ink" fill="#bd965a" d="m15 93 14-5 10 8-2 12-11 7-16-8zm82-5 17 4 7 11-13 10-13-5-6-8z" />
+    <path fill="#edcc8d" d="m16 97 12-5 7 6-10 6-11-3zm81-4 15 3 4 6-12 2-10-5z" />
+  </g>
+
+  <g id="treasury-ii" transform="translate(576 2112) scale(1.5)">
+    <use href="#chest-front-ii" />
+    <path class="ink" fill="#936447" d="M17 65q0-15 15-26l53-6q17 0 25 21l3 14-19 11-61 1-16-8z" />
+    <path fill="#bd8b60" d="M22 63q2-13 12-21l48-6q13 2 18 17l-12 13-55 3z" />
+    <path fill="#6d493c" d="m91 63 12-10 7 15-16 9-10-2z" />
+    <path class="line" stroke="#8e6149" stroke-width="2.8" d="m29 55 54-7m-57 14 54-7" />
+    <path class="ink" fill="#81979d" d="m25 43 8-5 7 3-6 10-4 19 8 7v4l-12-3-5-7zm50-8 9-2 6 3-5 10-3 23 7 8-2 4-8-3-5-8z" />
+    <path class="line" stroke="#cddcd8" stroke-width="2.4" d="m29 46-5 20m55-25-3 23" />
+    <path class="ink" fill="#d6a66b" d="m53 65 10-4 10 5-2 14-8 7-10-5z" />
+    <path fill="#4f342b" d="M60 72a3 3 0 1 1 5 2l1 7h-7l1-6a3 3 0 0 1 0-3z" />
+    <use href="#chest-coin" transform="translate(49 39) rotate(-12)" />
+    <use href="#chest-coin" transform="translate(62 35) rotate(9)" />
+    <use href="#chest-coin" transform="translate(54 32) rotate(-13)" />
+    <path class="ink" fill="#8da0a4" d="m16 66 11-4 7 9-3 9-12-3zm75 0 10-5 11 2-2 10-14 8-7-3zm-74 33 11-4 9 8-3 8-10-1zm71 5 4-9 16-7 4 9-7 7-12 6z" />
+    <path fill="#d8dfcd" d="m20 67 5-2 4 5-4 4-6-1zm81-2 6 2-3 5-7 3-3-4zm-77 34 4-1 5 4-3 5-6-1zm71 0 9-5 3 3-5 4-6 2z" />
+    <use href="#chest-coin" transform="translate(46 35) rotate(-9)" />
+    <use href="#chest-coin" transform="translate(72 32) rotate(16)" />
+    <use href="#chest-coin" transform="translate(58 28) rotate(-8)" />
   </g>
 </svg>

@@ -828,7 +828,7 @@ export function drawTower(
     ctx.restore()
   }
 
-  if (!drawTowerSprite(ctx, towerId, tier, aimAngle, time, isReady, recoil)) {
+  if (!drawTowerSprite(ctx, towerId, tier, aspectId, aimAngle, time, isReady, recoil)) {
     const art = TOWER_ART[towerId] ?? FALLBACK_TOWER_ART
     ctx.save()
     art.body(ctx, aimAngle, time, isReady, tier)
