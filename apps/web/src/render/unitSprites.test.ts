@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import type { Canvas2D } from './shapes'
+import { TOWER_IDLE_AIM_ANGLE, type Canvas2D } from './shapes'
 import { drawTower } from './towers'
 import { loadUnitSprites } from './unitSprites'
 import atlasSvg from './units-vector.svg?raw'
@@ -29,18 +29,17 @@ function drawSprites(
   aspectId: string | null = null,
   isReady = true,
   aimAngle = 0,
+  recoil = 0,
 ) {
   const drawImage = vi.fn((source: unknown, x: number, y: number) =>
     source === bitmap ? spriteAt.get(`${x},${y}`) : undefined,
   )
-  const rotate = vi.fn()
+  const transforms = { translate: vi.fn(), rotate: vi.fn(), scale: vi.fn() }
   const ctx = {
     drawImage,
     save: vi.fn(),
     restore: vi.fn(),
-    translate: vi.fn(),
-    rotate,
-    scale: vi.fn(),
+    ...transforms,
     beginPath: vi.fn(),
     closePath: vi.fn(),
     moveTo: vi.fn(),
@@ -49,8 +48,8 @@ function drawSprites(
     fill: vi.fn(),
     stroke: vi.fn(),
   } as unknown as Canvas2D
-  drawTower(ctx, id, tier, aimAngle, 0, isReady, aspectId)
-  return { frames: drawImage.mock.results.map(({ value }) => value), drawImage, rotate }
+  drawTower(ctx, id, tier, aimAngle, 0, isReady, aspectId, recoil)
+  return { frames: drawImage.mock.results.map(({ value }) => value), ...transforms }
 }
 
 beforeAll(async () => {
@@ -59,7 +58,7 @@ beforeAll(async () => {
     'Image',
     class {
       naturalWidth = 768
-      naturalHeight = 2688
+      naturalHeight = 2304
       onload?: () => void
       set src(_value: string) {
         this.onload?.()
@@ -74,16 +73,12 @@ describe('SVG-облики стражей', () => {
   it('переводит атлас в пиксели один раз перед отрисовкой повёрнутых спрайтов', async () => {
     expect(await loadUnitSprites()).toBe(true)
     expect(atlasPaints).toEqual([[expect.any(Image), 0, 0]])
-    expect([bitmap.width, bitmap.height]).toEqual([768, 2688])
+    expect([bitmap.width, bitmap.height]).toEqual([768, 2304])
   })
 
   const stages = {
     archer: [['archer'], ['archer-ii'], ['archer-iii']],
-    ballista: [
-      ['ballista-i-stand', 'ballista'],
-      ['ballista-ii-stand', 'ballista-ii'],
-      ['ballista-iii-stand', 'ballista-iii'],
-    ],
+    ballista: [['ballista'], ['ballista-ii'], ['ballista-iii']],
     mage: [['mage'], ['mage-ii'], ['mage-iii']],
     frost: [['frost'], ['frost-ii'], ['frost-iii']],
     cannon: [
@@ -111,26 +106,25 @@ describe('SVG-облики стражей', () => {
     ['ballista', 'giant-slayer'],
     ['ballista', 'armor-breaker'],
   ])('%s выбирает облик специализации %s на IV ступени', (id, aspectId) => {
-    const aspectFrame = `${id}-${aspectId}`
-    expect(drawSprites(id, 2, aspectId).frames).toEqual(
-      id === 'ballista' ? [`${aspectFrame}-stand`, aspectFrame] : [aspectFrame],
-    )
-    expect(drawSprites(id, 2).frames).toEqual(
-      id === 'ballista' ? stages.ballista[2] : stages.archer[2],
-    )
+    expect(drawSprites(id, 2, aspectId).frames).toEqual([`${id}-${aspectId}`])
+    expect(drawSprites(id, 2).frames).toEqual([`${id}-iii`])
   })
 
-  it.each([Math.PI / 2, Math.PI / 4, Math.PI, -Math.PI / 2])(
-    'Баллиста поворачивает направляющую на угол выстрела %f, станок стоит на месте',
-    (angle) => {
-      const { drawImage, rotate } = drawSprites('ballista', 0, null, true, angle)
-      const [stand, launcher] = drawImage.mock.invocationCallOrder
-      const [turn] = rotate.mock.invocationCallOrder
-      expect(rotate).toHaveBeenCalledExactlyOnceWith(angle)
-      expect(stand).toBeLessThan(turn)
-      expect(turn).toBeLessThan(launcher)
-    },
-  )
+  it('Баллиста после постройки сохраняет диагональную посадку на постаменте', () => {
+    const art = drawSprites('ballista', 0, null, true, TOWER_IDLE_AIM_ANGLE)
+    expect(art.frames).toEqual(['ballista'])
+    expect(art.translate).toHaveBeenCalledExactlyOnceWith(expect.closeTo(0), 0.23)
+    expect(art.rotate).toHaveBeenCalledExactlyOnceWith(expect.closeTo(0))
+    expect(art.scale).toHaveBeenCalledExactlyOnceWith(1, 1)
+  })
+
+  it('Баллиста отражается в сторону цели и отскакивает назад при выстреле', () => {
+    const art = drawSprites('ballista', 2, 'armor-breaker', false, Math.PI, 1)
+    expect(art.frames).toEqual(['ballista-armor-breaker'])
+    expect(art.translate).toHaveBeenCalledExactlyOnceWith(0.12, expect.closeTo(0.23))
+    expect(art.rotate).toHaveBeenCalledExactlyOnceWith(0.16)
+    expect(art.scale).toHaveBeenCalledExactlyOnceWith(-1, 0.955)
+  })
 
   it('сохраняет облик Ловчего при перезарядке сети', () => {
     expect([0, 1, 2].map((tier) => drawSprites('trapper', tier, null, false).frames)).toEqual([
