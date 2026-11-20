@@ -11,6 +11,9 @@ export const FLOOR_COLOR = '#171a28'
 export const CELL_CENTER = 0.5
 /** Куда «смотрит» башня, пока не целится: вверх, радианы */
 export const TOWER_IDLE_AIM_ANGLE = -Math.PI / 2
+/** Значок в нижнем углу клетки. Смещение и радиус оставляют место для обводки. */
+export const TOWER_MARK_OFFSET = 0.39
+export const TOWER_MARK_RADIUS = 0.1
 
 /** Начать путь-круг (потом нужно вызвать fill или stroke) */
 export function circle(ctx: Canvas2D, x: number, y: number, radius: number): void {

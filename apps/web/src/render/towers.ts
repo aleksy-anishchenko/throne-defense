@@ -7,6 +7,8 @@ import {
   GOLD,
   PARCHMENT,
   TOWER_IDLE_AIM_ANGLE,
+  TOWER_MARK_OFFSET,
+  TOWER_MARK_RADIUS,
   circle,
   drawNet,
   drawTwinkle,
@@ -742,11 +744,12 @@ function drawTierRing(ctx: Canvas2D, tier: number, aspectId: string | null) {
 }
 
 /** У каждого аспекта свой знак, поэтому их можно различить без цвета. */
-function drawAspectMark(ctx: Canvas2D, aspectId: string) {
+export function drawAspectMark(ctx: Canvas2D, { x, y, aspectId }: Tower) {
+  if (!aspectId) return
   ctx.save()
-  ctx.translate(0.27, -0.27)
+  ctx.translate(x + TOWER_MARK_OFFSET, y + TOWER_MARK_OFFSET)
   ctx.fillStyle = '#252b43'
-  circle(ctx, 0, 0, 0.105)
+  circle(ctx, 0, 0, TOWER_MARK_RADIUS)
   ctx.fill()
   ctx.strokeStyle = aspectColor(aspectId) ?? '#91dbef'
   ctx.lineWidth = 0.022
@@ -845,7 +848,6 @@ export function drawTower(
     ctx.fill()
     ctx.stroke()
   }
-  if (aspectId) drawAspectMark(ctx, aspectId)
 }
 
 // Масштаб и центр рисунка на холсте 96×96: башня размером в 1 клетку занимает 104 px,

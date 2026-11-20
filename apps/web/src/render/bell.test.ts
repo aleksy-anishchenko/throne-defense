@@ -83,13 +83,15 @@ describe('показ бонусов Звонаря', () => {
     expect(focusedBellBuffs(buffs, treasury)).toEqual([])
   })
 
-  it('без выбора рисует векторные колокольчики, но не проценты', () => {
-    const { game } = battery()
+  it('без выбора рисует колокольчики в нижних левых углах клеток', () => {
+    const { game, first, second } = battery()
     const { ctx, calls } = drawingContext()
     drawBellIndicators(ctx, bellBuffs(game.state.towers), null, 40)
     expect(calls.translate).toHaveBeenCalledTimes(2)
     expect(calls.fillText).not.toHaveBeenCalled()
-    expect(calls.arc).toHaveBeenCalled()
+    expect(calls.arc.mock.calls.filter(([, , radius]) => radius === 0.1)).toEqual(
+      [first, second].map(({ x, y }) => [x - 0.39, y + 0.39, 0.1, 0, Math.PI * 2]),
+    )
   })
 
   it('при выборе Звонаря проценты показаны у каждого действительного получателя', () => {

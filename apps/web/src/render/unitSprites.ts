@@ -77,7 +77,7 @@ const frameAtTier = (frames: TierFrames, tier: number) => frames[tier] ?? frames
 
 const TOWER_FOOT_Y = 0.23
 
-let atlas: HTMLImageElement | null = null
+let atlas: HTMLCanvasElement | null = null
 let loading: Promise<boolean> | null = null
 
 /** Магазин и поле используют одну загрузку атласа. */
@@ -85,8 +85,17 @@ export function loadUnitSprites(): Promise<boolean> {
   loading ??= new Promise((resolve) => {
     const image = new Image()
     image.onload = () => {
-      atlas = image
-      resolve(true)
+      // При повороте вырезки прямо из SVG Chrome может захватить часть соседней ячейки.
+      // Рисуем SVG целиком один раз и вырезаем спрайты из готового растра.
+      const bitmap = document.createElement('canvas')
+      bitmap.width = image.naturalWidth
+      bitmap.height = image.naturalHeight
+      const ctx = bitmap.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(image, 0, 0)
+        atlas = bitmap
+      }
+      resolve(atlas !== null)
     }
     image.onerror = () => resolve(false)
     image.src = atlasUrl
@@ -102,7 +111,7 @@ export function unitSpriteSize(id: string): number | undefined {
 
 function drawFrame(
   ctx: Canvas2D,
-  image: HTMLImageElement,
+  image: HTMLCanvasElement,
   index: number,
   size: number,
   anchor: number,
@@ -122,7 +131,7 @@ function drawFrame(
 
 function drawCannon(
   ctx: Canvas2D,
-  image: HTMLImageElement,
+  image: HTMLCanvasElement,
   index: number,
   size: number,
   tier: number,
@@ -145,7 +154,7 @@ function drawCannon(
 
 function drawBell(
   ctx: Canvas2D,
-  image: HTMLImageElement,
+  image: HTMLCanvasElement,
   index: number,
   size: number,
   tier: number,

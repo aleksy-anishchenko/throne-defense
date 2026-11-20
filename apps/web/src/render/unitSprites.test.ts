@@ -4,6 +4,15 @@ import { drawTower } from './towers'
 import { loadUnitSprites } from './unitSprites'
 import atlasSvg from './units-vector.svg?raw'
 
+const atlasPaints: [unknown, number, number][] = []
+const bitmap = {
+  width: 0,
+  height: 0,
+  getContext: () => ({
+    drawImage: (source: unknown, x: number, y: number) => atlasPaints.push([source, x, y]),
+  }),
+}
+
 // Сопоставляем координаты вырезаемого квадрата с именем рисунка в SVG.
 const spriteAt = new Map(
   Array.from(
@@ -15,7 +24,9 @@ const spriteAt = new Map(
 )
 
 function drawnSprites(id: string, tier: number, aspectId: string | null = null, isReady = true) {
-  const drawImage = vi.fn((_image: unknown, x: number, y: number) => spriteAt.get(`${x},${y}`))
+  const drawImage = vi.fn((source: unknown, x: number, y: number) =>
+    source === bitmap ? spriteAt.get(`${x},${y}`) : undefined,
+  )
   const ctx = {
     drawImage,
     save: vi.fn(),
@@ -36,9 +47,12 @@ function drawnSprites(id: string, tier: number, aspectId: string | null = null, 
 }
 
 beforeAll(async () => {
+  vi.stubGlobal('document', { createElement: () => bitmap })
   vi.stubGlobal(
     'Image',
     class {
+      naturalWidth = 768
+      naturalHeight = 2304
       onload?: () => void
       set src(_value: string) {
         this.onload?.()
@@ -50,6 +64,12 @@ beforeAll(async () => {
 afterAll(() => vi.unstubAllGlobals())
 
 describe('SVG-облики стражей', () => {
+  it('переводит атлас в пиксели один раз перед отрисовкой повёрнутых спрайтов', async () => {
+    expect(await loadUnitSprites()).toBe(true)
+    expect(atlasPaints).toEqual([[expect.any(Image), 0, 0]])
+    expect([bitmap.width, bitmap.height]).toEqual([768, 2304])
+  })
+
   const stages = {
     archer: [['archer'], ['archer-ii'], ['archer-iii']],
     ballista: [['ballista'], ['ballista-ii'], ['ballista-iii']],

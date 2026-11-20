@@ -6,7 +6,7 @@ import {
   type BellPreview,
   type TowerBellPreview,
 } from '../utils/bellSupport'
-import { circle, roundedRect, type Canvas2D } from './shapes'
+import { TOWER_MARK_OFFSET, TOWER_MARK_RADIUS, circle, roundedRect, type Canvas2D } from './shapes'
 
 const BELL_BLUE = '#9ddaff'
 const REJECTED = '#f0866a'
@@ -38,19 +38,19 @@ function drawBellGlyph(ctx: Canvas2D, x: number, y: number, size: number) {
   ctx.restore()
 }
 
-/** Знак слева сверху: не перекрывает аспект Баллисты справа и точки ступени снизу. */
+/** Колокольчик занимает нижний левый угол рядом с постаментом. */
 function drawBellMark(ctx: Canvas2D, tower: Tower) {
-  const x = tower.x - 0.28
-  const y = tower.y - 0.27
+  const x = tower.x - TOWER_MARK_OFFSET
+  const y = tower.y + TOWER_MARK_OFFSET
   ctx.save()
-  circle(ctx, x, y, 0.12)
+  circle(ctx, x, y, TOWER_MARK_RADIUS)
   ctx.fillStyle = '#182b45'
   ctx.fill()
   ctx.strokeStyle = BELL_BLUE
-  ctx.lineWidth = 0.018
+  ctx.lineWidth = 0.016
   ctx.stroke()
   ctx.fillStyle = BELL_BLUE
-  drawBellGlyph(ctx, x, y, 0.09)
+  drawBellGlyph(ctx, x, y, 0.076)
   ctx.restore()
 }
 

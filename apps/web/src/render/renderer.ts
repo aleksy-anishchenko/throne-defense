@@ -26,7 +26,7 @@ import {
 import { drawPropFlames } from './props'
 import { drawShot } from './shots'
 import { BUFF_RGB, drawBuffRing } from './statuses'
-import { drawTower } from './towers'
+import { drawAspectMark, drawTower } from './towers'
 import { loadUnitSprites, unitSpritesLoaded } from './unitSprites'
 import {
   drawBellConnections,
@@ -279,7 +279,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       if (popTimeLeft > 0 && !prefersReducedMotion) {
         ctx.scale(1 + popTimeLeft * POP_SCALE, 1 + popTimeLeft * POP_SCALE)
       }
-      // Кольцо выбора лежит под башней: знак аспекта у верхнего края должен оставаться поверх
+      // Кольцо выбора лежит под фигуркой, оставляя свободными углы клетки.
       if (tower === selectedTower) {
         ctx.strokeStyle = GOLD
         ctx.lineWidth = 0.045
@@ -298,6 +298,8 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         effects.towerRecoil(tower),
       )
       ctx.restore()
+      // Значок закреплён в углу клетки и не увеличивается при улучшении стража.
+      drawAspectMark(ctx, tower)
     }
   }
 
