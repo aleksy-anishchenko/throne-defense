@@ -70,6 +70,14 @@ const cannonBarrels = [
   { index: 36, muzzleX: 110 },
   { index: 19, muzzleX: 114 },
 ] as const
+// Индекс направляющей определяет цвет и форму её станка, включая обе специализации.
+const ballistaStands = new Map([
+  [1, 48],
+  [26, 49],
+  [27, 50],
+  [28, 51],
+  [29, 52],
+])
 const trapperReloading: TierFrames = [20, 39, 40]
 const bellMounts: TierFrames = [21, 45, 46]
 
@@ -152,6 +160,25 @@ function drawCannon(
   }
 }
 
+function drawBallista(
+  ctx: Canvas2D,
+  image: HTMLCanvasElement,
+  index: number,
+  size: number,
+  aimAngle: number,
+  recoil: number,
+) {
+  ctx.save()
+  ctx.translate(0, TOWER_FOOT_Y)
+  drawFrame(ctx, image, ballistaStands.get(index) ?? 48, size, FEET)
+  ctx.restore()
+
+  // Направляющая в атласе смотрит вправо, как снаряд с углом 0.
+  ctx.rotate(aimAngle)
+  ctx.translate(-recoil * 0.12, 0)
+  drawFrame(ctx, image, index, size, 0.5)
+}
+
 function drawBell(
   ctx: Canvas2D,
   image: HTMLCanvasElement,
@@ -217,6 +244,9 @@ export function drawTowerSprite(
     case 'cannon':
       drawCannon(ctx, image, index, size, tier, aimAngle, isReady, motion)
       break
+    case 'ballista':
+      drawBallista(ctx, image, index, size, aimAngle, motion)
+      break
     case 'bell':
       drawBell(ctx, image, index, size, tier, time)
       break
@@ -243,8 +273,7 @@ export function drawTowerSprite(
       const aimX = Math.cos(aimAngle)
       const aimY = Math.sin(aimAngle)
       const facing = aimX < -0.02 ? -1 : 1
-      const kick = id === 'ballista' ? 0.12 : 0.065
-      ctx.translate(-aimX * kick * motion, TOWER_FOOT_Y - aimY * kick * motion)
+      ctx.translate(-aimX * 0.065 * motion, TOWER_FOOT_Y - aimY * 0.065 * motion)
       ctx.rotate(-aimX * motion * 0.16)
       ctx.scale(facing, 1 - motion * 0.045)
       const pose = id === 'trapper' && !isReady ? frameAtTier(trapperReloading, tier) : index
