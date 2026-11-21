@@ -14,7 +14,7 @@ import {
 } from '../systems/towers.ts'
 import { buildSpawnQueue, finishWave, getWaveGroups, spawnDueEnemies } from '../systems/waves.ts'
 import { updateBurning, updateShots } from '../systems/combat.ts'
-import { applyReward, rewardStats } from '../systems/rewards.ts'
+import { applyReward, rerollReward, rewardStats } from '../systems/rewards.ts'
 import type {
   GameEvents,
   GameState,
@@ -36,7 +36,7 @@ export interface Game {
   readonly on: Emitter<GameEvents>['on']
 
   /** Начать новую партию. levelDef — в другом зале (у залов одно поле, см. levels/hall-base.ts) */
-  reset(levelDef?: LevelDef): void
+  reset(levelDef?: LevelDef, rewardSeed?: number): void
   /** Идёт ли партия: между волнами (build) или во время волны (wave) */
   isPlaying(): boolean
   /** Лежит ли клетка (столбец, строка) внутри поля. Дробные столбец и строка — не клетка */
@@ -57,8 +57,10 @@ export interface Game {
   sell(col: number, row: number): number | null
   /** Кого башня на клетке выбирает целью. false — если нельзя (нет башни, ей нечего выбирать) */
   setTargetMode(col: number, row: number, mode: TargetMode): boolean
-  /** Выбрать одну из трёх наград после рубежной волны */
+  /** Выбрать одно из предложенных благословений */
   chooseReward(rewardId: RewardId): boolean
+  /** Обновить три предложенные награды за золото */
+  rerollRewards(): boolean
   startWave(): boolean
   /** Добровольно завершить текущую партию поражением */
   surrender(): boolean
@@ -88,7 +90,7 @@ const CELL_CENTER_OFFSET = 0.5
  */
 const MAX_PENDING_TIME = 1
 
-function initialState(level: Level): GameState {
+function initialState(level: Level, rewardSeed = 0): GameState {
   return {
     phase: 'idle',
     wave: 1,
@@ -96,6 +98,7 @@ function initialState(level: Level): GameState {
     gold: level.def.startGold,
     lives: level.def.startLives,
     maxLives: level.def.startLives,
+    lastThroneDamageWave: 0,
     score: 0,
     kills: 0,
     isEndless: false,
@@ -110,6 +113,7 @@ function initialState(level: Level): GameState {
     splitQueue: [],
     waveTime: 0,
     nextId: 1,
+    rewardSeed,
     pendingReward: null,
     selectedRewards: [],
   }
@@ -180,7 +184,7 @@ export function createGame(levelDef: LevelDef): Game {
     towerAt,
     step,
 
-    reset(nextLevelDef) {
+    reset(nextLevelDef, rewardSeed) {
       if (nextLevelDef && nextLevelDef !== level.def) {
         level = createLevel(nextLevelDef)
         world.level = level
@@ -188,7 +192,7 @@ export function createGame(levelDef: LevelDef): Game {
       // Скорость — настройка игрока, а не часть партии: сохраняем её
       const { speed } = state
       // Object.assign, а не новый объект: кто держит ссылку на state, увидит новую партию
-      Object.assign(state, initialState(level))
+      Object.assign(state, initialState(level, rewardSeed))
       state.phase = 'build'
       state.speed = speed
       pendingTime = 0
@@ -221,6 +225,7 @@ export function createGame(levelDef: LevelDef): Game {
         upgradeGoldPaid: 0,
         hunterTargetId: null,
         hunterStacks: 0,
+        shotsSinceDouble: 0,
       }
       state.towers.push(tower)
       state.towersByCell.set(cellKey(col, row), tower)
@@ -298,9 +303,17 @@ export function createGame(levelDef: LevelDef): Game {
     },
 
     chooseReward(rewardId) {
-      const picked = applyReward(state, rewardId)
+      const picked = applyReward(state, rewardId, level.def.id)
       if (!picked) return false
       events.emit('rewardChosen', picked)
+      if (state.pendingReward) events.emit('rewardOffered', state.pendingReward)
+      return true
+    },
+
+    rerollRewards() {
+      const offer = rerollReward(state, level.def.id)
+      if (!offer) return false
+      events.emit('rewardOffered', offer)
       return true
     },
 

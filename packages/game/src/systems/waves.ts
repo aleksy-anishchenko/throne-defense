@@ -2,9 +2,10 @@
 
 import { SCORE, waveBonus } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
+import { rewardSegmentForWave } from '../data/rewards.ts'
 import type { Level, SpawnEntry, WaveGroup, World } from '../types.ts'
 import { spawnEnemy } from './enemies.ts'
-import { isRewardWave, offerReward, rewardStats } from './rewards.ts'
+import { offerReward, rewardStats } from './rewards.ts'
 import { payTowerIncome } from './towers.ts'
 
 /** Состав волны waveNumber (после последней — бесконечный режим) */
@@ -50,14 +51,21 @@ export function finishWave(world: World): void {
     state.score += state.lives * SCORE.perLife
     state.phase = 'won'
     world.emit('victory', undefined)
-  } else if (!state.isEndless && isRewardWave(state.wave)) {
-    const pendingReward = offerReward(state, state.wave, world.level.def.id)
-    state.wave++
-    world.emit('rewardOffered', pendingReward)
-  } else {
-    state.phase = 'build'
-    state.wave++
+    return
   }
+
+  const wave = state.wave
+  state.wave++
+  state.phase = 'build'
+  if (state.isEndless) return
+
+  const segment = rewardSegmentForWave(wave)
+  if (segment?.lastWave !== wave) return
+  if (state.lastThroneDamageWave >= segment.firstWave) {
+    world.emit('rewardMissed', segment)
+    return
+  }
+  world.emit('rewardOffered', offerReward(state, wave, world.level.def.id))
 }
 
 /** Очки за врага, если убить и его, и всех, на кого он распадается (Горыныч → змеёныши) */

@@ -13,15 +13,22 @@ import {
   LEVELS,
   PLAYABLE_LEVELS,
   MAX_SPEED,
+  REWARDS,
+  REWARD_SETS,
+  REWARD_SET_SIZE,
   TOWERS,
   createGame,
+  rewardRerollCost,
+  rewardSetCounts,
+  rewardStats,
   type LevelDef,
+  type PendingReward,
   type Phase,
   type RewardId,
   type RewardPick,
 } from '@throne/game'
 import { defineStore } from 'pinia'
-import { markRaw, nextTick, reactive, ref, watch } from 'vue'
+import { computed, markRaw, nextTick, reactive, ref, watch } from 'vue'
 import { fetchLeaderboard, submitRun } from '@/api/leaderboard'
 import { audioEngine } from '@/audio/engine'
 import { connectGameSounds, musicMoodFor } from '@/audio/gameSounds'
@@ -90,6 +97,7 @@ export const useGameStore = defineStore('game', () => {
     waveCount: game.level.waveCount,
     gold: state.gold,
     lives: state.lives,
+    lastThroneDamageWave: state.lastThroneDamageWave,
     score: state.score,
     wavesCleared: state.wavesCleared,
     isPaused: state.isPaused,
@@ -105,6 +113,7 @@ export const useGameStore = defineStore('game', () => {
     hud.wave = state.wave
     hud.gold = state.gold
     hud.lives = state.lives
+    hud.lastThroneDamageWave = state.lastThroneDamageWave
     hud.score = state.score
     hud.wavesCleared = state.wavesCleared
     hud.isPaused = state.isPaused
@@ -123,13 +132,20 @@ export const useGameStore = defineStore('game', () => {
   /** Выбор благословения и уже полученные награды — снимок для Vue */
   const rewards = reactive({
     wave: 0,
+    kind: null as PendingReward['kind'] | null,
     options: [] as RewardId[],
+    rerollCost: null as number | null,
     selected: [] as RewardPick[],
   })
+  const blessingEffects = computed(() => rewardStats({ selectedRewards: rewards.selected }))
 
   function syncRewards() {
-    rewards.wave = state.pendingReward?.wave ?? 0
-    rewards.options = state.pendingReward ? [...state.pendingReward.options] : []
+    const pending = state.pendingReward
+    rewards.wave = pending?.wave ?? 0
+    rewards.kind = pending?.kind ?? null
+    rewards.options = pending ? [...pending.options] : []
+    rewards.rerollCost =
+      pending?.kind === 'wave' ? rewardRerollCost(pending.wave, pending.rerolls) : null
     rewards.selected = state.selectedRewards.map((reward) => ({ ...reward }))
   }
 
@@ -304,12 +320,23 @@ export const useGameStore = defineStore('game', () => {
   })
   game.on('rewardOffered', () => {
     syncRewards()
+    syncHud()
     screen.value = 'reward'
   })
-  game.on('rewardChosen', () => {
+  game.on('rewardMissed', ({ firstWave, lastWave }) => {
+    syncHud()
+    void showToast(`Благословение за волны ${firstWave}–${lastWave} упущено`)
+  })
+  game.on('rewardChosen', ({ rewardId }) => {
+    // Если открылся «Дар короны», экран обновится по событию rewardOffered.
+    if (state.pendingReward) return
     syncRewards()
     syncHud()
     screen.value = null
+    const { setId } = REWARDS[rewardId]
+    if (rewardSetCounts(state.selectedRewards)[setId] === REWARD_SET_SIZE) {
+      void showToast(`Набор «${REWARD_SETS[setId].name}» собран`)
+    }
   })
   game.on('victory', () => {
     saveResultIfBest()
@@ -351,7 +378,7 @@ export const useGameStore = defineStore('game', () => {
     // Каждая следующая партия — в новом случайном зале (не в том же, что сейчас)
     const nextLevel = forcedLevel ?? (hasPlayed ? randomLevel(game.level.def.id) : game.level.def)
     hasPlayed = true
-    game.reset(nextLevel)
+    game.reset(nextLevel, Math.floor(Math.random() * 2 ** 32))
     hud.levelName = game.level.def.name
     runCount.value++
     forgetFinishedRun()
@@ -378,6 +405,10 @@ export const useGameStore = defineStore('game', () => {
 
   function chooseReward(rewardId: RewardId): boolean {
     return game.chooseReward(rewardId)
+  }
+
+  function rerollRewards(): boolean {
+    return game.rerollRewards()
   }
 
   function cycleSpeed() {
@@ -464,6 +495,7 @@ export const useGameStore = defineStore('game', () => {
     hud,
     screen,
     rewards,
+    blessingEffects,
     audioSettings,
     toast,
     bumpCounters,
@@ -480,6 +512,7 @@ export const useGameStore = defineStore('game', () => {
     rejectAction,
     startWave,
     chooseReward,
+    rerollRewards,
     cycleSpeed,
     togglePause,
     pauseIfFighting,

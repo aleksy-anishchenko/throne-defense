@@ -36,6 +36,7 @@ try {
     console.log(`\n${candidate.name}`)
     for (const id of ['throne-hall', 'svetlitsa', 'anubis-temple']) {
       const level = PLAYABLE_LEVELS.find((entry) => entry.id === id)!
+      const finalWaves = [level.waves.length - 1, level.waves.length]
       const leaks = new Map<number, string[]>()
       const states = new Map<number, string>()
       let listening = false
@@ -50,7 +51,7 @@ try {
           listening = true
         }
         const wave = game.state.wave
-        if (wave >= 19) {
+        if (finalWaves.includes(wave)) {
           const towers = game.state.towers
             .map((tower) => `${tower.def.id} ${tower.tier + 1}@${tower.col},${tower.row}`)
             .join('; ')
@@ -60,7 +61,7 @@ try {
       const result = playBot(level, strategy, Infinity, observe)
       if (result.outcome === 'stuck') throw new Error(`${level.id}: зависшая волна`)
       console.log(`  ${level.name}: ${result.wavesCleared} отбитых, ${result.outcome}`)
-      for (const wave of [19, 20]) {
+      for (const wave of finalWaves) {
         console.log(`    ${wave}: ${states.get(wave) ?? 'не дошёл'}`)
         if (states.has(wave))
           console.log(`    прорывы: ${(leaks.get(wave) ?? []).join(', ') || 'нет'}`)

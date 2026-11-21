@@ -221,7 +221,7 @@ describe('отмена аспекта и продажа', () => {
 
   it('после начала волны аспект закрепляется и продаётся на общих условиях', () => {
     const { game, tower } = setUp('giant-slayer')
-    game.state.wave = 19
+    game.state.wave = 20
     game.startWave()
     expect(tower.aspectLocked).toBe(true)
     expect(tower.goldSinceLastWave).toBe(0)
@@ -239,7 +239,7 @@ describe('отмена аспекта и продажа', () => {
 
   it('старую башню с новым аспектом продаёт за 60% башни + 100% аспекта', () => {
     const { game, tower } = setUp()
-    game.state.wave = 19
+    game.state.wave = 20
     game.startWave()
     game.state.spawnQueue = []
     game.step(SIMULATION_STEP)
@@ -257,12 +257,12 @@ describe('отмена аспекта и продажа', () => {
 })
 
 describe('Сокрушитель', () => {
-  it('исполины — только огр, Горыныч и Узурпатор', () => {
+  it('генерал относится к исполинам вместе с ограми, Горынычами и Узурпатором', () => {
     expect(
       Object.values(ENEMIES)
         .filter((enemy) => enemy.isGiant)
         .map((enemy) => enemy.id),
-    ).toEqual(['ogre', 'gorynych', 'boss'])
+    ).toEqual(['ogre', 'gorynych', 'general', 'boss'])
   })
 
   it.each(Object.keys(ENEMIES))('%s: бонус определяется типом каждого задетого врага', (id) => {
@@ -328,14 +328,30 @@ describe('Сокрушитель', () => {
 })
 
 describe('Раскол лат', () => {
-  it.each(['armor', 'gorynych', 'boss'])('%s: снимает броню уже для самого попадания', (id) => {
+  it.each(['armor', 'gorynych', 'general', 'boss'])(
+    '%s: снимает броню уже для самого попадания',
+    (id) => {
+      const { game, tower } = setUp('armor-breaker')
+      const enemy = targetAt(game, tower, id)
+      shoot(game, tower, enemy)
+      updateShots(worldOf(game), 0.2)
+      expect(enemy.maxHp - enemy.hp).toBeCloseTo(195)
+      expect(enemy.armorBreakTimeLeft).toBe(4)
+      expect(ENEMIES[id].armor).toBeGreaterThan(0)
+    },
+  )
+
+  it('снимает прибавку от знамени даже у бойца без собственной брони', () => {
     const { game, tower } = setUp('armor-breaker')
-    const enemy = targetAt(game, tower, id)
+    const enemy = targetAt(game, tower, 'rebel')
+    const general = placeEnemy(game, 'general')
+    general.x = enemy.x
+    general.y = enemy.y + 1
+
     shoot(game, tower, enemy)
     updateShots(worldOf(game), 0.2)
-    expect(enemy.maxHp - enemy.hp).toBeCloseTo(195)
     expect(enemy.armorBreakTimeLeft).toBe(4)
-    expect(ENEMIES[id].armor).toBeGreaterThan(0)
+    expect(enemy.maxHp - enemy.hp).toBe(195)
   })
 
   it('снятие брони действует для обоих пробитых врагов, но не для остальных экземпляров', () => {

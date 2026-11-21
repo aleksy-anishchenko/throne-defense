@@ -28,6 +28,7 @@ describe('проверка уровня при загрузке', () => {
     expect(() => createLevel(throneHall)).not.toThrow()
   })
 
+  const invalidEndlessWave = throneHall.waves.length + 5
   const broken: { name: string; patch: Partial<LevelDef>; message: string }[] = [
     {
       name: 'неизвестный враг',
@@ -89,9 +90,9 @@ describe('проверка уровня при загрузке', () => {
       name: 'опечатка в бесконечном режиме',
       patch: {
         endlessWaveGroups: (waveNumber) =>
-          waveNumber === 25 ? [['dragon', 1, 0, 0]] : [['rebel', 1, 0, 0]],
+          waveNumber === invalidEndlessWave ? [['dragon', 1, 0, 0]] : [['rebel', 1, 0, 0]],
       },
-      message: 'неизвестный враг «dragon» в волне 25',
+      message: `неизвестный враг «dragon» в волне ${invalidEndlessWave}`,
     },
   ]
 

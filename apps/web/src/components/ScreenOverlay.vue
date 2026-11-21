@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // Экран поверх поля: заставка, поражение, победа, таблица лучших, настройки
+import { REWARD_SETS } from '@throne/game'
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { keepDialogFocus } from '@/composables/useMenuFocus'
 import { useGameStore } from '@/stores/game'
 import { formatNumber } from '@/utils/format'
 import { shareResult } from '@/utils/share'
@@ -10,6 +12,7 @@ import RewardChoice from './RewardChoice.vue'
 import RunSubmission from './RunSubmission.vue'
 
 const store = useGameStore()
+const isCrownGift = computed(() => store.rewards.kind === 'crown-gift')
 /** Какая версия выложена: «хеш коммита · дата сборки» (видно в меню) */
 const appVersion = __APP_VERSION__
 const buttonsRow = useTemplateRef('buttonsRow')
@@ -94,9 +97,11 @@ const screenContent = computed(() => {
       }
     case 'reward':
       return {
-        title: 'Выберите благословение',
-        text: `Волна ${store.rewards.wave} отбита. Одна из трёх наград останется до конца партии.`,
-        note: 'Выбранные благословения складываются.',
+        title: isCrownGift.value ? REWARD_SETS.supplies.name : 'Выберите благословение',
+        text: isCrownGift.value
+          ? 'Выберите одно из двух обычных благословений.'
+          : 'Награда за волны без урона по трону',
+        note: '',
         buttons: [],
       }
     case 'surrender':
@@ -145,51 +150,64 @@ async function focusScreen() {
 }
 
 onMounted(focusScreen)
-watch(
-  () => store.screen,
-  () => {
-    shareNote.value = ''
-    focusScreen()
-  },
-)
+watch([() => store.screen, () => store.rewards.kind], () => {
+  shareNote.value = ''
+  focusScreen()
+})
 </script>
 
 <template>
-  <div v-if="screenContent" class="overlay">
+  <div
+    v-if="screenContent"
+    class="overlay"
+    :class="{ 'reward-overlay': store.screen === 'reward' }"
+  >
     <!-- role="dialog" и aria-modal: скринридер понимает, что под экраном ничего нет -->
     <div
       ref="sheet"
       class="sheet"
-      :class="{ 'sheet-wide': store.screen === 'reward' }"
+      :class="{
+        'reward-sheet': store.screen === 'reward',
+        'reward-gift-sheet': store.screen === 'reward' && isCrownGift,
+      }"
       role="dialog"
       aria-modal="true"
       aria-labelledby="screen-title"
+      :aria-describedby="store.screen === 'reward' ? 'reward-caption' : undefined"
       tabindex="-1"
+      @keydown="keepDialogFocus($event, sheet)"
     >
-      <h1 id="screen-title">{{ screenContent.title }}</h1>
-      <p v-if="screenContent.text">{{ screenContent.text }}</p>
-      <p v-if="shareNote || screenContent.note" class="note">
-        {{ shareNote || screenContent.note }}
-      </p>
-      <RunSubmission v-if="store.screen === 'defeat' || store.screen === 'victory'" />
-      <LeaderboardTable v-if="store.screen === 'leaderboard'" />
-      <AudioSettings v-if="store.screen === 'settings'" />
-      <RewardChoice v-if="store.screen === 'reward'" />
-      <div ref="buttonsRow" class="buttons">
-        <button
-          v-for="(button, i) in screenContent.buttons"
-          :key="button.label"
-          class="btn"
-          :class="{ primary: i === 0, danger: button.label === 'Да, сдаться' }"
-          type="button"
-          @click="button.action"
-        >
-          {{ button.label }}
-        </button>
-      </div>
-      <p v-if="store.screen === 'menu' && !store.isPlaying()" class="version">
-        Версия {{ appVersion }}
-      </p>
+      <RewardChoice
+        v-if="store.screen === 'reward'"
+        :key="store.rewards.kind ?? undefined"
+        :title="screenContent.title"
+        :caption="screenContent.text"
+      />
+      <template v-else>
+        <h1 id="screen-title">{{ screenContent.title }}</h1>
+        <p v-if="screenContent.text">{{ screenContent.text }}</p>
+        <p v-if="shareNote || screenContent.note" class="note">
+          {{ shareNote || screenContent.note }}
+        </p>
+        <RunSubmission v-if="store.screen === 'defeat' || store.screen === 'victory'" />
+        <LeaderboardTable v-if="store.screen === 'leaderboard'" />
+        <AudioSettings v-if="store.screen === 'settings'" />
+        <div v-if="screenContent.buttons.length" ref="buttonsRow" class="buttons">
+          <button
+            v-for="(button, i) in screenContent.buttons"
+            :key="button.label"
+            class="btn"
+            :class="{ primary: i === 0, danger: button.label === 'Да, сдаться' }"
+            type="button"
+            @click="button.action"
+          >
+            {{ button.label }}
+          </button>
+        </div>
+        <p v-if="store.screen === 'menu' && !store.isPlaying()" class="version">
+          Версия {{ appVersion }}
+        </p>
+      </template>
     </div>
   </div>
 </template>

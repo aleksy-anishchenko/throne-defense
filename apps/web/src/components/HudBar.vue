@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { summarizeRewards } from '@throne/game'
-import { computed, useTemplateRef } from 'vue'
+import { rewardSegmentForWave } from '@throne/game'
+import { computed } from 'vue'
 import { useGameStore } from '@/stores/game'
 
 const store = useGameStore()
-const blessingDetails = useTemplateRef<HTMLDetailsElement>('blessingDetails')
 
 /** Когда жизней трона осталось столько или меньше, счётчик подсвечивается */
 const LOW_LIVES_THRESHOLD = 5
@@ -16,15 +15,18 @@ const waveLabel = computed(() =>
     : `Волна ${store.hud.wave} из ${store.hud.waveCount}`,
 )
 
-const blessings = computed(() => summarizeRewards(store.rewards.selected))
-
-function openBlessingsOnHover(event: PointerEvent) {
-  if (event.pointerType === 'mouse' && blessingDetails.value) blessingDetails.value.open = true
-}
-
-function closeBlessingsAfterHover(event: PointerEvent) {
-  if (event.pointerType === 'mouse' && blessingDetails.value) blessingDetails.value.open = false
-}
+const rewardStatus = computed(() => {
+  const { phase, wave, waveCount, lastThroneDamageWave } = store.hud
+  if (phase !== 'build' && phase !== 'wave') return null
+  const segment = rewardSegmentForWave(wave)
+  if (!segment || segment.lastWave >= waveCount) return null
+  const waves = `${segment.firstWave}–${segment.lastWave}`
+  const missed = lastThroneDamageWave >= segment.firstWave
+  return {
+    missed,
+    text: missed ? `Бонус за волны ${waves} упущен` : `Бонус за волны ${waves} без урона`,
+  }
+})
 </script>
 
 <template>
@@ -59,26 +61,9 @@ function closeBlessingsAfterHover(event: PointerEvent) {
       <span class="wave-label">{{ waveLabel }}</span>
       <!-- Зал выпадает на партию случайно — его название под номером волны -->
       <small class="hud-level">{{ store.hud.levelName }}</small>
+      <small v-if="rewardStatus" class="hud-reward" :class="{ missed: rewardStatus.missed }">
+        {{ rewardStatus.text }}
+      </small>
     </span>
-    <details
-      v-if="blessings.length"
-      ref="blessingDetails"
-      class="blessings"
-      @pointerenter="openBlessingsOnHover"
-      @pointerleave="closeBlessingsAfterHover"
-    >
-      <summary :aria-label="`Благословения: ${store.rewards.selected.length}`">
-        ✦ {{ store.rewards.selected.length }}
-      </summary>
-      <ul>
-        <li v-for="blessing in blessings" :key="blessing.rewardId">
-          <strong>
-            {{ blessing.name }}
-            <span v-if="blessing.count > 1">×{{ blessing.count }}</span>
-          </strong>
-          <small>{{ blessing.description }}</small>
-        </li>
-      </ul>
-    </details>
   </header>
 </template>

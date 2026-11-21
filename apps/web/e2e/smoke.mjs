@@ -88,6 +88,29 @@ const waitForFrames = (page) =>
     () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
   )
 
+async function finishWave(page, wave, rewardSeed) {
+  await page.evaluate(
+    ({ wave, rewardSeed }) => {
+      const { game } = window.__throne
+      if (rewardSeed !== undefined) game.state.rewardSeed = rewardSeed
+      Object.assign(game.state, {
+        wave,
+        waveTime: 0,
+        spawnQueue: [],
+        enemies: [],
+        phase: 'wave',
+      })
+      game.step(1 / 60)
+    },
+    { wave, rewardSeed },
+  )
+}
+
+async function finishRewardWave(page, wave, rewardSeed) {
+  await finishWave(page, wave, rewardSeed)
+  await page.getByRole('heading', { name: 'Выберите благословение' }).waitFor({ timeout: 5000 })
+}
+
 /**
  * Снять фокус с кнопки. Пробел на кнопке по задумке нажимает саму кнопку,
  * а нам нужно, чтобы он дошёл до игры. (body.focus() не помогает: body не фокусируется.)
@@ -218,6 +241,25 @@ async function checkStartButtonVisible(page) {
       bounds.x + bounds.width <= width &&
       bounds.y + bounds.height <= height,
     JSON.stringify(bounds),
+  )
+}
+
+async function checkFullRewardInventoryFits(page) {
+  const { width, height } = page.viewportSize()
+  const buttons = await page.locator('.reward-inventory-button').evaluateAll((entries) =>
+    entries.map((entry) => {
+      const { top, right, bottom, left } = entry.getBoundingClientRect()
+      return { top, right, bottom, left }
+    }),
+  )
+  check(
+    `${width}×${height}: семь значков благословений целиком на экране`,
+    buttons.length === 7 &&
+      buttons.every(
+        ({ top, right, bottom, left }) =>
+          top >= 0 && right <= width && bottom <= height && left >= 0,
+      ),
+    JSON.stringify(buttons),
   )
 }
 
@@ -928,8 +970,8 @@ async function desktop(browser, url) {
     JSON.stringify(snapshot),
   )
   check(
-    'шапка «Волна 2 из 20» и название зала',
-    (await page.locator('.hud .wave-label').textContent()) === 'Волна 2 из 20' &&
+    'шапка «Волна 2 из 30» и название зала',
+    (await page.locator('.hud .wave-label').textContent()) === 'Волна 2 из 30' &&
       (await page.locator('.hud .hud-level').textContent()) === 'Тронный зал',
   )
   check(
@@ -1079,35 +1121,98 @@ async function desktop(browser, url) {
     JSON.stringify(music),
   )
 
-  // Рогалик: после 5/10/15/19-й волны партия ждёт выбора одной из трёх наград.
-  await page.evaluate(() => {
-    const { game } = window.__throne
-    game.state.wave = 5
-    game.state.waveTime = 0
-    game.state.spawnQueue = []
-    game.state.enemies = []
-    game.state.phase = 'wave'
-  })
-  await page.getByRole('heading', { name: 'Выберите благословение' }).waitFor({
-    timeout: 5000,
-  })
+  // Фиксируем розыгрыш: три редкости, а после обновления доступны «Заточенные клинки».
+  const rewardGoal = page.locator('.hud-reward')
+  check(
+    'в шапке видна цель первого отрезка',
+    (await rewardGoal.innerText()) === 'Бонус за волны 1–5 без урона',
+  )
+  await finishRewardWave(page, 5, 1195)
   const rewardCards = page.locator('.reward-card')
   const rewardNames = await rewardCards.locator('strong').allTextContents()
-  const firstRewardDescription = await rewardCards
-    .first()
-    .locator('.reward-description')
-    .textContent()
   check(
-    'после 5-й волны три разные награды и поле под ними выключено',
+    'после 5-й волны видны три разные награды с редкостью, поле под ними выключено',
     rewardNames.length === 3 &&
       new Set(rewardNames).size === 3 &&
+      new Set(await rewardCards.locator('.reward-rarity').allTextContents()).size === 3 &&
+      (await page.locator('.reward-caption').innerText()) ===
+        'Награда за волны без урона по трону' &&
       (await page.evaluate(() =>
         ['.hud', '.stage', '.panel'].every((selector) => document.querySelector(selector).inert),
       )),
     rewardNames.join(', '),
   )
+  const desktopRewardBounds = await rewardCards.evaluateAll((cards) =>
+    cards.map((card) => {
+      const { left, width, top, bottom } = card.getBoundingClientRect()
+      return { left, width, top, bottom }
+    }),
+  )
+  check(
+    'на компьютере карточки стоят друг под другом',
+    desktopRewardBounds.length === 3 &&
+      desktopRewardBounds.every(
+        ({ left, width, top }, index) =>
+          left === desktopRewardBounds[0].left &&
+          width === desktopRewardBounds[0].width &&
+          (index === 0 || top >= desktopRewardBounds[index - 1].bottom),
+      ),
+    JSON.stringify(desktopRewardBounds),
+  )
   const pendingReward = await readGameSnapshot(page)
-  await rewardCards.first().click()
+  check(
+    'карточка «Разгрузочный день» показывает, кому снижено здоровье',
+    (await rewardCards
+      .filter({ hasText: 'Разгрузочный день' })
+      .locator('.reward-description')
+      .innerText()) === 'У боссов и полубоссов на 20% меньше здоровья',
+  )
+  check(
+    '«Целебный обоз» доступен и при полном здоровье',
+    pendingReward.lives === 20 && rewardNames.includes('Целебный обоз'),
+  )
+  const rerollButton = page.getByRole('button', { name: /Обновить варианты/ })
+  const rerollPrice = rerollButton.locator('.reward-reroll-cost')
+  await rewardCards.last().focus()
+  await page.keyboard.press('Tab')
+  const wrappedToStart = await rerollButton.evaluate((button) => document.activeElement === button)
+  await page.keyboard.press('Shift+Tab')
+  check(
+    'Tab и Shift+Tab удерживают фокус в окне благословений',
+    wrappedToStart &&
+      (await rewardCards.last().evaluate((card) => document.activeElement === card)),
+  )
+  const rerollBounds = await rerollButton.boundingBox()
+  const firstRewardBounds = await rewardCards.first().boundingBox()
+  check(
+    'над карточками компактная кнопка обновления с ценой −60 и монетой',
+    rerollBounds &&
+      firstRewardBounds &&
+      rerollBounds.y + rerollBounds.height <= firstRewardBounds.y &&
+      (await rerollButton.innerText()).trim() === '−60' &&
+      (await rerollButton.locator('.reward-coin').isVisible()) &&
+      !(await page.locator('.reward-sheet').innerText()).includes('В запасе'),
+  )
+  await rerollButton.press('Enter')
+  const rerolledReward = await readGameSnapshot(page)
+  const rerolledNames = await rewardCards.locator('strong').allTextContents()
+  check(
+    'обновление заменяет все карточки, списывает 60 золота и сохраняет фокус в диалоге',
+    rerolledNames.length === 3 &&
+      rerolledNames.every((name) => !rewardNames.includes(name)) &&
+      rerolledReward.gold === pendingReward.gold - 60 &&
+      rerolledReward.phase === 'reward' &&
+      (await rerollPrice.innerText()).trim() === '−80' &&
+      (await rewardCards.first().evaluate((card) => document.activeElement === card)),
+    rerolledNames.join(', '),
+  )
+  const blades = rewardCards.filter({ hasText: 'Заточенные клинки' })
+  check(
+    '«Заточенные клинки» стали легендарными и дают +18% урона',
+    (await blades.getAttribute('data-rarity')) === 'legendary' &&
+      (await blades.locator('.reward-description').innerText()).includes('+18%'),
+  )
+  await blades.click()
   await waitForFrames(page)
   const chosenReward = await readGameSnapshot(page)
   check(
@@ -1115,63 +1220,187 @@ async function desktop(browser, url) {
     (await page.locator('.overlay').count()) === 0 &&
       chosenReward.phase === 'build' &&
       chosenReward.rewardWave === null &&
-      chosenReward.rewards.length === 1 &&
+      chosenReward.rewards.join(',') === 'sharpened-steel' &&
       pendingReward.rewardWave === 5,
     JSON.stringify({ pendingReward, chosenReward }),
   )
+  const bladesIcon = page.getByRole('button', { name: /Заточенные клинки ×/ })
+  const inventoryBounds = await bladesIcon.boundingBox()
+  const boardBounds = await page.locator('#board').boundingBox()
   check(
-    'полученное благословение видно в шапке',
-    (await page.locator('.blessings summary').textContent())?.trim() === '✦ 1',
+    'SVG-значок благословения расположен слева от поля',
+    inventoryBounds.x + inventoryBounds.width <= boardBounds.x &&
+      (await bladesIcon.locator('img').evaluate((icon) => icon.complete && icon.naturalWidth > 0)),
   )
-  await page.locator('.blessings summary').hover()
-  const blessingEffect = await page.locator('.blessings li small').textContent()
+  await bladesIcon.hover()
+  const tooltip = page.getByRole('tooltip')
+  const tooltipPips = tooltip.locator('.reward-set-pips')
   check(
-    'при наведении на счётчик видно, какой бонус сейчас работает',
-    (await page.locator('.blessings ul').isVisible()) &&
-      Boolean(blessingEffect?.trim()) &&
-      (await page.locator('.blessings li strong').textContent())?.includes(rewardNames[0].trim()),
-    blessingEffect ?? '',
+    'наведение показывает эффект набора ×2, один заполненный ромб и один пустой',
+    (await tooltip.isVisible()) &&
+      (await tooltip.innerText()).includes('+18% ко всему урону стражей') &&
+      (await tooltip.locator('.reward-set-threshold').innerText()).includes('×2') &&
+      (await tooltip.locator('.reward-set-title').innerText()) === 'Гнев стражи' &&
+      (await tooltip.locator('.reward-set-effect').innerText()).includes('+10%') &&
+      (await tooltipPips.locator('span').count()) === 2 &&
+      (await tooltipPips.locator('.is-filled').count()) === 1 &&
+      (await tooltipPips.locator('.is-preview').count()) === 0,
   )
+  await page.keyboard.press('Escape')
+  check('Escape закрывает подсказку', !(await tooltip.isVisible()))
+  await page.locator('#board').focus()
+  await page.keyboard.press('Shift+Tab')
+  check('фокус с клавиатуры показывает подсказку', await tooltip.isVisible())
 
-  // Второй рубеж показывает описание уже выбранной награды в истории снизу.
+  // Двигаем вышедшего бунтовщика до трона и даём игре самой засчитать урон.
   await page.evaluate(() => {
     const { game } = window.__throne
-    game.state.wave = 15
-    game.state.waveTime = 0
-    game.state.spawnQueue = []
-    game.state.enemies = []
-    game.state.phase = 'wave'
+    game.state.wave = 6
+    game.startWave()
+    game.step(1 / 60)
+    game.state.enemies[0].pathDistance = game.level.path.length
+    game.step(1 / 60)
   })
-  await page.getByRole('heading', { name: 'Выберите благословение' }).waitFor({
-    timeout: 5000,
-  })
+  await waitForFrames(page)
   check(
-    'история выбора описывает действие прошлого благословения',
-    (await page.locator('.reward-history-effect').count()) === 1 &&
-      (await page.locator('.reward-history-effect').textContent())?.trim() ===
-        firstRewardDescription?.trim(),
-    (await page.locator('.reward-history-effect').textContent()) ?? '',
+    'после прорыва шапка показывает пропуск текущего отрезка',
+    (await rewardGoal.innerText()) === 'Бонус за волны 6–10 упущен' &&
+      (await readGameSnapshot(page)).lives === 19,
+  )
+  await finishWave(page, 10)
+  await waitForFrames(page)
+  check(
+    'после 10-й волны с прорывом выбор пропущен, открыт следующий отрезок',
+    (await page.locator('.overlay').count()) === 0 &&
+      (await readGameSnapshot(page)).wave === 11 &&
+      (await page.locator('.toast').innerText()).includes('Благословение за волны 6–10 упущено') &&
+      (await rewardGoal.innerText()) === 'Бонус за волны 11–15 без урона',
+  )
+  await finishRewardWave(page, 15, 21)
+  const bladesSet = blades.locator('.reward-card-set')
+  check(
+    'повторная карточка показывает копию, сбор набора и сброшенную цену обновления',
+    (await blades.locator('.reward-count').innerText()).trim() === '×1' &&
+      (await bladesSet.locator('.reward-set-threshold').innerText()).includes('×2') &&
+      (await bladesSet.locator('.reward-set-pips .is-filled').count()) === 1 &&
+      (await bladesSet.locator('.reward-set-pips .is-preview').count()) === 1 &&
+      (await bladesSet.locator('.reward-set-effect').innerText()).includes('+10%') &&
+      (await blades.locator('.reward-set-ready').isVisible()) &&
+      (await rerollPrice.innerText()).trim() === '−100',
   )
   check(
-    'после 15-й волны нет отложенных экономических наград',
-    !(await page.locator('.reward-card').allTextContents())
-      .join(' ')
-      .match(/Щедрая награда|Военный налог/),
+    'после 15-й волны может выпасть «Щедрая награда»',
+    await rewardCards.filter({ hasText: 'Щедрая награда' }).isVisible(),
+  )
+  await blades.click()
+  await waitForFrames(page)
+  check(
+    'завершение набора показывает сообщение',
+    (await page.locator('.toast').innerText()).includes('Набор «Гнев стражи» собран'),
+  )
+  await bladesIcon.hover()
+  check(
+    'две копии на значке, в подсказке общий эффект, бонус набора и два заполненных ромба',
+    (await bladesIcon.locator('.reward-count').innerText()).trim() === '×2' &&
+      (await tooltip.innerText()).includes('+36% ко всему урону стражей') &&
+      (await tooltip.locator('.reward-set-effect').innerText()).includes(
+        '+10% ко всему урону стражей',
+      ) &&
+      (await tooltipPips.locator('span').count()) === 2 &&
+      (await tooltipPips.locator('.is-filled').count()) === 2,
+  )
+
+  // Проверяем состав двух волн и переходы между этапами. Бои сокращаем после выхода врагов.
+  await page.evaluate(() => {
+    const { game, store } = window.__throne
+    game.state.wave = 20
+    store.syncHud()
+  })
+  await waitForFrames(page)
+  const generalHint = await page.locator('#hint').innerText()
+  check(
+    'на 20-й волне объявлен генерал и описано знамя',
+    generalHint.includes('1 генерал мятежников') && generalHint.includes('+3 брони'),
+    generalHint,
+  )
+  await page.getByRole('button', { name: 'Начать волну' }).click()
+  const generalWave = await page.evaluate(() => {
+    const { game } = window.__throne
+    for (let step = 0; step < 120; step++) game.step(1 / 60)
+    return game.state.enemies.map((enemy) => enemy.def.id)
+  })
+  check(
+    'на 20-й волне вышли генерал и латники',
+    generalWave.includes('general') &&
+      generalWave.includes('armor') &&
+      !generalWave.includes('boss'),
+  )
+  await page.evaluate(() => {
+    const { game } = window.__throne
+    game.state.spawnQueue = []
+    game.state.enemies = []
+    game.step(1 / 60)
+  })
+  await page.getByRole('heading', { name: 'Выберите благословение' }).waitFor({ timeout: 5000 })
+  check(
+    'после чистого отрезка 16–20 доступно благословение, первое обновление за 120',
+    (await readGameSnapshot(page)).rewardWave === 20 &&
+      (await rerollPrice.innerText()).trim() === '−120',
   )
   await rewardCards.first().click()
   await waitForFrames(page)
+  check(
+    'после 20-й волны началась подготовка к 21-й',
+    (await page.locator('.hud .wave-label').textContent()) === 'Волна 21 из 30' &&
+      (await readGameSnapshot(page)).phase === 'build',
+  )
 
-  // Победа: перескакиваем сразу на 20-ю волну
+  await finishRewardWave(page, 29, 11)
+  const finalOffer = await readGameSnapshot(page)
+  check(
+    'после 29-й волны может выпасть «Военный налог», первое обновление за 160',
+    finalOffer.rewardWave === 29 &&
+      (await rerollPrice.innerText()).trim() === '−160' &&
+      (await rewardCards.filter({ hasText: 'Военный налог' }).isVisible()),
+  )
+  await rerollButton.click()
+  check(
+    'после 29-й волны обновление списало 160 золота, следующее стоит 180',
+    (await readGameSnapshot(page)).gold === finalOffer.gold - 160 &&
+      (await rerollPrice.innerText()).trim() === '−180',
+  )
+  const finalChest = rewardCards.filter({ hasText: 'Военная казна' })
+  check(
+    'на 29-й волне «Военная казна» обещает 560 золота прямо на карточке',
+    (await finalChest.locator('.reward-description').innerText()) === '+560 золота сразу',
+  )
+  await finalChest.click()
+  const beforeFinalWave = await readGameSnapshot(page)
+  check(
+    'Казна начисляет показанные 560 золота, открывается 30-я волна',
+    beforeFinalWave.gold === finalOffer.gold - 160 + 560 &&
+      beforeFinalWave.wave === 30 &&
+      (await rewardGoal.count()) === 0,
+  )
+  await page.getByRole('button', { name: 'Начать волну' }).click()
+  check(
+    '30-я волна начинается с Узурпатора',
+    await page.evaluate(() => {
+      const { game } = window.__throne
+      game.step(1 / 60)
+      return game.state.enemies[0]?.def.id === 'boss'
+    }),
+  )
   await page.evaluate(() => {
-    const game = window.__throne.game
-    game.state.wave = 20
-    game.startWave()
+    const { game } = window.__throne
     game.state.spawnQueue = []
+    game.state.enemies = []
+    game.step(1 / 60)
   })
   await page.getByRole('heading', { name: 'Трон устоял' }).waitFor({ timeout: 10_000 })
   check(
     'экран победы',
-    (await page.locator('.sheet p').first().textContent()).startsWith('Все 20 волн отбиты.'),
+    (await page.locator('.sheet p').first().textContent()).startsWith('Все 30 волн отбиты.'),
   )
   check(
     'победа: имя уже есть — результат ушёл в топ сам',
@@ -1188,10 +1417,10 @@ async function desktop(browser, url) {
   )
   await page.getByRole('button', { name: 'Играть дальше' }).click()
   await waitForFrames(page)
-  check('бесконечный режим', (await page.locator('.hud .wave-label').textContent()) === 'Волна 21')
+  check('бесконечный режим', (await page.locator('.hud .wave-label').textContent()) === 'Волна 31')
   await page.getByRole('button', { name: 'Начать волну' }).click()
   await page.waitForFunction(() => window.__throne.game.state.enemies.length > 0)
-  check('21-я волна началась, враги вышли', (await readGameSnapshot(page)).phase === 'wave')
+  check('31-я волна началась, враги вышли', (await readGameSnapshot(page)).phase === 'wave')
 
   // Баллиста стоит дороже стартового бюджета: выдаём средства только для проверки панели.
   await page.evaluate(() => window.__throne.store.newGame())
@@ -1237,9 +1466,9 @@ async function desktop(browser, url) {
   await waitForFrames(page)
   const aspects = page.locator('.tower-info .tower-aspects')
   check(
-    'Баллиста III: два аспекта по 180',
+    'Баллиста III: два аспекта по 180, «Сокрушитель» включает генерала',
     (await aspects.locator('.aspect-option').count()) === 2 &&
-      (await aspects.innerText()).includes('ограм, Горынычу и Узурпатору'),
+      (await aspects.innerText()).includes('генералам мятежников'),
   )
   await aspects.getByRole('button', { name: 'Сокрушитель за 180 золота', exact: true }).click()
   await waitForFrames(page)
@@ -1667,37 +1896,127 @@ async function phone(browser, url) {
   await waitForFrames(page)
 
   // На узком экране три благословения идут столбиком и не выходят по ширине.
-  await page.evaluate(() => {
-    const { game } = window.__throne
-    game.state.wave = 10
-    game.state.waveTime = 0
-    game.state.spawnQueue = []
-    game.state.enemies = []
-    game.state.phase = 'wave'
-  })
-  await page.getByRole('heading', { name: 'Выберите благословение' }).waitFor({
-    timeout: 5000,
-  })
+  await finishRewardWave(page, 10, 1)
   const phoneRewardCards = page.locator('.reward-card')
+  const warChest = phoneRewardCards.filter({ hasText: 'Военная казна' })
   const phoneRewardBounds = await phoneRewardCards.evaluateAll((cards) =>
     cards.map((card) => {
-      const bounds = card.getBoundingClientRect()
-      return { left: bounds.left, right: bounds.right }
+      const { left, right, top, bottom } = card.getBoundingClientRect()
+      return { left, right, top, bottom }
     }),
   )
   check(
-    '320×568: три благословения помещаются по ширине',
+    '320×568: три благословения целиком помещаются на экране',
     phoneRewardBounds.length === 3 &&
-      phoneRewardBounds.every((bounds) => bounds.left >= 0 && bounds.right <= 320),
+      phoneRewardBounds.every(
+        ({ left, right, top, bottom }) => left >= 0 && right <= 320 && top >= 0 && bottom <= 568,
+      ),
     JSON.stringify(phoneRewardBounds),
   )
-  await phoneRewardCards.first().tap()
+  await page.evaluate(() => {
+    const { game, store } = window.__throne
+    game.state.gold = 79
+    store.syncHud()
+  })
+  const phoneReroll = page.getByRole('button', { name: /Обновить варианты/ })
+  const phonePrice = phoneReroll.locator('.reward-reroll-cost')
+  check(
+    '320×568: при нехватке золота цена −80 красная, обновление недоступно',
+    (await phoneReroll.isDisabled()) &&
+      (await phonePrice.innerText()).trim() === '−80' &&
+      (await phonePrice.evaluate((price) => getComputedStyle(price).color)) ===
+        'rgb(255, 120, 130)' &&
+      !(await page.locator('.reward-sheet').innerText()).match(/В запасе|Не хватает/),
+  )
+  check(
+    '320×568: на карточке Казны после 10-й волны видно 200 золота',
+    (await warChest.locator('.reward-description').innerText()) === '+200 золота сразу',
+  )
+  await warChest.tap()
   await waitForFrames(page)
   check(
     '320×568: благословение выбирается касанием',
     (await page.locator('.overlay').count()) === 0 &&
       (await readGameSnapshot(page)).rewards.length === 1,
   )
+  const phoneBlessing = page.locator('.reward-inventory-button').first()
+  const phoneTooltip = page.getByRole('tooltip')
+  await phoneBlessing.tap()
+  check(
+    '320×568: касание значка открывает подсказку с бонусом набора и одним заполненным ромбом',
+    (await phoneTooltip.isVisible()) &&
+      (await phoneTooltip.locator('.reward-set-title').innerText()) === 'Дар короны' &&
+      (await phoneTooltip.locator('.reward-set-pips .is-filled').count()) === 1,
+  )
+  await phoneBlessing.tap()
+  check('320×568: повторное касание закрывает описание', !(await phoneTooltip.isVisible()))
+
+  await finishRewardWave(page, 20, 2)
+  const beforeGift = await readGameSnapshot(page)
+  check(
+    '320×568: на карточке Казны после 20-й волны видно 360 золота',
+    (await warChest.locator('.reward-description').innerText()) === '+360 золота сразу',
+  )
+  await warChest.tap()
+  const gift = page.getByRole('dialog', { name: 'Дар короны', exact: true })
+  await gift.waitFor()
+  const giftCards = gift.locator('.reward-card')
+  const duringGift = await readGameSnapshot(page)
+  const giftCardsFit = await giftCards.evaluateAll((cards) =>
+    cards.every((card) => {
+      const { left, right, top, bottom } = card.getBoundingClientRect()
+      return left >= 0 && right <= innerWidth && top >= 0 && bottom <= innerHeight
+    }),
+  )
+  check(
+    '320×568: «Дар короны» открывает две обычные карточки, поле остаётся выключенным',
+    (await giftCards.count()) === 2 &&
+      (await giftCards.evaluateAll((cards) =>
+        cards.every((card) => card.dataset.rarity === 'common'),
+      )) &&
+      giftCardsFit &&
+      (await gift.locator('.reward-reroll').count()) === 0 &&
+      (await page.locator('.stage').evaluate((stage) => stage.inert)) &&
+      duringGift.gold === beforeGift.gold + 360,
+  )
+  await giftCards.first().tap()
+  const afterGift = await readGameSnapshot(page)
+  check(
+    '320×568: дар добавляет третье благословение и возвращает к подготовке 21-й волны',
+    (await gift.count()) === 0 &&
+      afterGift.phase === 'build' &&
+      afterGift.wave === 21 &&
+      afterGift.rewards.length === 3 &&
+      afterGift.gold === duringGift.gold,
+  )
+  await phoneBlessing.tap()
+  check(
+    '320×568: значок Казны суммирует выплаты 200 и 360',
+    (await phoneTooltip.innerText()).includes('Получено 560 золота'),
+  )
+  await phoneBlessing.tap()
+
+  // Максимум за кампанию — шесть рубежей и «Дар короны». Заполняем инвентарь для проверки размеров.
+  await page.evaluate(() => {
+    const { game } = window.__throne
+    Object.assign(game.state, {
+      wave: 30,
+      phase: 'reward',
+      pendingReward: { kind: 'wave', wave: 29, options: ['rapid-orders'], rerolls: 0 },
+      selectedRewards: [
+        { wave: 5, rewardId: 'war-chest' },
+        { wave: 10, rewardId: 'bounty' },
+        { wave: 10, rewardId: 'control-master' },
+        { wave: 15, rewardId: 'sharpened-steel' },
+        { wave: 20, rewardId: 'wildfire' },
+        { wave: 25, rewardId: 'rasputitsa' },
+      ],
+    })
+    game.chooseReward('rapid-orders')
+  })
+  await waitForFrames(page)
+  await checkFullRewardInventoryFits(page)
+  await checkStartButtonVisible(page)
 
   await page.setViewportSize({ width: 932, height: 430 }) // iPhone Plus/Max набок
   await waitForFrames(page)
@@ -1708,6 +2027,7 @@ async function phone(browser, url) {
   await checkStartButtonVisible(page)
   await checkControlsFit(page)
   await checkShopCardsVisible(page)
+  await checkFullRewardInventoryFits(page)
   // Почти квадратное окно: по бокам поля пусто — там боковая панель с карточками, а не меню
   await page.setViewportSize({ width: 983, height: 987 })
   await waitForFrames(page)

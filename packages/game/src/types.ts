@@ -144,7 +144,7 @@ export interface EnemyDef {
   throneDamage: number
   /** Радиус врага, клеток */
   radius: number
-  /** Исполин: огр, Горыныч или Узурпатор. Категория не зависит от здоровья и номера волны. */
+  /** Исполин. Категория не зависит от здоровья и номера волны. */
   isGiant?: boolean
   /** Сопротивление замедлению: 0.5 — замедляется вдвое слабее */
   slowResistance?: number
@@ -155,6 +155,8 @@ export interface EnemyDef {
   controlResistance?: number
   /** Лечит других врагов рядом (знахарь) */
   heal?: EnemyHeal
+  /** Даёт броню бунтовщикам, лазутчикам и латникам поблизости */
+  banner?: { radius: number; armor: number }
   /** Не получает лечение от знахарей (Узурпатор) */
   immuneToHealing?: boolean
   /** Погибая, распадается на нескольких врагов поменьше (Змей Горыныч) */
@@ -163,7 +165,7 @@ export interface EnemyDef {
 
 /** Постоянные и мгновенные эффекты благословений после рубежных волн */
 export type RewardEffect =
-  | { kind: 'gold'; amount: number }
+  | { kind: 'gold' }
   | { kind: 'healToFull' }
   | { kind: 'damage'; amount: number }
   | { kind: 'fireRate'; amount: number }
@@ -174,7 +176,13 @@ export type RewardEffect =
   | { kind: 'control'; slowBonus: number; rootBonus: number }
   | { kind: 'lastStand'; damageBonus: number; rows: number }
   | { kind: 'enemySlow'; amount: number }
-  | { kind: 'miniBossHp'; amount: number }
+  | { kind: 'giantHealth'; amount: number }
+  | { kind: 'moatSlow'; amount: number }
+  | { kind: 'enemyHealing'; amount: number }
+  | { kind: 'panic' }
+  | { kind: 'doubleShot' }
+  | { kind: 'twoBells'; amount: number }
+  | { kind: 'iceAndFire' }
 
 export type RewardId =
   | 'war-chest'
@@ -189,16 +197,24 @@ export type RewardId =
   | 'last-stand'
   | 'rasputitsa'
   | 'giant-diet'
+  | 'throne-moat'
+  | 'empty-vials'
+  | 'panic-in-formation'
+  | 'double-shot'
+  | 'two-bells'
+  | 'ice-and-fire'
 
 export interface RewardPick {
   wave: number
   rewardId: RewardId
+  /** Фактическая выплата «Военной казны» на момент выбора. */
+  goldGranted?: number
 }
 
-export interface PendingReward {
+export type PendingReward = {
   wave: number
   options: readonly RewardId[]
-}
+} & ({ kind: 'wave'; rerolls: number } | { kind: 'crown-gift' })
 
 export interface RewardStats {
   damageMultiplier: number
@@ -212,7 +228,13 @@ export interface RewardStats {
   lastStandDamageMultiplier: number
   lastStandRows: number
   enemySpeedMultiplier: number
-  miniBossHpMultiplier: number
+  giantHealthMultiplier: number
+  moatSpeedMultiplier: number
+  enemyHealingMultiplier: number
+  panicTargets: number
+  doubleShotArrows: number
+  secondBellShare: number
+  iceAndFire: boolean
 }
 
 /** Как враг лечит соседей */
@@ -357,6 +379,8 @@ export interface Tower {
   hunterTargetId: number | null
   /** Текущая длина серии «Метки охотника» */
   hunterStacks: number
+  /** Сколько обычных атак Лучник сделал после последнего «Двойного выстрела». */
+  shotsSinceDouble: number
 }
 
 /** Враг, идущий по ковру */
@@ -376,6 +400,8 @@ export interface Enemy {
   slowTimeLeft: number
   /** Сила текущего замедления: 0.35 — идёт на 35% медленнее */
   slowFactor: number
+  /** Сколько ещё секунд враг замедлен паникой после гибели соседа. */
+  panicTimeLeft: number
   /** Сколько секунд до следующего лечения соседей (только у тех, кто лечит) */
   healCooldownLeft: number
   /**
@@ -512,6 +538,8 @@ export interface GameState {
   lives: number
   /** Полный запас жизней трона для лечения между волнами */
   maxLives: number
+  /** Последняя волна, на которой трон получил урон. Ноль до первого прорыва. */
+  lastThroneDamageWave: number
   score: number
   /** Сколько врагов убито */
   kills: number
@@ -536,7 +564,9 @@ export interface GameState {
   waveTime: number
   /** Номер для следующей башни или врага */
   nextId: number
-  /** Три награды, ожидающие выбора на рубежной волне */
+  /** Случайное число для розыгрыша благословений в этой партии */
+  rewardSeed: number
+  /** Карточки, ожидающие выбора после рубежной волны или сбора набора */
   pendingReward: PendingReward | null
   /** Уже выбранные благословения в порядке получения */
   selectedRewards: RewardPick[]
@@ -552,8 +582,10 @@ export interface GameEvents {
   sell: { tower: Tower; refund: number }
   waveStart: number
   waveCleared: { wave: number; bonus: number }
-  /** После рубежной волны игрок должен выбрать одну из трёх наград */
+  /** Игроку предложены карточки благословений */
   rewardOffered: PendingReward
+  /** Трон получил урон в отрезке, за который полагалось благословение. */
+  rewardMissed: { firstWave: number; lastWave: number }
   rewardChosen: RewardPick
   /** Казна принесла золото за отбитую волну */
   income: { tower: Tower; gold: number }

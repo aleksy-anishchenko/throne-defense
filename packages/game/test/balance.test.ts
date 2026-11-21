@@ -17,11 +17,11 @@ describe('рост здоровья врагов', () => {
     }
   })
 
-  it('на «Тронном зале» (20 волн) числа не изменились', () => {
+  it('до 30-й волны рост после колена линейный, затем здоровье растёт на 8% за волну', () => {
     const atKnee = 1.24 ** 9
-    expect(hpMultiplier(10, 20)).toBeCloseTo(atKnee)
-    expect(hpMultiplier(20, 20)).toBeCloseTo(atKnee + 2.2 * 10)
-    expect(hpMultiplier(21, 20)).toBeCloseTo((atKnee + 2.2 * 10) * 1.08)
-    expect(hpMultiplier(30, 20)).toBeCloseTo((atKnee + 2.2 * 10) * 1.08 ** 10)
+    expect(hpMultiplier(10, 30)).toBeCloseTo(atKnee)
+    expect(hpMultiplier(20, 30)).toBeCloseTo(atKnee + 2.2 * 10)
+    expect(hpMultiplier(30, 30)).toBeCloseTo(atKnee + 2.2 * 20)
+    expect(hpMultiplier(31, 30)).toBeCloseTo((atKnee + 2.2 * 20) * 1.08)
   })
 })

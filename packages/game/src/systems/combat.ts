@@ -1,8 +1,9 @@
 // Урон, снаряды и «выстрелы-ауры». Башни (data/towers.ts) собираются из этих кирпичиков.
 
 import { SCORE } from '../data/balance.ts'
+import { PANIC_IN_FORMATION } from '../data/rewards.ts'
 import type { DamageKind, Enemy, HomingShot, LineShot, Tower, TowerStats, World } from '../types.ts'
-import { queueSplit } from './enemies.ts'
+import { bannerArmorOf, queueSplit } from './enemies.ts'
 import { rewardStats } from './rewards.ts'
 
 /** Какая доля брони врага всё ещё режет пробивающий урон (0.5 = половина брони; физический урон режется всей бронёй, магический — не режется вовсе) */
@@ -42,6 +43,8 @@ export interface HomingShotOptions {
   look: string
   /** Скорость полёта, клеток в секунду */
   speed: number
+  /** Смещение точки старта поперёк выстрела, клеток. */
+  originOffset?: number
   damage: number
   damageKind: DamageKind
   /** Радиус взрыва в клетках; без него снаряд бьёт только цель */
@@ -76,6 +79,10 @@ export interface LineShotOptions {
   armorBreakDuration?: number
 }
 
+function armorWithBanner(world: World, enemy: Enemy): number {
+  return enemy.def.armor + bannerArmorOf(world.state.enemies, enemy)
+}
+
 /** Нанести урон врагу с учётом брони. Если враг погиб — награда и событие kill */
 export function damageEnemy(
   world: World,
@@ -84,7 +91,8 @@ export function damageEnemy(
   damageKind: DamageKind,
 ): void {
   if (enemy.isDead) return
-  const armor = enemy.armorBreakTimeLeft > 0 ? 0 : enemy.def.armor
+  const armor =
+    enemy.armorBreakTimeLeft > 0 || damageKind === 'magic' ? 0 : armorWithBanner(world, enemy)
   let effectiveDamage = damage
   if (damageKind === 'physical') effectiveDamage = Math.max(1, damage - armor)
   else if (damageKind === 'piercing')
@@ -104,13 +112,30 @@ function loseHp(world: World, enemy: Enemy, amount: number): void {
   enemy.hp -= amount * curseMultiplier
   if (enemy.hp <= 0) {
     const state = world.state
+    const rewards = rewardStats(state)
     enemy.isDead = true
-    state.gold += enemy.def.reward + rewardStats(state).killGoldBonus
+    state.gold += enemy.def.reward + rewards.killGoldBonus
     state.score += enemy.def.reward * SCORE.perGold
     state.kills++
+    if (rewards.panicTargets > 0) spreadPanic(state.enemies, enemy, rewards.panicTargets)
     queueSplit(world, enemy)
     world.emit('kill', enemy)
   }
+}
+
+/** Ближайшие живые враги получают свежий таймер паники. */
+function spreadPanic(enemies: readonly Enemy[], fallen: Enemy, maxTargets: number): void {
+  const { radius, duration } = PANIC_IN_FORMATION
+  const targets = enemies
+    .filter((enemy) => !enemy.isDead)
+    .map((enemy) => ({
+      enemy,
+      distanceSquared: (enemy.x - fallen.x) ** 2 + (enemy.y - fallen.y) ** 2,
+    }))
+    .filter(({ distanceSquared }) => distanceSquared <= radius ** 2)
+    .sort((a, b) => a.distanceSquared - b.distanceSquared || a.enemy.id - b.enemy.id)
+    .slice(0, maxTargets)
+  for (const { enemy } of targets) enemy.panicTimeLeft = duration
 }
 
 /** Снаряд, который летит за целью. С splashRadius > 0 взрывается и бьёт всех вокруг */
@@ -120,11 +145,12 @@ export function shootHoming(
   target: Enemy,
   options: HomingShotOptions,
 ): void {
+  const offset = options.originOffset ?? 0
   world.state.shots.push({
     kind: 'homing',
     look: options.look,
-    x: tower.x,
-    y: tower.y,
+    x: tower.x - (offset ? Math.sin(tower.aimAngle) * offset : 0),
+    y: tower.y + (offset ? Math.cos(tower.aimAngle) * offset : 0),
     angle: tower.aimAngle,
     target,
     targetX: target.x,
@@ -170,28 +196,30 @@ export function shootLine(
   })
 }
 
-/** Волна холода: замедляет врагов, а горящих — тушит паром */
+/** Волна холода замедляет врагов и тушит их огонь без благословения «Лёд и пламя». */
 export function frostPulse(world: World, tower: Tower, stats: TowerStats): void {
   const slowAmount = stats.slowAmount ?? 0
   const slowDuration = stats.slowDuration ?? 0
   const rangeSquared = stats.range * stats.range
+  const { iceAndFire } = rewardStats(world.state)
   for (const enemy of world.state.enemies) {
     if (enemy.isDead || (enemy.x - tower.x) ** 2 + (enemy.y - tower.y) ** 2 > rangeSquared) continue
     const slowFactor = slowAmount * (1 - (enemy.def.slowResistance ?? 0))
-    // Если враг уже замедлен — оставляем более сильное замедление; если прежнее замедление
-    // кончилось — берём новое как есть. (Сила и длительность обновляются по отдельности —
-    // так было в оригинале, баланс настроен с этим.)
-    enemy.slowFactor = enemy.slowTimeLeft > 0 ? Math.max(enemy.slowFactor, slowFactor) : slowFactor
-    enemy.slowTimeLeft = Math.max(enemy.slowTimeLeft, slowDuration)
+    if (enemy.slowTimeLeft <= 0 || slowFactor > enemy.slowFactor) {
+      enemy.slowFactor = slowFactor
+      enemy.slowTimeLeft = slowDuration
+    } else if (slowFactor === enemy.slowFactor) {
+      enemy.slowTimeLeft = Math.max(enemy.slowTimeLeft, slowDuration)
+    }
     if (stats.damage > 0) damageEnemy(world, enemy, stats.damage, 'magic')
-    if (enemy.burnDamageLeft > 0 && !enemy.isDead) extinguishWithSteam(world, enemy)
+    if (!iceAndFire && enemy.burnDamageLeft > 0 && !enemy.isDead) extinguishWithSteam(world, enemy)
   }
 }
 
 /**
  * Проклятие Колдуна: все в радиусе башни какое-то время получают больше урона
  * и на ту же долю меньше лечения (см. updateHealers).
- * Несколько Колдунов не складываются — действует самое сильное проклятие (как у Звонаря)
+ * Действует сильнейшее проклятие. Повтор равной силы обновляет его срок.
  */
 export function cursePulse(world: World, tower: Tower, stats: TowerStats): void {
   const curseAmount = stats.curseAmount ?? 0
@@ -199,9 +227,12 @@ export function cursePulse(world: World, tower: Tower, stats: TowerStats): void 
   const rangeSquared = stats.range * stats.range
   for (const enemy of world.state.enemies) {
     if (enemy.isDead || (enemy.x - tower.x) ** 2 + (enemy.y - tower.y) ** 2 > rangeSquared) continue
-    enemy.curseAmount =
-      enemy.curseTimeLeft > 0 ? Math.max(enemy.curseAmount, curseAmount) : curseAmount
-    enemy.curseTimeLeft = Math.max(enemy.curseTimeLeft, curseDuration)
+    if (enemy.curseTimeLeft <= 0 || curseAmount > enemy.curseAmount) {
+      enemy.curseAmount = curseAmount
+      enemy.curseTimeLeft = curseDuration
+    } else if (curseAmount === enemy.curseAmount) {
+      enemy.curseTimeLeft = Math.max(enemy.curseTimeLeft, curseDuration)
+    }
   }
 }
 
@@ -226,20 +257,18 @@ function extinguishWithSteam(world: World, enemy: Enemy): void {
   world.emit('steam', { x: enemy.x, y: enemy.y })
 }
 
-/**
- * Расстояние от точки P (px, py) до отрезка AB (ax, ay — начало, bx, by — конец).
- * Названия px/py/ax/ay/bx/by — обычные в геометрии.
- */
-function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
-  const segmentX = bx - ax
-  const segmentY = by - ay
-  const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY
-  // Где на отрезке ближайшая к P точка: 0 — это A, 1 — это B
-  let along = segmentLengthSquared
-    ? ((px - ax) * segmentX + (py - ay) * segmentY) / segmentLengthSquared
-    : 0
-  along = Math.max(0, Math.min(1, along))
-  return Math.hypot(px - ax - segmentX * along, py - ay - segmentY * along)
+function firstLineHit(shot: LineShot, enemy: Enemy, travelDistance: number): number | null {
+  const dx = enemy.x - shot.x
+  const dy = enemy.y - shot.y
+  const along = dx * shot.directionX + dy * shot.directionY
+  const across = dx * shot.directionY - dy * shot.directionX
+  const radius = enemy.def.radius + LINE_SHOT_HIT_MARGIN
+  const halfChordSquared = radius * radius - across * across
+  if (halfChordSquared < 0) return null
+  const halfChord = Math.sqrt(halfChordSquared)
+  const entry = along - halfChord
+  if (along + halfChord < 0 || entry > travelDistance) return null
+  return Math.max(entry, 0)
 }
 
 /** Сдвинуть все снаряды на dt секунд и нанести урон тем, в кого попали */
@@ -253,30 +282,33 @@ export function updateShots(world: World, dt: number): void {
 /** Снаряд по прямой: бьёт всех, кого задел на этом шаге, пока не кончатся пробития или дальность */
 function updateLineShot(world: World, shot: LineShot, dt: number): void {
   const travelDistance = Math.min(shot.speed * dt, shot.distanceLeft)
-  const newX = shot.x + shot.directionX * travelDistance
-  const newY = shot.y + shot.directionY * travelDistance
+  const hits: { enemy: Enemy; distance: number }[] = []
   for (const enemy of world.state.enemies) {
     if (enemy.isDead || shot.hitEnemies.has(enemy)) continue
-    if (
-      distanceToSegment(enemy.x, enemy.y, shot.x, shot.y, newX, newY) <=
-      enemy.def.radius + LINE_SHOT_HIT_MARGIN
-    ) {
-      shot.hitEnemies.add(enemy)
-      if (shot.armorBreakDuration > 0 && enemy.def.armor > 0) {
-        enemy.armorBreakTimeLeft = Math.max(enemy.armorBreakTimeLeft, shot.armorBreakDuration)
-      }
-      const damageMultiplier = enemy.def.isGiant ? 1 + shot.giantDamageBonus : 1
-      damageEnemy(world, enemy, shot.damage * damageMultiplier, shot.damageKind)
-      shot.piercesLeft--
-      if (shot.piercesLeft <= 0) {
-        shot.isDone = true
-        break
-      }
+    const distance = firstLineHit(shot, enemy, travelDistance)
+    if (distance !== null) hits.push({ enemy, distance })
+  }
+
+  hits.sort((a, b) => a.distance - b.distance || a.enemy.id - b.enemy.id)
+  let traveled = travelDistance
+  for (const { enemy, distance } of hits) {
+    if (enemy.isDead) continue
+    shot.hitEnemies.add(enemy)
+    if (shot.armorBreakDuration > 0 && armorWithBanner(world, enemy) > 0) {
+      enemy.armorBreakTimeLeft = Math.max(enemy.armorBreakTimeLeft, shot.armorBreakDuration)
+    }
+    const damageMultiplier = enemy.def.isGiant ? 1 + shot.giantDamageBonus : 1
+    damageEnemy(world, enemy, shot.damage * damageMultiplier, shot.damageKind)
+    shot.piercesLeft--
+    if (shot.piercesLeft <= 0) {
+      traveled = distance
+      shot.isDone = true
+      break
     }
   }
-  shot.x = newX
-  shot.y = newY
-  shot.distanceLeft -= travelDistance
+  shot.x += shot.directionX * traveled
+  shot.y += shot.directionY * traveled
+  shot.distanceLeft -= traveled
   if (shot.distanceLeft <= 0) shot.isDone = true
 }
 
@@ -339,7 +371,7 @@ function hitWithShot(world: World, shot: HomingShot, enemy: Enemy, damageShare =
 function igniteEnemy(world: World, enemy: Enemy, burnDamage: number, burnDuration: number): void {
   if (enemy.isDead || burnDamage <= 0 || burnDuration <= 0) return
   let burnShare = 1
-  if (enemy.slowTimeLeft > 0) {
+  if (enemy.slowTimeLeft > 0 && !rewardStats(world.state).iceAndFire) {
     enemy.slowTimeLeft = 0
     enemy.slowFactor = 0
     burnShare = THAW_BURN_MULTIPLIER

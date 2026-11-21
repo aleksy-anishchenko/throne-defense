@@ -270,7 +270,7 @@ export function playBot(
       game.step(SIMULATION_STEP)
     }
     if (game.state.phase === 'wave') return makeResult('stuck')
-    if (game.state.phase === 'reward') {
+    while (game.state.phase === 'reward') {
       const rewardId = game.state.pendingReward?.options[0]
       if (!rewardId || !game.chooseReward(rewardId)) return makeResult('stuck')
     }

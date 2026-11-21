@@ -5,8 +5,8 @@ import type { Game } from '@throne/game'
 import type { MusicMood } from './music'
 import { sfx } from './sfx'
 
-/** Враги, при которых музыка становится тревожной: Змей Горыныч и узурпатор */
-const DANGER_ENEMY_IDS = new Set(['gorynych', 'boss'])
+/** Враги, при которых музыка становится тревожной */
+const DANGER_ENEMY_IDS = new Set(['gorynych', 'general', 'boss'])
 
 export function connectGameSounds(game: Game) {
   game.on('build', () => sfx.build())

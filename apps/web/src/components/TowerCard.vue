@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import type { TowerDef } from '@throne/game'
+import { computed } from 'vue'
+import { useGameStore } from '@/stores/game'
+import { towerInteractionHint } from '@/utils/towerStats'
 import TowerIcon from './TowerIcon.vue'
 
-defineProps<{
+const props = defineProps<{
   def: TowerDef
   /** Выбран в магазине */
   isArmed: boolean
   /** Не хватает золота */
   isUnaffordable: boolean
 }>()
+const store = useGameStore()
+const hint = computed(() => towerInteractionHint(props.def, store.blessingEffects))
 const emit = defineEmits<{ pick: [] }>()
 </script>
 
@@ -18,9 +23,9 @@ const emit = defineEmits<{ pick: [] }>()
     class="card"
     :class="{ poor: isUnaffordable }"
     :aria-pressed="isArmed"
-    :title="def.interactionHint"
+    :title="hint"
     :aria-label="`${def.name}, цена ${def.cost}`"
-    :aria-description="`${def.description}. ${def.interactionHint ?? ''}`"
+    :aria-description="`${def.description}. ${hint ?? ''}`"
     @click="emit('pick')"
   >
     <TowerIcon :tower-id="def.id" />

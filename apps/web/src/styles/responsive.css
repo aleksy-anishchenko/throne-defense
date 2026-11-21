@@ -26,6 +26,29 @@
   .brand {
     display: block;
   }
+  .stage {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .board-area {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .reward-inventory {
+    grid-column: 1;
+    align-self: start;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    padding: 6px 9px 0 5px;
+  }
+  .reward-inventory-entry {
+    position: relative;
+  }
+  .reward-tooltip {
+    top: 0;
+    left: 100%;
+    padding: 0 0 0 8px;
+  }
   .panel {
     grid-column: 2;
     grid-row: 2;
@@ -184,6 +207,18 @@
     display: none;
   }
 }
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 430px) {
+  .reward-inventory:has(.reward-inventory-entry:nth-child(6)) {
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+  }
+  .reward-inventory:has(.reward-inventory-entry:nth-child(6))
+    .reward-inventory-entry
+    .reward-tooltip {
+    top: 0;
+    bottom: auto;
+  }
+}
 /* Низкий экран с боковой панелью (телефон набок): панель компактная —
    без описаний в карточках и подсказки про клавиши, а панель башни
    встаёт на место магазина, как на телефоне в вертикальной раскладке */
@@ -197,6 +232,10 @@
   }
   .brand {
     font-size: 1.3rem;
+  }
+  .reward-inventory-entry:nth-child(n + 3) .reward-tooltip {
+    top: auto;
+    bottom: 0;
   }
   .panel {
     grid-template-rows: auto auto minmax(0, 1fr) auto;

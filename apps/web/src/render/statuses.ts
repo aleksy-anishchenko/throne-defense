@@ -1,9 +1,8 @@
-// Как выглядят эффекты на враге: огонь, мороз, проклятие, сеть, раскол лат.
+// Как выглядят эффекты на враге: огонь, мороз, проклятие, сеть, раскол лат и паника.
 //
 // Общие правила — у каждого эффекта одни и те же «слои», отличаются только цвет и рисунок:
-// 1. Кольцо у ног — под телом. Колец два места («слота»), у всех одна толщина:
-//    ближнее — огонь или мороз (вместе не бывают: огонь растапливает лёд, холод тушит огонь),
-//    дальнее — проклятие. Так кольца разных эффектов не налезают друг на друга.
+// 1. Кольца у ног — под телом. Ближнее — огонь или мороз, следующее — проклятие.
+//    Когда «Лёд и пламя» совмещает огонь с морозом, огненное кольцо рисуем снаружи.
 //    Сеть кольца не рисует — она сама круглая.
 // 2. Оттенок тела — цветом эффекта, одной прозрачности.
 // 3. Знак на модельке — поверх тела: иней, сеть, пламя.
@@ -27,8 +26,8 @@ export const FIRE_MIDDLE = '#ffc23a'
 export const FIRE_CORE = '#fff4b8'
 export const FIRE_OUTLINE = 'rgba(70,18,0,.85)'
 
-/** Насколько кольцо у ног выходит за край врага, клеток: [ближнее место, дальнее] */
-const RING_SLOT_MARGINS = [0.07, 0.14] as const
+/** Насколько кольцо у ног выходит за край врага, клеток. */
+const RING_SLOT_MARGINS = [0.07, 0.14, 0.21] as const
 /** Толщина кольца у ног — одна для всех эффектов, клеток */
 const RING_WIDTH = 0.032
 /** Прозрачность оттенка тела — одна для всех эффектов */
@@ -93,6 +92,12 @@ const STATUS_LOOKS: readonly StatusLook[] = [
     drawMark: (ctx, radius) => drawBrokenArmor(ctx, radius),
   },
   {
+    isActive: (enemy) => enemy.panicTimeLeft > 0,
+    rgb: '255,212,134',
+    hasTint: false,
+    drawMark: (ctx, radius) => drawPanicMark(ctx, radius),
+  },
+  {
     // Сеть: сама сеть поверх врага, чуть шире его; без кольца и оттенка.
     // Горит (враг в огне) — грузила тлеют оранжевым: сеть скоро сгорит
     isActive: (enemy) => enemy.rootTimeLeft > 0,
@@ -118,6 +123,16 @@ const STATUS_LOOKS: readonly StatusLook[] = [
   },
 ]
 
+function shieldPath(ctx: Canvas2D) {
+  ctx.beginPath()
+  ctx.moveTo(-0.4, -0.35)
+  ctx.lineTo(0.4, -0.35)
+  ctx.lineTo(0.3, 0.2)
+  ctx.lineTo(0, 0.5)
+  ctx.lineTo(-0.3, 0.2)
+  ctx.closePath()
+}
+
 function drawBrokenArmor(ctx: Canvas2D, radius: number) {
   ctx.save()
   ctx.translate(radius * 0.65, -radius * 0.7)
@@ -126,13 +141,7 @@ function drawBrokenArmor(ctx: Canvas2D, radius: number) {
   ctx.strokeStyle = '#91dbef'
   ctx.lineWidth = 0.09
   ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(-0.4, -0.35)
-  ctx.lineTo(0.4, -0.35)
-  ctx.lineTo(0.3, 0.2)
-  ctx.lineTo(0, 0.5)
-  ctx.lineTo(-0.3, 0.2)
-  ctx.closePath()
+  shieldPath(ctx)
   ctx.fill()
   ctx.stroke()
   ctx.beginPath()
@@ -144,12 +153,63 @@ function drawBrokenArmor(ctx: Canvas2D, radius: number) {
   ctx.restore()
 }
 
+function drawPanicMark(ctx: Canvas2D, radius: number) {
+  ctx.save()
+  ctx.translate(-radius * 0.8, -radius * 0.85)
+  ctx.scale(radius, radius)
+  ctx.fillStyle = '#ffd486'
+  ctx.strokeStyle = '#4b302b'
+  ctx.lineWidth = 0.09
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.moveTo(-0.17, -0.37)
+  ctx.lineTo(0.17, -0.37)
+  ctx.lineTo(0.09, 0.08)
+  ctx.lineTo(-0.09, 0.08)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+  circle(ctx, 0, 0.27, 0.12)
+  ctx.fill()
+  ctx.stroke()
+  ctx.restore()
+}
+
+/** Круг знамени рисуем под войском, чтобы граница читалась поверх ковра. */
+export function drawBannerRange(ctx: Canvas2D, x: number, y: number, range: number) {
+  ctx.save()
+  ctx.fillStyle = 'rgba(235, 168, 91, .12)'
+  ctx.strokeStyle = '#f2ad60'
+  ctx.lineWidth = 0.028
+  ctx.setLineDash([0.14, 0.1])
+  circle(ctx, x, y, range)
+  ctx.fill()
+  ctx.stroke()
+  ctx.restore()
+}
+
+/** Щит над получателем дополнительной брони. */
+export function drawBannerShield(ctx: Canvas2D, x: number, y: number) {
+  ctx.save()
+  ctx.translate(x + 0.14, y - 0.74)
+  ctx.scale(0.25, 0.25)
+  ctx.fillStyle = '#f2ad60'
+  ctx.strokeStyle = '#412633'
+  ctx.lineWidth = 0.15
+  ctx.lineJoin = 'round'
+  shieldPath(ctx)
+  ctx.fill()
+  ctx.stroke()
+  ctx.restore()
+}
+
 /** Кольца у ног — до тела врага */
 export function drawStatusRings(ctx: Canvas2D, enemy: Enemy, radius: number, time: number) {
   for (const look of STATUS_LOOKS) {
     const ring = look.ring
     if (!ring || !look.isActive(enemy)) continue
-    const ringRadius = radius + RING_SLOT_MARGINS[ring.slot]
+    const slot = look.rgb === FIRE_RGB && enemy.slowTimeLeft > 0 ? 2 : ring.slot
+    const ringRadius = radius + RING_SLOT_MARGINS[slot]
     if (ring.hasGlow) {
       ctx.fillStyle = `rgba(${look.rgb},.22)`
       circle(ctx, 0, 0, ringRadius)

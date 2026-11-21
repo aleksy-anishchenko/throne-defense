@@ -18,7 +18,7 @@ const boss = ENEMIES['boss']
 const originalHp = boss.hp
 
 function prepare(game: Game) {
-  if (game.state.wave !== 20) return
+  if (game.state.wave !== game.level.waveCount) return
   for (const tower of [...game.state.towers]) {
     if (tower.def.id === 'treasury') game.sell(tower.col, tower.row)
     if (tower.def.id === 'ballista') game.setTargetMode(tower.col, tower.row, 'strongest')

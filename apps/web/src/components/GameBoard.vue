@@ -5,35 +5,42 @@ import { useBoardPointer } from '@/composables/useBoardPointer'
 import { useGameLoop } from '@/composables/useGameLoop'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
+import RewardInventory from './RewardInventory.vue'
 
 const store = useGameStore()
 const selection = useSelectionStore()
-const stageElement = useTemplateRef('stageElement')
+const boardArea = useTemplateRef('boardArea')
 const boardCanvas = useTemplateRef('boardCanvas')
 
-useGameLoop(stageElement, boardCanvas)
+useGameLoop(boardArea, boardCanvas)
 const { onPointerDown, onPointerMove, onPointerLeave } = useBoardPointer(boardCanvas)
 </script>
 
 <template>
-  <!-- touchend.prevent: нажатие на поле срабатывает уже на pointerdown, а после касания браузер
-       ещё шлёт «щелчок». Safari на iPhone ищет, что под пальцем, заново — а там уже
-       открывшееся меню башни, и щелчок закрывал его. Отменённое касание щелчка не даёт -->
-  <main ref="stageElement" class="stage">
-    <canvas
-      id="board"
-      ref="boardCanvas"
-      :class="{ clickable: selection.isBoardClickable }"
-      tabindex="0"
-      aria-label="Тронный зал: игровое поле"
-      @pointerdown="onPointerDown"
-      @pointermove="onPointerMove"
-      @pointerleave="onPointerLeave"
-      @touchend.prevent
-      @contextmenu.prevent
-    ></canvas>
-    <div class="toast" :class="{ visible: store.toast.isVisible }" role="status" aria-live="polite">
-      {{ store.toast.text }}
+  <main class="stage">
+    <RewardInventory v-if="store.rewards.selected.length" :inert="selection.openMenu !== null" />
+    <div ref="boardArea" class="board-area">
+      <!-- Отменяем щелчок после касания: на iPhone он иначе закроет только что открытое меню. -->
+      <canvas
+        id="board"
+        ref="boardCanvas"
+        :class="{ clickable: selection.isBoardClickable }"
+        tabindex="0"
+        aria-label="Тронный зал: игровое поле"
+        @pointerdown="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerleave="onPointerLeave"
+        @touchend.prevent
+        @contextmenu.prevent
+      ></canvas>
+      <div
+        class="toast"
+        :class="{ visible: store.toast.isVisible }"
+        role="status"
+        aria-live="polite"
+      >
+        {{ store.toast.text }}
+      </div>
     </div>
   </main>
 </template>

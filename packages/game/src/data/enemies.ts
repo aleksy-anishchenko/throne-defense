@@ -81,6 +81,20 @@ const ENEMY_LIST: EnemyDef[] = [
     radius: 0.17,
   },
   {
+    id: 'general',
+    isGiant: true,
+    nameForms: ['генерал мятежников', 'генерала мятежников', 'генералов мятежников'],
+    hp: 700,
+    speed: 0.62,
+    armor: 4,
+    reward: 80,
+    throneDamage: 4,
+    radius: 0.34,
+    slowResistance: 0.25,
+    controlResistance: 0.4,
+    banner: { radius: 1.5, armor: 3 },
+  },
+  {
     id: 'boss',
     isGiant: true,
     nameForms: ['узурпатор', 'узурпатора', 'узурпаторов'],
@@ -99,7 +113,7 @@ const ENEMY_LIST: EnemyDef[] = [
 /** Все враги по id */
 export const ENEMIES: Readonly<Record<string, EnemyDef>> = Object.fromEntries(
   ENEMY_LIST.map((enemyDef) => {
-    if (enemyDef.id === 'boss') return [enemyDef.id, enemyDef]
+    if (enemyDef.id === 'boss' || enemyDef.id === 'general') return [enemyDef.id, enemyDef]
     const adjustment =
       enemyDef.id === 'healer' ? 0.9 : ['ogre', 'gorynych'].includes(enemyDef.id) ? 0.95 : 1
     return [enemyDef.id, { ...enemyDef, hp: enemyDef.hp * 1.15 * adjustment * 0.9 }]

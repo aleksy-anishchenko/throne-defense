@@ -9,6 +9,7 @@ import {
   hpMultiplier,
   investedGold,
   maxPossibleScore,
+  type RewardPick,
 } from '@throne/game'
 import { STRATEGIES, findCellFor, playBot, type Strategy } from './bot.ts'
 import {
@@ -22,8 +23,6 @@ import {
 
 const throneHall = LEVELS.find((level) => level.id === 'throne-hall')!
 const classicLevels = LEVELS.filter((level) => level.id !== 'compact-throne-hall')
-const strategy = (name: string) => STRATEGIES.find((candidate) => candidate.name === name)!
-const mixed = strategy('Экономика и поддержка')
 const results = new WeakMap<(typeof LEVELS)[number], Map<string, ReturnType<typeof playBot>>>()
 function result(level: (typeof LEVELS)[number], candidate: Strategy) {
   let byStrategy = results.get(level)
@@ -96,21 +95,32 @@ describe('экономика Казны', () => {
       }
     }
   })
-  it('Казна даёт больше средств к десятой волне, чем та же очередь покупок без Казны', () => {
-    const withoutTreasury = {
-      ...mixed,
+  it('при одинаковых благословениях Казна окупается к десятой волне', () => {
+    const withoutTreasury: Strategy = {
       name: 'Без Казны',
-      opening: mixed.opening.filter((id) => id !== 'treasury'),
-      loop: mixed.loop.filter((id) => id !== 'treasury'),
+      opening: ['archer', 'archer', 'archer', 'upgrade', 'upgrade', 'upgrade'],
+      loop: ['upgrade', 'ballista', 'upgrade', 'archer', 'frost', 'upgrade', 'warlock', 'bell'],
+      placement: 'coverage',
     }
-    const played = playBot(throneHall, withoutTreasury)
-    expect(played.outcome).not.toBe('stuck')
-    const withTreasury = result(throneHall, mixed).waves.find((wave) => wave.wave === 10)
-    const without = played.waves.find((wave) => wave.wave === 10)
-    expect(withTreasury, 'стратегия с Казной должна дойти до 10-й волны').toBeDefined()
-    expect(without, 'стратегия без Казны должна дойти до 10-й волны').toBeDefined()
-    if (!withTreasury || !without) return
-    expect(withTreasury.wealth).toBeGreaterThan(without.wealth + TOWERS['treasury'].cost)
+    const withTreasury: Strategy = {
+      ...withoutTreasury,
+      name: 'С Казной',
+      opening: ['archer', 'archer', 'archer', 'treasury', 'upgrade', 'upgrade', 'upgrade'],
+    }
+    function play(candidate: Strategy) {
+      const picks: RewardPick[] = []
+      const { waves, wavesCleared } = playBot(throneHall, candidate, 10, (game) => {
+        if (game.state.wave === 1) game.on('rewardChosen', (pick) => picks.push(pick))
+      })
+      expect(wavesCleared, candidate.name).toBe(10)
+      return { picks, wealth: waves[9].wealth }
+    }
+
+    const withIncome = play(withTreasury)
+    const withoutIncome = play(withoutTreasury)
+    expect(withIncome.picks).toHaveLength(1)
+    expect(withIncome.picks).toEqual(withoutIncome.picks)
+    expect(withIncome.wealth).toBeGreaterThan(withoutIncome.wealth + TOWERS['treasury'].cost)
   })
 })
 

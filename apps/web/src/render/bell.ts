@@ -130,10 +130,14 @@ export function drawBellIndicators(
   selected: Tower | null | undefined,
   cellCssPx: number,
 ) {
-  const focused = new Set(focusedBellBuffs(buffs, selected))
-  for (const buff of buffs) {
-    if (focused.has(buff)) drawBellLabel(ctx, buff.tower, buff.bonus, cellCssPx)
-    else drawBellMark(ctx, buff.tower)
+  const focused = new Map<Tower, number>()
+  for (const { tower, bonus } of focusedBellBuffs(buffs, selected)) {
+    focused.set(tower, (focused.get(tower) ?? 0) + bonus)
+  }
+  for (const tower of new Set(buffs.map((buff) => buff.tower))) {
+    const bonus = focused.get(tower)
+    if (bonus !== undefined) drawBellLabel(ctx, tower, bonus, cellCssPx)
+    else drawBellMark(ctx, tower)
   }
 }
 
@@ -144,9 +148,9 @@ export function drawBellPreview(
   cellCssPx: number,
   isAllowed: boolean,
 ) {
-  for (const tower of preview.improved) {
+  for (const { tower, bonus } of preview.improved) {
     drawBellLink(ctx, preview.source, tower, true, isAllowed)
-    drawBellLabel(ctx, tower, preview.bonus, cellCssPx, true, isAllowed)
+    drawBellLabel(ctx, tower, bonus, cellCssPx, true, isAllowed)
   }
 }
 
@@ -157,6 +161,6 @@ export function drawTowerBellPreview(
   cellCssPx: number,
   isAllowed: boolean,
 ) {
-  drawBellLink(ctx, preview.source, preview.tower, true, isAllowed)
+  for (const source of preview.sources) drawBellLink(ctx, source, preview.tower, true, isAllowed)
   drawBellLabel(ctx, preview.tower, preview.bonus, cellCssPx, true, isAllowed)
 }

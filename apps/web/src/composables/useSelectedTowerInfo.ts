@@ -6,7 +6,7 @@ import { computed } from 'vue'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
 import { plural, toRoman } from '@/utils/format'
-import { formatStatLine } from '@/utils/towerStats'
+import { formatStatLine, towerInteractionHint } from '@/utils/towerStats'
 
 /** Как называть, кого башня выбирает целью */
 export const TARGET_MODE_LABELS: Record<TargetMode, string> = {
@@ -38,7 +38,10 @@ export function useSelectedTowerInfo() {
     )
     // Звонарь рядом — видно, что башня стреляет быстрее и насколько
     const bonus = selection.selected.fireRateBonus
-    if (bonus > 0) lines.push(`Звонарь: стреляет на ${Math.round(bonus * 100)}% чаще`)
+    if (bonus > 0) {
+      const label = selection.selected.fireRateSources > 1 ? 'Звонари' : 'Звонарь'
+      lines.push(`${label}: стреляет на ${Math.round(bonus * 100)}% чаще`)
+    }
     if (towerId === 'bell') {
       const count = selection.selected.bellBoostedTowers
       const covered = selection.selected.bellCoveredTowers
@@ -67,7 +70,7 @@ export function useSelectedTowerInfo() {
       canSpecialize: store.hud.phase === 'build',
       canUndoSpecialization:
         Boolean(aspect) && !selection.selected.aspectLocked && store.hud.phase === 'build',
-      interactionHint: def.interactionHint,
+      interactionHint: towerInteractionHint(def, store.blessingEffects),
       upgradeCost,
       canAfford: upgradeCost !== null && store.hud.gold >= upgradeCost,
       refund: selection.selected.refund,

@@ -7,6 +7,30 @@
 
 import { nextTick, onMounted, onUnmounted, watch, type Ref } from 'vue'
 
+/** Удерживает клавиатурный фокус в открытом диалоге. */
+export function keepDialogFocus(event: KeyboardEvent, dialog: HTMLElement | null) {
+  if (event.key !== 'Tab' || event.defaultPrevented || !dialog) return
+  const items = [
+    ...dialog.querySelectorAll<HTMLElement>('button, input, select, textarea, a[href], [tabindex]'),
+  ].filter(
+    (item) => item.tabIndex >= 0 && !item.matches(':disabled') && item.getClientRects().length > 0,
+  )
+  const first = items[0]
+  const last = items[items.length - 1]
+  const active = document.activeElement
+  if (!first || !last || !dialog.contains(active)) {
+    event.preventDefault()
+    const target = first ?? dialog
+    target.focus()
+  } else if (event.shiftKey && (active === first || active === dialog)) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 export function useMenuFocus(isOpen: () => boolean, dialog: Readonly<Ref<HTMLElement | null>>) {
   let opener: HTMLElement | null = null
   let isLastInputPointer = false
@@ -25,27 +49,7 @@ export function useMenuFocus(isOpen: () => boolean, dialog: Readonly<Ref<HTMLEle
 
   function onKeyDown(event: KeyboardEvent) {
     isLastInputPointer = false
-    if (event.key !== 'Tab' || !isOpen() || !dialog.value) return
-    const root = dialog.value
-    const items = [...root.querySelectorAll<HTMLElement>('button:not([disabled])')]
-    const first = items[0]
-    const last = items[items.length - 1]
-    if (!first || !last) {
-      event.preventDefault()
-      root.focus()
-      return
-    }
-    const active = document.activeElement
-    if (!root.contains(active)) {
-      event.preventDefault()
-      first.focus()
-    } else if (event.shiftKey && (active === first || active === root)) {
-      event.preventDefault()
-      last.focus()
-    } else if (!event.shiftKey && active === last) {
-      event.preventDefault()
-      first.focus()
-    }
+    if (isOpen()) keepDialogFocus(event, dialog.value)
   }
   const onPointerDown = () => {
     isLastInputPointer = true

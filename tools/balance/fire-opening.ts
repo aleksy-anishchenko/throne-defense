@@ -55,7 +55,7 @@ function opening(plan: (typeof plans)[number]) {
     let steps = 0
     while (game.state.phase === 'wave' && steps++ < 60 * 600) game.step(SIMULATION_STEP)
     if (game.state.phase === 'wave') throw new Error('Волна зависла')
-    if (game.state.phase === 'reward') {
+    while (game.state.phase === 'reward') {
       const rewardId = game.state.pendingReward?.options[0]
       if (!rewardId || !game.chooseReward(rewardId)) throw new Error('Не выбрана награда')
     }

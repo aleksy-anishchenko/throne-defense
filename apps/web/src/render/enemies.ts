@@ -490,6 +490,31 @@ export const ENEMY_ART: Record<string, EnemyArt> = {
     },
   },
 
+  general: {
+    sparkColor: '#cd7254',
+    sparkCount: 14,
+    healthBarOffset: 0.29,
+    drawOnTop: true,
+    body(ctx, radius) {
+      ENEMY_ART['armor'].body(ctx, radius)
+      ctx.strokeStyle = '#ecc591'
+      ctx.lineWidth = 0.045
+      ctx.beginPath()
+      ctx.moveTo(-radius * 0.94, radius * 0.65)
+      ctx.lineTo(-radius * 0.94, -radius * 1.62)
+      ctx.stroke()
+      ctx.fillStyle = '#a64249'
+      ctx.beginPath()
+      ctx.moveTo(-radius * 0.94, -radius * 1.62)
+      ctx.lineTo(radius * 0.43, -radius * 1.72)
+      ctx.lineTo(radius * 0.12, -radius * 1.4)
+      ctx.lineTo(radius * 0.43, -radius * 1.13)
+      ctx.lineTo(-radius * 0.94, -radius * 1.05)
+      ctx.closePath()
+      ctx.fill()
+    },
+  },
+
   boss: {
     sparkColor: '#7a45b8',
     sparkCount: 22,

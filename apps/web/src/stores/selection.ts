@@ -12,8 +12,7 @@ import {
   ENEMIES,
   TARGET_MODES,
   TOWERS,
-  fireRateBonusOf,
-  fireRateSourceOf,
+  fireRateContributionsOf,
   bellCoverage,
   treasuryBonusOf,
   treasuryIncomeOf,
@@ -86,8 +85,9 @@ export const useSelectionStore = defineStore('selection', () => {
     refund: 0,
     /** Вернут ли всё вложенное: башня ещё не была в бою */
     isFullRefund: false,
-    /** Насколько её ускоряет Звонарь рядом: 0.2 — на 20%, 0 — не ускоряет */
+    /** Суммарное ускорение Звонарей: 0.2 — на 20%. */
     fireRateBonus: 0,
+    fireRateSources: 0,
     bellCoveredTowers: 0,
     bellBoostedTowers: 0,
     treasuryNeighbors: 0,
@@ -101,7 +101,7 @@ export const useSelectionStore = defineStore('selection', () => {
 
   /** Снимок предпросмотра: игра не реактивна, как и снимок выбранной башни выше. */
   const bellPlacement = reactive({ isActive: false, covered: 0, improved: 0, bonus: 0 })
-  const receivingBellPlacement = reactive({ isActive: false, bonus: 0 })
+  const receivingBellPlacement = reactive({ isActive: false, bonus: 0, sources: 0 })
 
   const selectedTower = (): Tower | undefined =>
     selectedTowerCell.value
@@ -111,6 +111,7 @@ export const useSelectionStore = defineStore('selection', () => {
   /** Вызывается каждый кадр вместе с syncHud */
   function sync() {
     const tower = selectedTower()
+    const { secondBellShare, upgradeCostMultiplier } = rewardStats(game.state)
     // Так задумано: если выбранной башни уже нет (её продали), выбор снимается сам,
     // и меню действий с ней закрывается
     if (selectedTowerCell.value && !tower) selectedTowerCell.value = null
@@ -122,16 +123,22 @@ export const useSelectionStore = defineStore('selection', () => {
     selected.targetMode = tower ? tower.targetMode : 'first'
     selected.refund = tower ? refundFor(tower) : 0
     selected.isFullRefund = tower ? isFullRefund(tower) : false
-    selected.fireRateBonus = tower ? fireRateBonusOf(game.state.towers, tower) : 0
+    const bellSupport = tower
+      ? fireRateContributionsOf(game.state.towers, tower, secondBellShare)
+      : []
+    selected.fireRateBonus = bellSupport.reduce((sum, { bonus }) => sum + bonus, 0)
+    selected.fireRateSources = bellSupport.length
     const bellTargets = tower?.def.id === 'bell' ? bellCoverage(game.state.towers, tower) : []
     selected.bellCoveredTowers = bellTargets.length
-    selected.bellBoostedTowers = bellTargets.filter(
-      (target) => fireRateSourceOf(game.state.towers, target) === tower,
+    selected.bellBoostedTowers = bellTargets.filter((target) =>
+      fireRateContributionsOf(game.state.towers, target, secondBellShare).some(
+        ({ source }) => source === tower,
+      ),
     ).length
     selected.treasuryNeighbors = tower ? treasuryNeighbors(game.state.towers, tower).length : 0
     selected.treasuryBonus = tower ? treasuryBonusOf(game.state.towers, tower) : 0
     selected.treasuryIncome = tower ? treasuryIncomeOf(game.state.towers, tower) : 0
-    selected.upgradeCostMultiplier = rewardStats(game.state).upgradeCostMultiplier
+    selected.upgradeCostMultiplier = upgradeCostMultiplier
     selected.upgradeCost = tower ? upgradeCost(tower, selected.upgradeCostMultiplier) : null
     const aspect = tower ? towerAspect(tower) : null
     selected.hunterStacks = tower?.hunterStacks ?? 0
@@ -144,7 +151,12 @@ export const useSelectionStore = defineStore('selection', () => {
       placementCell !== null &&
       game.isCellFree(placementCell.col, placementCell.row)
     if (bellPlacement.isActive && placementCell) {
-      const preview = bellPlacementPreview(game.state.towers, placementCell.col, placementCell.row)
+      const preview = bellPlacementPreview(
+        game.state.towers,
+        placementCell.col,
+        placementCell.row,
+        secondBellShare,
+      )
       bellPlacement.covered = preview.covered.length
       bellPlacement.improved = preview.improved.length
       bellPlacement.bonus = preview.bonus
@@ -156,10 +168,12 @@ export const useSelectionStore = defineStore('selection', () => {
             armedTowerId.value,
             placementCell.col,
             placementCell.row,
+            secondBellShare,
           )
         : null
     receivingBellPlacement.isActive = receiverPreview !== null
     receivingBellPlacement.bonus = receiverPreview?.bonus ?? 0
+    receivingBellPlacement.sources = receiverPreview?.sources.length ?? 0
     isBoardClickable.value =
       hover !== null &&
       gameStore.isPlaying() &&
@@ -353,9 +367,11 @@ export const useSelectionStore = defineStore('selection', () => {
     for (const [enemyId, count] of game.waveGroups(waveNumber)) {
       counts.set(enemyId, (counts.get(enemyId) ?? 0) + count)
     }
-    return [...counts]
+    const roster = [...counts]
       .map(([enemyId, count]) => `${count} ${plural(count, ENEMIES[enemyId].nameForms)}`)
       .join(', ')
+    const banner = counts.has('general') ? ENEMIES['general'].banner : undefined
+    return banner ? `${roster}. Знамя даёт бойцам рядом +${banner.armor} брони.` : roster
   }
 
   // Порядок проверок — это приоритет подсказок. Выбранная башня и страж «в руке» выше паузы:
@@ -364,13 +380,17 @@ export const useSelectionStore = defineStore('selection', () => {
     const hud = gameStore.hud
     if (selected.towerId) return describeTower(selected.towerId)
     if (armedTowerId.value && receivingBellPlacement.isActive) {
-      return `${TOWERS[armedTowerId.value].name}: получит +${Math.round(receivingBellPlacement.bonus * 100)}% к скорострельности от Звонаря`
+      const sources = receivingBellPlacement.sources > 1 ? 'Звонарей' : 'Звонаря'
+      return `${TOWERS[armedTowerId.value].name}: получит +${Math.round(receivingBellPlacement.bonus * 100)}% к скорострельности от ${sources}`
     }
     if (armedTowerId.value === 'bell' && bellPlacement.isActive) {
       if (bellPlacement.covered === 0) return 'Звонарь: нет подходящих башен в зоне'
       if (bellPlacement.improved === 0) return 'Звонарь: все цели уже получают не меньший бонус'
       const count = bellPlacement.improved
-      return `Звонарь: ускорит ${count} ${plural(count, ['башню', 'башни', 'башен'])} на ${Math.round(bellPlacement.bonus * 100)}%`
+      const targets = plural(count, ['башню', 'башни', 'башен'])
+      if (gameStore.blessingEffects.secondBellShare > 0)
+        return `Звонарь ускорит ${count} ${targets}. Итоговый бонус показан над стражами.`
+      return `Звонарь: ускорит ${count} ${targets} на ${Math.round(bellPlacement.bonus * 100)}%`
     }
     if (armedTowerId.value) return describeTower(armedTowerId.value)
     if (hud.isPaused) return 'Пауза. Стражу можно ставить и улучшать'

@@ -112,6 +112,22 @@ describe('показ бонусов Звонаря', () => {
     expect(calls.fillText.mock.calls.map(([text]) => text)).toEqual(['+20%'])
   })
 
+  it('«Два колокола» показывают обе связи и суммарный процент на получателе', () => {
+    const game = newGame()
+    const archer = game.build('archer', 1, 0)!
+    const strong = game.build('bell', 0, 0)!
+    game.upgrade(strong.col, strong.row)
+    game.upgrade(strong.col, strong.row)
+    const preview = bellPlacementPreview(game.state.towers, 2, 0, 0.5)
+    expect(preview.improved).toEqual([{ tower: archer, bonus: 0.5 }])
+    const second = game.build('bell', 2, 0)!
+    const buffs = bellBuffs(game.state.towers, 0.5)
+    expect(focusedBellBuffs(buffs, archer).map(({ source }) => source)).toEqual([strong, second])
+    const { ctx, calls } = drawingContext()
+    drawBellIndicators(ctx, buffs, archer, 40)
+    expect(calls.fillText.mock.calls.map(([text]) => text)).toEqual(['+50%'])
+  })
+
   it('слабый или равный второй Звонарь не показывает фиктивный вклад', () => {
     const { game, bell } = battery()
     const other = game.build('bell', 2, 0)!
@@ -148,7 +164,7 @@ describe('показ бонусов Звонаря', () => {
     const towers = [...game.state.towers]
     const preview = bellPlacementPreview(towers, 1, 1)
     expect(preview.covered).toEqual([archer])
-    expect(preview.improved).toEqual([archer])
+    expect(preview.improved).toEqual([{ tower: archer, bonus: 0.2 }])
     expect(preview.bonus).toBe(0.2)
     expect(fireRateBonusOf(game.state.towers, archer)).toBe(0)
     expect(game.state.gold).toBe(gold)
@@ -176,7 +192,7 @@ describe('показ бонусов Звонаря', () => {
     game.upgrade(0, 0)
     const preview = bellPlacementPreview(game.state.towers, 2, 0)
     expect(preview.covered).toEqual([supported, fresh])
-    expect(preview.improved).toEqual([fresh])
+    expect(preview.improved).toEqual([{ tower: fresh, bonus: 0.2 }])
     const { ctx, calls } = drawingContext()
     drawBellPreview(ctx, preview, 40, true)
     expect(calls.fillText.mock.calls.map(([text]) => text)).toEqual(['→ +20%'])
@@ -205,7 +221,7 @@ describe('предпросмотр башни-получателя', () => {
     expect(game.state.gold).toBe(gold)
     expect(game.state.towers).toEqual([bell])
     if (def.takesFireRateBonus) {
-      expect(preview?.source).toBe(bell)
+      expect(preview?.sources).toEqual([bell])
       expect(preview?.tower).toEqual({ def, x: 0.5, y: 0.5 })
       expect(preview?.bonus).toBe(0.2)
     } else {
@@ -240,11 +256,11 @@ describe('предпросмотр башни-получателя', () => {
     const game = newGame()
     const weak = game.build('bell', 0, 0)!
     const strong = game.build('bell', 2, 0)!
-    expect(towerPlacementBellPreview(game.state.towers, 'archer', 1, 1)?.source).toBe(weak)
+    expect(towerPlacementBellPreview(game.state.towers, 'archer', 1, 1)?.sources).toEqual([weak])
     game.upgrade(2, 0)
     game.upgrade(2, 0)
     const preview = towerPlacementBellPreview(game.state.towers, 'archer', 1, 1)!
-    expect(preview.source).toBe(strong)
+    expect(preview.sources).toEqual([strong])
     expect(bellBuffs(game.state.towers)).toEqual([]) // Получатель ещё не существует.
     const { ctx, calls } = drawingContext()
     drawTowerBellPreview(ctx, preview, 40, true)

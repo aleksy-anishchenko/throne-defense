@@ -2,6 +2,7 @@
 
 import { hpMultiplier } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
+import { PANIC_IN_FORMATION } from '../data/rewards.ts'
 import type { Enemy, World } from '../types.ts'
 import { rewardStats } from './rewards.ts'
 
@@ -11,15 +12,30 @@ const SPLIT_SPACING = 0.22
 /** Сколько союзников один знахарь может получать за один импульс */
 export const MAX_HEAL_TARGETS = 3
 
+const BANNER_RECIPIENTS = new Set(['rebel', 'scout', 'armor'])
+
+/** Сильнейшая прибавка к броне от живого генерала в радиусе. */
+export function bannerArmorOf(enemies: readonly Enemy[], recipient: Enemy): number {
+  if (recipient.isDead || !BANNER_RECIPIENTS.has(recipient.def.id)) return 0
+  let armor = 0
+  for (const enemy of enemies) {
+    const banner = enemy.def.banner
+    if (!banner || enemy.isDead || banner.armor <= armor) continue
+    const dx = enemy.x - recipient.x
+    const dy = enemy.y - recipient.y
+    if (dx * dx + dy * dy <= banner.radius * banner.radius) armor = banner.armor
+  }
+  return armor
+}
+
 /** Выпустить врага enemyId: от двери или (pathDistance) с указанного места ковра */
 export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): void {
   // Волны проверены при загрузке уровня, так что сюда неизвестный id попадает только по ошибке в коде
   if (!Object.hasOwn(ENEMIES, enemyId)) throw new Error(`Неизвестный враг «${enemyId}»`)
   const def = ENEMIES[enemyId]
   const state = world.state
-  const rewards = rewardStats(state)
-  const miniBossHp = def.id === 'ogre' || def.id === 'gorynych' ? rewards.miniBossHpMultiplier : 1
-  const hp = Math.round(def.hp * hpMultiplier(state.wave, world.level.waveCount) * miniBossHp)
+  const giantHealth = def.isGiant ? rewardStats(state).giantHealthMultiplier : 1
+  const hp = Math.round(def.hp * hpMultiplier(state.wave, world.level.waveCount) * giantHealth)
   const [x, y] = world.level.path.positionAt(pathDistance)
   state.enemies.push({
     id: state.nextId++,
@@ -31,6 +47,7 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
     y,
     slowTimeLeft: 0,
     slowFactor: 0,
+    panicTimeLeft: 0,
     healCooldownLeft: def.heal?.cooldown ?? 0,
     burnDamageLeft: 0,
     burnTimeLeft: 0,
@@ -52,15 +69,18 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
 export function moveEnemies(world: World, dt: number): boolean {
   const state = world.state
   const { path } = world.level
-  const enemySpeedMultiplier = rewardStats(state).enemySpeedMultiplier
+  const { enemySpeedMultiplier, moatSpeedMultiplier } = rewardStats(state)
+  const moatStart = path.length * 0.75
 
   for (const enemy of state.enemies) {
     if (enemy.isDead) continue
     let speed = enemy.def.speed * enemySpeedMultiplier
-    if (enemy.slowTimeLeft > 0) {
-      speed *= 1 - enemy.slowFactor
-      enemy.slowTimeLeft -= dt
-    }
+    if (enemy.pathDistance >= moatStart) speed *= moatSpeedMultiplier
+    const frostSlow = enemy.slowTimeLeft > 0 ? enemy.slowFactor : 0
+    const panicSlow =
+      enemy.panicTimeLeft > 0 ? PANIC_IN_FORMATION.slow * (1 - (enemy.def.slowResistance ?? 0)) : 0
+    speed *= 1 - Math.max(frostSlow, panicSlow)
+    if (enemy.slowTimeLeft > 0) enemy.slowTimeLeft -= dt
     // В сети — стоит. Замедление при этом идёт своим чередом
     if (enemy.rootTimeLeft > 0) speed = 0
     tickStatusTimers(world, enemy, dt)
@@ -70,6 +90,7 @@ export function moveEnemies(world: World, dt: number): boolean {
       // Дошёл до трона
       enemy.isDead = true
       state.lives -= enemy.def.throneDamage
+      if (enemy.def.throneDamage > 0) state.lastThroneDamageWave = state.wave
       world.emit('leak', enemy)
       if (state.lives <= 0) {
         state.lives = 0
@@ -88,11 +109,12 @@ export function moveEnemies(world: World, dt: number): boolean {
 }
 
 /**
- * Часы сети, проклятия, снятия брони и «устойчивости» после сети. Не ниже нуля.
+ * Часы паники, сети, проклятия, снятия брони и «устойчивости» после сети. Не ниже нуля.
  * Сеть кончилась на горящем враге — значит, сгорела (событие netBurn для картинки)
  */
 function tickStatusTimers(world: World, enemy: Enemy, dt: number): void {
   const wasRooted = enemy.rootTimeLeft > 0
+  enemy.panicTimeLeft = Math.max(0, enemy.panicTimeLeft - dt)
   enemy.rootTimeLeft = Math.max(0, enemy.rootTimeLeft - dt)
   if (wasRooted && enemy.rootTimeLeft === 0 && enemy.burnTimeLeft > 0) world.emit('netBurn', enemy)
   enemy.rootImmunityLeft = Math.max(0, enemy.rootImmunityLeft - dt)
@@ -125,7 +147,7 @@ export function updateHealers(world: World, dt: number): void {
     if (healer.healCooldownLeft > 0) continue
     healer.healCooldownLeft = heal.cooldown
 
-    const amount = healer.maxHp * heal.amount
+    const amount = healer.maxHp * heal.amount * rewardStats(world.state).enemyHealingMultiplier
     const targets = enemies
       .filter((other) => canHeal(healer, other, heal.radius))
       .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.id - b.id)

@@ -17,7 +17,7 @@ const strategies: Strategy[] = [
 const policies = ['без подготовки', 'сильная цель', 'продажа Казён'] as const
 
 export function prepare(game: Game, policy: (typeof policies)[number]): void {
-  if (game.state.wave !== 20 || policy === 'без подготовки') return
+  if (game.state.wave !== game.level.waveCount || policy === 'без подготовки') return
   for (const tower of game.state.towers) {
     if (tower.def.id === 'ballista') game.setTargetMode(tower.col, tower.row, 'strongest')
   }
@@ -49,10 +49,11 @@ if (import.meta.main) {
           prepare(game, policy)
         })
         if (result.outcome === 'stuck') throw new Error(`${level.id}: зависшая волна`)
-        const wave19 = result.waves.find((wave) => wave.wave === 19)
+        const beforeFinal = level.waves.length - 1
+        const lives = result.waves.find((wave) => wave.wave === beforeFinal)?.lives
         console.log(
           `  ${strategy.name}, ${policy}: ${result.wavesCleared}/${result.outcome}; ` +
-            `после 19-й ${wave19?.lives ?? 'не дошёл'} жизней; босс прошёл ${bossLeaks}`,
+            `после ${beforeFinal}-й ${lives ?? 'не дошёл'} жизней; босс прошёл ${bossLeaks}`,
         )
       }
     }

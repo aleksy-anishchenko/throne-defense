@@ -1,6 +1,6 @@
 // Как показывать характеристики башни: и в панели выбранной башни, и в меню выбора стража.
 
-import type { StatKey, TowerDef, TowerStats } from '@throne/game'
+import type { RewardStats, StatKey, TowerDef, TowerStats } from '@throne/game'
 import { displayStatValue } from '@throne/game'
 import { formatDecimal, formatPercent } from './format'
 
@@ -65,4 +65,20 @@ export function describeNewTowerStats(def: TowerDef): string {
   return def.displayStats
     .map((statKey) => formatStatLine(statKey, def.tiers[0], undefined))
     .join(' · ')
+}
+
+export function towerInteractionHint(
+  def: TowerDef,
+  effects: Pick<RewardStats, 'secondBellShare' | 'iceAndFire'>,
+): string | undefined {
+  if (def.id === 'bell' && effects.secondBellShare > 0) {
+    return `«Два колокола» дают стражу полный бонус сильнейшего Звонаря и ${formatPercent(effects.secondBellShare)} бонуса второго в зоне.`
+  }
+  if (effects.iceAndFire && def.id === 'mage') {
+    return 'Сначала стреляет по негорящим. «Лёд и пламя» позволяет поджигать замедленных врагов. Горящие враги быстрее сжигают сети.'
+  }
+  if (effects.iceAndFire && def.id === 'frost') {
+    return 'С благословением «Лёд и пламя» Морозко замедляет и горящих врагов. Ставьте его и Огневика рядом.'
+  }
+  return def.interactionHint
 }

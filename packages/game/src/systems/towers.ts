@@ -4,7 +4,8 @@ import { REFUND_RATE } from '../data/balance.ts'
 import type { Enemy, StatKey, TargetMode, Tower, TowerDef, TowerStats, World } from '../types.ts'
 import { effectiveTowerStats, rewardStats } from './rewards.ts'
 
-export const towerStats = (tower: Tower): TowerStats => tower.def.tiers[tower.tier]
+export const towerStats = (tower: Pick<Tower, 'def' | 'tier'>): TowerStats =>
+  tower.def.tiers[tower.tier]
 
 /** Данные выбранной специализации или null, если башня ещё без аспекта. */
 export const towerAspect = (tower: Tower) =>
@@ -85,19 +86,21 @@ function findTarget(world: World, tower: Tower, stats: TowerStats): Enemy | null
 
 /** Достаточно описания и позиции: предпросмотр ещё не построенной башни не создаёт сущность игры. */
 type FireRateReceiver = Pick<Tower, 'def' | 'x' | 'y'>
+type BellSource = FireRateReceiver & Pick<Tower, 'id' | 'tier'>
 
-/**
- * Сильнейший Звонарь в радиусе. Несколько аур не складываются:
- * иначе пять колоколов вокруг одной баллисты превратили бы её в пулемёт.
- */
-function strongestBellFor(tower: FireRateReceiver, bells: readonly Tower[]): Tower | null {
-  let source: Tower | null = null
+/** Сильнейший Звонарь в радиусе. При равной силе первым берём источник с меньшим id. */
+function strongestBellFor<Source extends BellSource>(
+  tower: FireRateReceiver,
+  bells: readonly Source[],
+  excluded?: Source,
+): Source | null {
+  let source: Source | null = null
   let bonus = 0
   for (const bell of bells) {
+    if (bell === excluded) continue
     const stats = towerStats(bell)
     const isInRange = (bell.x - tower.x) ** 2 + (bell.y - tower.y) ** 2 <= stats.range ** 2
     const candidateBonus = stats.fireRateBonus ?? 0
-    // При равном бонусе один устойчивый источник для картинки, а не две «суммирующиеся» связи.
     if (
       isInRange &&
       candidateBonus > 0 &&
@@ -110,18 +113,52 @@ function strongestBellFor(tower: FireRateReceiver, bells: readonly Tower[]): Tow
   return source
 }
 
-function fireRateBonusFor(tower: FireRateReceiver, bells: readonly Tower[]): number {
+function bellContributionsFor<Source extends BellSource>(
+  tower: FireRateReceiver,
+  bells: readonly Source[],
+  secondBellShare: number,
+) {
+  if (!tower.def.takesFireRateBonus) return []
   const source = strongestBellFor(tower, bells)
-  return source ? (towerStats(source).fireRateBonus ?? 0) : 0
+  if (!source) return []
+  const contributions = [{ source, bonus: towerStats(source).fireRateBonus ?? 0 }]
+  const second = secondBellShare > 0 ? strongestBellFor(tower, bells, source) : null
+  if (second) {
+    contributions.push({
+      source: second,
+      bonus: (towerStats(second).fireRateBonus ?? 0) * secondBellShare,
+    })
+  }
+  return contributions
+}
+
+function fireRateBonusFor(
+  tower: FireRateReceiver,
+  bells: readonly BellSource[],
+  secondBellShare: number,
+): number {
+  return bellContributionsFor(tower, bells, secondBellShare).reduce(
+    (sum, { bonus }) => sum + bonus,
+    0,
+  )
 }
 
 /** Звонари среди башен: у кого есть бонус к скорострельности соседей */
-const bellsAmong = (towers: readonly Tower[]) =>
+const bellsAmong = <Source extends BellSource>(towers: readonly Source[]) =>
   towers.filter((tower) => (towerStats(tower).fireRateBonus ?? 0) > 0)
 
-/** Звонарь, дающий фактический бонус. При равной силе для отображения выбирается первый по id. */
+/** Основной источник. При равной силе выбирается первый по id. */
 export function fireRateSourceOf(towers: readonly Tower[], tower: FireRateReceiver): Tower | null {
   return tower.def.takesFireRateBonus ? strongestBellFor(tower, bellsAmong(towers)) : null
+}
+
+/** Источники и их доли ускорения. С «Двумя колоколами» учитывается и второй Звонарь. */
+export function fireRateContributionsOf<Source extends BellSource>(
+  towers: readonly Source[],
+  tower: FireRateReceiver,
+  secondBellShare = 0,
+) {
+  return bellContributionsFor(tower, bellsAmong(towers), secondBellShare)
 }
 
 /** Подходящие получатели в радиусе — в том числе те, кого уже ускоряет другой Звонарь. */
@@ -142,8 +179,14 @@ export function bellCoverage(
  * Насколько Звонари рядом ускоряют башню: 0.2 — стреляет на 20% быстрее, 0 — не ускорена
  * (нет Звонаря рядом или её Звонарь не ускоряет). Для интерфейса и отрисовки
  */
-export function fireRateBonusOf(towers: readonly Tower[], tower: FireRateReceiver): number {
-  return tower.def.takesFireRateBonus ? fireRateBonusFor(tower, bellsAmong(towers)) : 0
+export function fireRateBonusOf(
+  towers: readonly BellSource[],
+  tower: FireRateReceiver,
+  secondBellShare = 0,
+): number {
+  return tower.def.takesFireRateBonus
+    ? fireRateBonusFor(tower, bellsAmong(towers), secondBellShare)
+    : 0
 }
 
 /** Каждая башня, у которой прошла перезарядка, стреляет в свою цель (см. findTarget) */
@@ -157,7 +200,7 @@ export function updateTowers(world: World, dt: number): void {
     const fire = tower.def.fire
     if (!fire) continue
 
-    const bonus = tower.def.takesFireRateBonus ? fireRateBonusFor(tower, bells) : 0
+    const bonus = fireRateBonusFor(tower, bells, rewards.secondBellShare)
     tower.cooldownLeft -= dt * (1 + bonus) * rewards.fireRateMultiplier
     if (tower.cooldownLeft > 0) continue
 

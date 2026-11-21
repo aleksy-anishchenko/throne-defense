@@ -61,6 +61,7 @@ const enemyFrames = new Map<string, SpriteFrame>([
   ['ogre', { index: 13, size: 0.94 }],
   ['gorynych', { index: 14, size: 1.06 }],
   ['snakelet', { index: 15, size: 0.55 }],
+  ['general', { index: 48, size: 0.94 }],
   ['boss', { index: 16, size: 1.08 }],
 ])
 

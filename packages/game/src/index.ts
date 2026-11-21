@@ -17,7 +17,19 @@ export {
   waveBonus,
 } from './data/balance.ts'
 export { ENEMIES } from './data/enemies.ts'
-export { REWARDS, REWARD_LIST, REWARD_WAVES, type RewardDef } from './data/rewards.ts'
+export { bannerArmorOf } from './systems/enemies.ts'
+export {
+  REWARDS,
+  REWARD_LIST,
+  REWARD_RARITIES,
+  REWARD_SETS,
+  REWARD_SET_SIZE,
+  REWARD_WAVES,
+  rewardSegmentForWave,
+  type RewardDef,
+  type RewardRarity,
+  type RewardSetId,
+} from './data/rewards.ts'
 export { TOWERS, TOWER_LIST } from './data/towers.ts'
 export { LEVELS, PLAYABLE_LEVELS } from './levels/index.ts'
 export {
@@ -25,6 +37,7 @@ export {
   investedGold,
   isFullRefund,
   fireRateBonusOf,
+  fireRateContributionsOf,
   fireRateSourceOf,
   bellCoverage,
   treasuryNeighbors,
@@ -42,6 +55,9 @@ export { maxPossibleScore } from './systems/waves.ts'
 export {
   isRewardWave,
   offerReward,
+  rewardDescriptionForWave,
+  rewardRerollCost,
+  rewardSetCounts,
   rewardStats,
   rollRewardOptions,
   summarizeRewards,

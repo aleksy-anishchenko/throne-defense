@@ -13,19 +13,25 @@ import { throneHall } from '../src/levels/throne-hall.ts'
 import { newGame, recordEvents, stepUntil } from './helpers.ts'
 
 describe('волны', () => {
-  it('последние две волны сохраняют согласованный финальный состав', () => {
+  it('генерал выходит на 20-й, 25-й и 28-й волнах, а Узурпатор только на 30-й', () => {
+    expect(HALL_BASE.waves).toHaveLength(30)
+    expect(
+      HALL_BASE.waves.flatMap((groups, i) =>
+        groups.some(([id]) => id === 'general') ? [i + 1] : [],
+      ),
+    ).toEqual([20, 25, 28])
+    expect(
+      HALL_BASE.waves.flatMap((groups, i) => (groups.some(([id]) => id === 'boss') ? [i + 1] : [])),
+    ).toEqual([30])
+    expect(HALL_BASE.waves[29].find(([id]) => id === 'boss')?.[1]).toBe(1)
+  })
+
+  it('перед генералом 19-я волна сохраняет согласованный состав', () => {
     expect(HALL_BASE.waves[18]).toEqual([
       ['ogre', 4, 1.8, 0],
       ['armor', 14, 0.6, 4],
       ['healer', 3, 3, 3],
       ['gorynych', 2, 7, 6],
-    ])
-    expect(HALL_BASE.waves[19]).toEqual([
-      ['boss', 1, 0, 0],
-      ['armor', 12, 0.9, 3],
-      ['ogre', 4, 3, 8],
-      ['scout', 24, 0.3, 14],
-      ['healer', 2, 3, 4],
     ])
   })
 
@@ -101,27 +107,41 @@ describe('волны', () => {
     expect(game.startWave()).toBe(false)
   })
 
-  it('после последней волны — победа и бонус за жизни', () => {
+  it('после благословения за 20-ю волну начинается подготовка к 21-й', () => {
+    const game = newGame()
+    game.state.wave = 20
+    game.state.phase = 'wave'
+    game.step(SIMULATION_STEP)
+
+    expect(game.state.phase).toBe('reward')
+    expect(game.chooseReward(game.state.pendingReward!.options[0])).toBe(true)
+    expect(game.state.phase).toBe('build')
+    expect(game.state.wave).toBe(21)
+    expect(game.state.wavesCleared).toBe(20)
+    expect(game.state.score).toBe(100 * 20)
+  })
+
+  it('после 30-й волны — победа и бонус за жизни', () => {
     const game = newGame()
     const recordedEvents = recordEvents(game)
-    game.state.wave = 20
+    game.state.wave = 30
     game.state.spawnQueue = []
     game.state.phase = 'wave' // волна «пустая» — отбита на первом же шаге
     game.step(SIMULATION_STEP)
 
     expect(game.state.phase).toBe('won')
     expect(recordedEvents).toContain('victory')
-    expect(game.state.score).toBe(100 * 20 + 20 * 100)
+    expect(game.state.score).toBe(100 * 30 + 20 * 100)
   })
 
   it('после победы можно играть дальше, в бесконечном режиме', () => {
     const game = newGame()
     game.state.phase = 'won'
-    game.state.wave = 20
+    game.state.wave = 30
     game.continueEndless()
     expect(game.state.phase).toBe('build')
-    expect(game.state.wave).toBe(21)
-    expect(game.waveGroups(25).some(([enemyId]) => enemyId === 'boss')).toBe(true)
+    expect(game.state.wave).toBe(31)
+    expect(game.waveGroups(35).some(([enemyId]) => enemyId === 'boss')).toBe(true)
   })
 
   it('игрок может добровольно завершить партию', () => {

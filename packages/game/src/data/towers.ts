@@ -9,8 +9,10 @@
 // Колдун — проклинает (проклятые получают больше урона и меньше лечения)
 
 import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/combat.ts'
+import { rewardStats } from '../systems/rewards.ts'
 import { towerAspect } from '../systems/towers.ts'
 import type { Enemy, TowerDef } from '../types.ts'
+import { DOUBLE_SHOT_INTERVAL } from './rewards.ts'
 
 /** Болт баллисты летит дальше её радиуса обстрела: дальность полёта = range × 1.15 (множитель) */
 const BALLISTA_REACH_FACTOR = 1.15
@@ -20,6 +22,9 @@ const BALLISTA_REACH_FACTOR = 1.15
  * снаряд всё равно один и бьёт как обычный (рисунок — 'twinBolt' в apps/web/src/render/shots.ts)
  */
 const BALLISTA_TWIN_BOLT_TIER = 2
+
+/** Поперечный отступ между стрелами одного залпа, клеток. */
+const DOUBLE_SHOT_SPACING = 0.22
 
 /** Враги рядом с основной целью для дополнительных стрел Рикошета. */
 function ricochetTargets(
@@ -90,12 +95,24 @@ const archer: TowerDef = {
       }
       damage *= 1 + tower.hunterStacks * hunter.damagePerStack
     }
-    shootHoming(world, tower, target, {
-      look: 'arrow',
-      speed: 13,
-      damage,
-      damageKind: 'physical',
-    })
+    const bonusArrows = rewardStats(world.state).doubleShotArrows
+    let arrows = 1
+    if (bonusArrows > 0) {
+      tower.shotsSinceDouble++
+      if (tower.shotsSinceDouble === DOUBLE_SHOT_INTERVAL) {
+        tower.shotsSinceDouble = 0
+        arrows += bonusArrows
+      }
+    }
+    for (let index = 0; index < arrows; index++) {
+      shootHoming(world, tower, target, {
+        look: 'arrow',
+        speed: 13,
+        damage,
+        damageKind: 'physical',
+        originOffset: (index - (arrows - 1) / 2) * DOUBLE_SHOT_SPACING,
+      })
+    }
     const ricochet = aspect?.ricochet
     if (!ricochet) return
     const extraTargets = ricochetTargets(
@@ -178,7 +195,7 @@ const ballista: TowerDef = {
       id: 'giant-slayer',
       name: 'Сокрушитель',
       description:
-        'Болт наносит на 60% больше урона ограм, Горынычу и Узурпатору. На остальных врагов бонус не действует.',
+        'Болт наносит на 60% больше урона исполинам — ограм, Горынычам, генералам мятежников и Узурпатору.',
       cost: 180,
       giantDamageBonus: 0.6,
     },
@@ -186,7 +203,7 @@ const ballista: TowerDef = {
       id: 'armor-breaker',
       name: 'Раскол лат',
       description:
-        'Болт снимает броню латника, Горыныча и Узурпатора на 4 секунды. Повторное попадание обновляет длительность.',
+        'Болт снимает броню на 4 секунды, включая защиту под знаменем. Повторное попадание обновляет длительность.',
       cost: 180,
       armorBreakDuration: 4,
     },
@@ -200,7 +217,7 @@ const ballista: TowerDef = {
   ],
   displayStats: ['damage', 'range'],
   // Умение баллисты: игрок переключает «первый» ↔ «сильный». «Сильный» бьёт самого крупного
-  // в радиусе (огров, Горыныча, узурпатора). По умолчанию «первый»: боты с «сильным» с самого
+  // в радиусе. По умолчанию «первый»: боты с «сильным» с самого
   // начала падали на 1–2 волны раньше — на смешанных волнах латники проходили мимо
   defaultTargetMode: 'first',
   canChooseTarget: true,

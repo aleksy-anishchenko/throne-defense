@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-labelledby="general-title">
+  <title id="general-title">Генерал мятежников</title>
+  <style>
+    .ink { stroke: #1a2029; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+    .line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+
+  <g id="rebel-general" transform="scale(1.5)">
+    <g id="general-cloak">
+      <path class="ink" fill="#572436" d="M48 49q18-9 34 1l10 22 13 26-12-4-6 10-13-6-10 8-14-5-11 5-17-4 10-13-10 2 13-20z"/>
+      <path fill="#8e3848" d="m46 55 11-3-13 33-12 15-7-1 11-15-10 3 12-21zm33 1 9 17 13 21-10-4-6 11-9-6z"/>
+      <path fill="#702d3f" d="m45 95 15-27-6 24-6 7 15 5-13-3-10 3z"/>
+      <path class="line" stroke="#b35658" stroke-width="2" d="m30 99 9 3 9-3m38 1 5-8 9 3"/>
+    </g>
+
+    <g id="general-standard">
+      <path class="ink" fill="#9c3d42" d="M27 17q10 3 24-3 12-6 30-3l-10 9-7 3 11 7-7 2 4 4q-15-1-25 4-10 4-18 1z"/>
+      <path fill="#ba5351" d="M29 19q12 1 25-5 12-4 23-2l-8 4q-8-1-17 3-14 6-22 5z"/>
+      <path fill="#742b39" d="M30 37q12 1 23-5 7-4 15-4l4 3-7 1 4 3q-12 0-23 5-8 3-16 0z"/>
+      <path fill="#f3ce8f" d="m33 24 7 2 3-8 7 5-4 5 4 3-14 4zm18 0 6-8 3 5 7-4-5 12-9 2-4-4z"/>
+      <path fill="#edbc7a" d="m36 36 14-4 2 2-15 5zm18-4 9-2-1 3-7 2z"/>
+      <path class="line" stroke="#1a2029" stroke-width="7" d="m26 16 9 94"/>
+      <path class="line" stroke="#80573f" stroke-width="4.3" d="m26 16 9 94"/>
+      <path class="line" stroke="#c18e5c" stroke-width="1.4" d="m25 21 3 33m5 31 2 20"/>
+      <path class="ink" fill="#a97745" d="m19 15 5-10 9 7-1 7-6 4-6-3z"/>
+      <path fill="#e0b477" d="m23 9-3 6 5 3 5-3-5-2z"/>
+      <path class="line" stroke="#d6a86d" stroke-width="2.3" d="m24 26 6-1m-4 12 5-1"/>
+    </g>
+
+    <g id="general-legs">
+      <path class="ink" fill="#323241" d="m53 83 19 6-5 10-7 5-2 7-22-1-2-4 10-6zm22 4 16-5 7 18 10 6v5l-23 1-8-5z"/>
+      <path class="ink" fill="#5d606b" d="m48 86 17 5-5 9-16 2-4-5zm28 5 15-5 6 13-14 6-7-6z"/>
+      <path fill="#888491" d="m43 96 6-7 12 3-4 3zm36-3 11-4 2 4-10 5z"/>
+      <path class="line" stroke="#7b6261" stroke-width="2.3" d="m39 106 16 1m31 0 17 1"/>
+    </g>
+
+    <g id="general-breastplate">
+      <path class="ink" fill="#9b3d47" d="m49 78 21 5 20-9 5 22-12 8-11-7-9 6-15-7z"/>
+      <path fill="#692737" d="m71 85 9-3 1 15-9-3-8 6-9-4 5-8z"/>
+      <path class="ink" fill="#484b5a" d="m44 57 16-13 23 2 16 15-5 19-13 9-18 2-20-14z"/>
+      <path fill="#737681" d="m50 58 12-10h10l-6 15-17 5z"/>
+      <path fill="#323442" d="m80 52 13 11-3 15-10 8-13 2 4-10 14-7z"/>
+      <path class="line" stroke="#98929a" stroke-width="2.2" d="m51 66 14 8 18-10m-17 11 3 9"/>
+      <path class="ink" fill="#664739" d="m47 76 18 8 25-7-3 8-21 6-15-8z"/>
+      <path class="ink" fill="#b88a56" d="m62 81 10 1 2 7-8 4-6-6z"/>
+      <path fill="#f0c78b" d="m64 84 6 1-1 3-4 1-2-3z"/>
+      <path class="ink" fill="#9a3f49" d="m49 47 15 4 13-6 14 8-6 8-13-4-8 10-16-7-5-6z"/>
+      <path fill="#be5057" d="m48 50 17 4 12-5 8 4-10-1-10 10-14-6z"/>
+      <circle class="ink" fill="#bc925d" cx="64" cy="60" r="4.4"/>
+    </g>
+
+    <g id="general-helmet">
+      <path class="ink" fill="#3d3f50" d="M51 47 53 35 66 26 81 26 94 32 100 41 95 47 94 56 84 64 74 61 59 57l-8-5z"/>
+      <path fill="#777c8a" d="m55 36 12-8 13 1-7 9-12 6-7 6z"/>
+      <path fill="#9a97a0" d="m80 29 12 5 6 7-11-2-13 5 2-8z"/>
+      <path class="ink" fill="#262531" d="m59 45 13 2 8 3 16-8-2 8-7 7-10 2-13-6z"/>
+      <path fill="#f18d68" d="m64 48 12 3-3 3-7-2zm19 3 9-6-1 5-7 5-2-1z"/>
+      <path fill="#514150" d="m61 54 11 3 6 3 9-3 5-6-2 7-6 4-9-1z"/>
+      <path class="line" stroke="#b3acaa" stroke-width="1.8" d="m72 45 8 3 12-7m-35 4-2 5 7 3"/>
+    </g>
+
+    <g id="general-arms">
+      <path class="ink" fill="#505363" d="m44 54 10 4 3 9-10 12-12 1-9-7 3-8 9-1z"/>
+      <path class="ink" fill="#696c79" d="m39 52 10-3 8 6 2 9-9 8-12-4-5-8z"/>
+      <path fill="#9694a0" d="m36 59 5-5 8-2 6 5-9-1-9 6z"/>
+      <path class="ink" fill="#53515f" d="m29 66 9 1 5 6-6 6-9-2-3-6z"/>
+      <path class="line" stroke="#aaa196" stroke-width="1.8" d="m29 69 7 1m-8 3 8 1"/>
+      <path class="ink" fill="#464955" d="m87 57 14-2 7-4 8 6-7 10-14 5-11-5z"/>
+      <path class="ink" fill="#656979" d="m82 57 8-8 10 1 5 6-4 9-10 5-9-4z"/>
+      <path fill="#9799a3" d="m85 57 6-6 8 2 3 3-8-1-7 6z"/>
+      <path class="ink" fill="#706d7b" d="m105 53 4-5 10-3 4 3-9 6 5 3-4 5-9 1-4-5z"/>
+      <path class="line" stroke="#a6a1a3" stroke-width="1.8" d="m111 50 8-3m-11 8 7 2"/>
+    </g>
+  </g>
+</svg>
