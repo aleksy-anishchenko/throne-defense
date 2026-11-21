@@ -8,6 +8,7 @@ import {
 } from '@throne/contracts'
 import type { FastifyInstance } from 'fastify'
 import { countPlayers, topPlayers } from '../services/leaderboard.ts'
+import { playerIdFromAuthorization } from '../services/players.ts'
 
 /**
  * GET /api/leaderboard — общий топ: все залы и все версии баланса. Так спрашивает игра.
@@ -20,14 +21,16 @@ export async function leaderboardRoutes(app: FastifyInstance): Promise<void> {
     {
       schema: { querystring: LeaderboardQuerySchema, response: { 200: LeaderboardResponseSchema } },
     },
-    async (request): Promise<LeaderboardResponse> => {
+    async (request, reply): Promise<LeaderboardResponse> => {
       const scope = {
         levelId: request.query.level ?? null,
         balanceVersion: request.query.balance ?? null,
       }
+      reply.header('Cache-Control', 'no-store')
       return {
         entries: topPlayers(app.db, scope, LEADERBOARD_SIZE),
         playerCount: countPlayers(app.db, scope),
+        viewerPlayerId: playerIdFromAuthorization(request.headers.authorization),
       }
     },
   )

@@ -40,6 +40,22 @@ describe('миграции из apps/server/src/db/migrations', () => {
     expect(migrate(database, migrations)).toEqual([])
     database.close()
   })
+
+  it('при добавлении профилей остаются старые результаты', () => {
+    const database = new DatabaseSync(IN_MEMORY_DATABASE)
+    try {
+      const migrations = loadMigrations()
+      expect(migrate(database, migrations.slice(0, 1))).toEqual([1])
+      insertRun(database, VALID_RUN)
+      expect(migrate(database, migrations)).toContain(2)
+      expect(database.prepare('SELECT * FROM runs').get()).toMatchObject({
+        ...VALID_RUN,
+        player_id: null,
+      })
+    } finally {
+      database.close()
+    }
+  })
 })
 
 describe('таблица runs', () => {

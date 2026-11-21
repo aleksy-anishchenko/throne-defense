@@ -9,6 +9,7 @@ import {
 import type { FastifyInstance } from 'fastify'
 import { insertRun, playerPlace } from '../services/leaderboard.ts'
 import { runRejection } from '../services/plausibility.ts'
+import { playerIdFromAuthorization, PROFILE_REQUIRED } from '../services/players.ts'
 
 /**
  * Строже общего ограничения: игра шлёт один результат за партию, а партия идёт минуты.
@@ -28,6 +29,7 @@ export async function runsRoutes(app: FastifyInstance): Promise<void> {
         body: SubmitRunRequestSchema,
         response: {
           200: SubmitRunResponseSchema,
+          401: SubmitRunRejectionSchema,
           422: SubmitRunRejectionSchema,
           503: SubmitRunRejectionSchema,
         },
@@ -47,12 +49,16 @@ export async function runsRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(422).send(rejection)
       }
 
-      insertRun(app.db, run)
+      const playerId = playerIdFromAuthorization(request.headers.authorization)
+      if (!playerId) {
+        return reply.header('WWW-Authenticate', 'Bearer').code(401).send(PROFILE_REQUIRED)
+      }
+      const playerName = insertRun(app.db, run, playerId)
       // Место — в общем топе (все залы, все версии баланса): его и показывает игра
-      const place = playerPlace(app.db, { levelId: null, balanceVersion: null }, run.playerName)
+      const place = playerPlace(app.db, { levelId: null, balanceVersion: null }, playerId)
       // Только что записали — место есть всегда; проверка — для TypeScript
       if (place === null) throw new Error('Результат записан, но не найден')
-      return place satisfies SubmitRunResponse
+      return { ...place, playerName } satisfies SubmitRunResponse
     },
   )
 }

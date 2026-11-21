@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Таблица лучших (общая на все залы): одно имя — одна строка с лучшим результатом и залом
+// Таблица лучших: строка профиля с его рекордом и залом партии
 import { levelName, useGameStore } from '@/stores/game'
 import { formatNumber, plural } from '@/utils/format'
 
@@ -23,14 +23,18 @@ const WAVE_FORMS = ['волна', 'волны', 'волн'] as const
     <ol class="leaderboard">
       <li
         v-for="entry in store.leaderboard.entries"
-        :key="entry.playerName"
-        :class="{ 'is-player': entry.playerName === store.playerName }"
+        :key="entry.playerId ?? `legacy:${entry.playerName}`"
+        :class="{
+          'is-player': entry.playerId && entry.playerId === store.leaderboard.viewerPlayerId,
+        }"
       >
         <span class="leaderboard-rank">{{ entry.rank }}</span>
         <span class="leaderboard-name">
           {{ entry.playerName }}
           <!-- Топ общий на все залы: где сыгран рекорд -->
-          <small class="leaderboard-level">{{ levelName(entry.levelId) }}</small>
+          <small class="leaderboard-level">
+            {{ levelName(entry.levelId) }}<template v-if="!entry.playerId"> · До профилей</template>
+          </small>
         </span>
         <span class="leaderboard-score">{{ formatNumber(entry.score) }}</span>
         <span class="leaderboard-waves">

@@ -15,9 +15,11 @@ export const LeaderboardQuerySchema = Type.Object(
 )
 export type LeaderboardQuery = Static<typeof LeaderboardQuerySchema>
 
-/** Строка таблицы: одно имя — одна строка, с его лучшим результатом */
+/** Лучший результат игрока. У старых записей с одним именем общий результат. */
 export const LeaderboardEntrySchema = Type.Object({
   rank: Type.Integer({ minimum: 1 }),
+  /** Публичный идентификатор профиля. Старые записи содержат только имя. */
+  playerId: Type.Optional(Type.String()),
   playerName: Type.String(),
   score: Type.Integer({ minimum: 0 }),
   wavesCleared: Type.Integer({ minimum: 0 }),
@@ -29,7 +31,8 @@ export type LeaderboardEntry = Static<typeof LeaderboardEntrySchema>
 export const LeaderboardResponseSchema = Type.Object({
   /** Не больше LEADERBOARD_SIZE, лучшие сверху */
   entries: Type.Array(LeaderboardEntrySchema),
-  /** Сколько всего разных имён в таблице */
+  /** Сколько всего игроков в таблице */
   playerCount: Type.Integer({ minimum: 0 }),
+  viewerPlayerId: Type.Optional(Type.String()),
 })
 export type LeaderboardResponse = Static<typeof LeaderboardResponseSchema>

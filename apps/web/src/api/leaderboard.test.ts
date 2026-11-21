@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BALANCE_VERSION } from '@throne/game'
-import { fetchLeaderboard, submitRun } from './leaderboard'
+import { fetchLeaderboard, submitRun, updatePlayerName } from './leaderboard'
+
+vi.mock('../utils/playerIdentity', () => ({
+  browserPlayerToken: async () => 'a'.repeat(64),
+}))
 
 const run = {
   playerName: 'Страж',
@@ -13,8 +17,41 @@ afterEach(() => vi.unstubAllGlobals())
 
 describe('ответы рейтинга', () => {
   it('возвращает место при успешной отправке', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ rank: 2, playerCount: 3 })))
-    expect(await submitRun(run)).toEqual({ ok: true, data: { rank: 2, playerCount: 3 } })
+    const data = { rank: 2, playerCount: 3, playerName: 'Страж' }
+    const fetch = vi.fn().mockResolvedValue(Response.json(data))
+    vi.stubGlobal('fetch', fetch)
+    expect(await submitRun(run)).toEqual({ ok: true, data })
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/runs',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: `Bearer ${'a'.repeat(64)}` }),
+      }),
+    )
+  })
+
+  it('смена имени отправляет только имя в профиль', async () => {
+    const data = { playerName: 'Новое имя' }
+    const fetch = vi.fn().mockResolvedValue(Response.json(data))
+    vi.stubGlobal('fetch', fetch)
+    expect(await updatePlayerName(data.playerName)).toEqual({ ok: true, data })
+    expect(fetch).toHaveBeenCalledExactlyOnceWith(
+      '/api/player',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify(data),
+        headers: expect.objectContaining({ Authorization: `Bearer ${'a'.repeat(64)}` }),
+      }),
+    )
+  })
+
+  it('неправильный успешный ответ остаётся временной ошибкой', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => Response.json(null)),
+    )
+    expect(await submitRun(run)).toMatchObject({ ok: false, code: 'unavailable' })
+    expect(await updatePlayerName('Страж')).toMatchObject({ ok: false, code: 'unavailable' })
+    expect(await fetchLeaderboard({})).toBeNull()
   })
   it('отличает устаревший баланс и сохраняет объяснение сервера', async () => {
     vi.stubGlobal(

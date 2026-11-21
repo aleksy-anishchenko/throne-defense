@@ -11,6 +11,9 @@ export const READY_PATH = '/api/ready'
 /** POST — результат законченной партии в общий топ */
 export const RUNS_PATH = '/api/runs'
 
+/** PATCH — смена имени профиля браузера */
+export const PLAYER_PROFILE_PATH = '/api/player'
+
 /** GET — лучшие по всем залам и версиям баланса; ?level=… и ?balance=… сужают таблицу */
 export const LEADERBOARD_PATH = '/api/leaderboard'
 

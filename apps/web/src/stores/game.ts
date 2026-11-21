@@ -29,7 +29,7 @@ import {
 } from '@throne/game'
 import { defineStore } from 'pinia'
 import { computed, markRaw, nextTick, reactive, ref, watch } from 'vue'
-import { fetchLeaderboard, submitRun } from '@/api/leaderboard'
+import { fetchLeaderboard, submitRun, updatePlayerName } from '@/api/leaderboard'
 import { audioEngine } from '@/audio/engine'
 import { connectGameSounds, musicMoodFor } from '@/audio/gameSounds'
 import { music } from '@/audio/music'
@@ -55,6 +55,10 @@ type SubmissionStatus =
   | 'needs-name'
   | 'sending'
   | 'sent'
+  /** Игрок редактирует имя своего профиля */
+  | 'editing-name'
+  /** Сохранение имени на сервере */
+  | 'saving-name'
   /** Нет сети или сервер не ответил — игра идёт как раньше, просто без топа */
   | 'failed'
   | 'outdated'
@@ -206,6 +210,7 @@ export const useGameStore = defineStore('game', () => {
     status: 'idle' as 'idle' | 'loading' | 'loaded' | 'failed',
     entries: [] as LeaderboardEntry[],
     playerCount: 0,
+    viewerPlayerId: undefined as string | undefined,
   })
   /** Итог последней партии. Запоминаем в момент конца: «Играть дальше» продолжит менять счёт */
   let finishedRun: { score: number; wavesCleared: number } | null = null
@@ -216,6 +221,11 @@ export const useGameStore = defineStore('game', () => {
   let submissionNumber = 0
   /** Откуда открыли таблицу лучших — туда и вернёт «Назад» */
   let screenBeforeLeaderboard: OverlayScreen = 'menu'
+
+  function rememberPlayerName(name: string) {
+    playerName.value = name
+    savePlayerName(name)
+  }
 
   async function submitFinishedRun() {
     if (!finishedRun || !playerName.value) return
@@ -230,6 +240,7 @@ export const useGameStore = defineStore('game', () => {
     })
     if (number !== submissionNumber) return
     if (result.ok) {
+      rememberPlayerName(result.data.playerName)
       submission.status = 'sent'
       submission.rank = result.data.rank
       submission.playerCount = result.data.playerCount
@@ -248,6 +259,7 @@ export const useGameStore = defineStore('game', () => {
   /** Партия кончилась (победа или поражение): результат — в общий топ */
   function finishRunForLeaderboard() {
     submissionNumber++
+    submission.message = ''
     // Партия без единого очка — не результат, как и для рекорда в браузере
     finishedRun = state.score > 0 ? { score: state.score, wavesCleared: state.wavesCleared } : null
     if (!finishedRun) submission.status = 'idle'
@@ -259,18 +271,34 @@ export const useGameStore = defineStore('game', () => {
     submissionNumber++
     finishedRun = null
     submission.status = 'idle'
+    submission.message = ''
   }
 
-  /**
-   * Игрок ввёл имя (впервые или сменил). Запоминаем и отправляем результат этой партии.
-   * false — имя не годится, ничего не меняем
-   */
+  async function renameProfile(name: string) {
+    const number = ++submissionNumber
+    submission.status = 'saving-name'
+    submission.message = ''
+    const result = await updatePlayerName(name)
+    if (number !== submissionNumber) return
+    if (result.ok) {
+      rememberPlayerName(result.data.playerName)
+      submission.status = 'sent'
+    } else {
+      submission.status = 'editing-name'
+      submission.message = result.message
+    }
+  }
+
+  /** Первое имя сохраняется с результатом. Следующие правки обновляют профиль. */
   function setPlayerName(rawName: string): boolean {
     const name = normalizePlayerName(rawName)
     if (!isValidPlayerName(name)) return false
-    playerName.value = name
-    savePlayerName(name)
-    void submitFinishedRun()
+    if (submission.status === 'editing-name') {
+      void renameProfile(name)
+    } else if (submission.status === 'needs-name') {
+      rememberPlayerName(name)
+      void submitFinishedRun()
+    }
     return true
   }
 
@@ -281,7 +309,10 @@ export const useGameStore = defineStore('game', () => {
 
   /** «Сменить имя» на экране итогов: снова показать поле ввода */
   function changePlayerName() {
-    if (finishedRun) submission.status = 'needs-name'
+    if (submission.status === 'sent') {
+      submission.message = ''
+      submission.status = 'editing-name'
+    }
   }
 
   /** Номер последней загрузки таблицы: ответ на старую (открыли, закрыли, открыли) пропускаем */
@@ -299,6 +330,7 @@ export const useGameStore = defineStore('game', () => {
     if (result) {
       leaderboard.entries = result.entries
       leaderboard.playerCount = result.playerCount
+      leaderboard.viewerPlayerId = result.viewerPlayerId
       leaderboard.status = 'loaded'
     } else {
       leaderboard.status = 'failed'

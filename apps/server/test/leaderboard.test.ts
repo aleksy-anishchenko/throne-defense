@@ -1,6 +1,7 @@
 import {
   LEADERBOARD_PATH,
   LEADERBOARD_SIZE,
+  PLAYER_PROFILE_PATH,
   RUNS_PATH,
   type LeaderboardResponse,
   type SubmitRunRequest,
@@ -13,10 +14,10 @@ import {
   maxPossibleScore,
 } from '@throne/game'
 import type { FastifyInstance } from 'fastify'
+import { createHash } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../src/app.ts'
 import { IN_MEMORY_DATABASE } from '../src/db/database.ts'
-import { insertRun } from '../src/services/leaderboard.ts'
 import { MAX_WAVES_CLEARED, runRejection } from '../src/services/plausibility.ts'
 
 const LEVEL_ID = 'throne-hall'
@@ -31,6 +32,10 @@ function run(
   levelId = LEVEL_ID,
 ): SubmitRunRequest {
   return { playerName, levelId, score, wavesCleared, balanceVersion: BALANCE_VERSION }
+}
+
+function browserAuthorization(label: string): string {
+  return `Bearer ${createHash('sha256').update(label).digest('hex')}`
 }
 
 it('сервер принимает предельный счёт компактного зала на каждой допустимой волне', () => {
@@ -59,37 +64,131 @@ describe('общий топ', () => {
 
   // Разные адреса игроков: иначе упрёмся в ограничение «10 результатов в минуту с адреса»
   let playerIp = 0
-  const submit = (body: unknown) =>
+  const submit = (
+    body: unknown,
+    authorization = browserAuthorization((body as Partial<SubmitRunRequest>)?.playerName ?? ''),
+  ) =>
     app.inject({
       method: 'POST',
       url: RUNS_PATH,
       payload: body as object,
-      headers: { 'x-forwarded-for': `203.0.113.${++playerIp % 250}` },
+      headers: { authorization, 'x-forwarded-for': `203.0.113.${++playerIp % 250}` },
     })
   /** Таблица одного зала (все версии баланса) */
-  const leaderboard = async () =>
+  const leaderboard = async (authorization?: string) =>
     (
-      await app.inject({ method: 'GET', url: `${LEADERBOARD_PATH}?level=${LEVEL_ID}` })
+      await app.inject({
+        method: 'GET',
+        url: `${LEADERBOARD_PATH}?level=${LEVEL_ID}`,
+        headers: authorization ? { authorization } : undefined,
+      })
     ).json<LeaderboardResponse>()
 
   it('первый результат — первое место из одного', async () => {
     const response = await submit(run('Василиса', 5000))
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual({ rank: 1, playerCount: 1 })
+    expect(response.json()).toEqual({ rank: 1, playerCount: 1, playerName: 'Василиса' })
   })
 
-  it('место считается по лучшему результату имени, одно имя — одна строка', async () => {
+  it('старый клиент без ключа профиля получает указание обновить игру', async () => {
+    const response = await submit(
+      { ...run('Старый страж', 5000), balanceVersion: BALANCE_VERSION - 1 },
+      '',
+    )
+    expect(response.statusCode).toBe(422)
+    expect(response.json().code).toBe('outdated-balance')
+  })
+
+  it('место считается по лучшему результату профиля', async () => {
     await submit(run('Василиса', 5000))
     await submit(run('Иван', 7000))
-    expect((await submit(run('Василиса', 3000))).json()).toEqual({ rank: 2, playerCount: 2 })
-    expect((await submit(run('Василиса', 9000))).json()).toEqual({ rank: 1, playerCount: 2 })
+    expect((await submit(run('Василиса', 3000))).json()).toEqual({
+      rank: 2,
+      playerCount: 2,
+      playerName: 'Василиса',
+    })
+    expect((await submit(run('Василиса', 9000))).json()).toEqual({
+      rank: 1,
+      playerCount: 2,
+      playerName: 'Василиса',
+    })
 
     const table = await leaderboard()
     expect(table.playerCount).toBe(2)
     expect(table.entries).toEqual([
-      { rank: 1, playerName: 'Василиса', score: 9000, wavesCleared: 10, levelId: LEVEL_ID },
-      { rank: 2, playerName: 'Иван', score: 7000, wavesCleared: 10, levelId: LEVEL_ID },
+      {
+        rank: 1,
+        playerId: expect.any(String),
+        playerName: 'Василиса',
+        score: 9000,
+        wavesCleared: 10,
+        levelId: LEVEL_ID,
+      },
+      {
+        rank: 2,
+        playerId: expect.any(String),
+        playerName: 'Иван',
+        score: 7000,
+        wavesCleared: 10,
+        levelId: LEVEL_ID,
+      },
     ])
+  })
+
+  it('смена имени сохраняет одно место и не добавляет партию', async () => {
+    const authorization = browserAuthorization('тот же браузер')
+    await submit(run('Алексей', 9000), authorization)
+    const before = await leaderboard(authorization)
+    const rename = await app.inject({
+      method: 'PATCH',
+      url: PLAYER_PROFILE_PATH,
+      headers: { authorization },
+      payload: { playerName: 'Алексей II' },
+    })
+    expect(rename.statusCode).toBe(200)
+    expect(rename.json()).toEqual({ playerName: 'Алексей II' })
+    expect(app.db.prepare('SELECT count(*) AS count FROM runs').get()).toEqual({ count: 1 })
+
+    // Вкладка со старым сохранённым именем не меняет имя обратно при отправке партии.
+    expect((await submit(run('Алексей', 5000), authorization)).json()).toEqual({
+      rank: 1,
+      playerCount: 1,
+      playerName: 'Алексей II',
+    })
+    const after = await leaderboard(authorization)
+    expect(after.viewerPlayerId).toBe(before.viewerPlayerId)
+    expect(after.playerCount).toBe(1)
+    expect(after.entries).toEqual([{ ...before.entries[0], playerName: 'Алексей II' }])
+  })
+
+  it('два браузера с одинаковым именем получают разные места и выделение своей строки', async () => {
+    const first = browserAuthorization('первый браузер')
+    const second = browserAuthorization('второй браузер')
+    await submit(run('Страж', 5000), first)
+    await submit(run('Страж', 9000), second)
+    const top = await leaderboard(first)
+    expect(top.playerCount).toBe(2)
+    expect(top.entries.map((entry) => entry.playerName)).toEqual(['Страж', 'Страж'])
+    expect(top.entries[1].playerId).toBe(top.viewerPlayerId)
+    expect(top.entries[0].playerId).not.toBe(top.viewerPlayerId)
+    expect(top.viewerPlayerId).not.toBe(first.slice('Bearer '.length))
+  })
+
+  it('для отправки и смены имени нужен ключ профиля', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: RUNS_PATH,
+      payload: run('Страж', 5000),
+    })
+    expect(response.statusCode).toBe(401)
+    expect(response.json().code).toBe('profile-required')
+    const rename = await app.inject({
+      method: 'PATCH',
+      url: PLAYER_PROFILE_PATH,
+      payload: { playerName: 'Страж II' },
+    })
+    expect(rename.statusCode).toBe(401)
+    expect((await leaderboard()).playerCount).toBe(0)
   })
 
   it('равный счёт — одно место, выше тот, кто набрал раньше', async () => {
@@ -118,6 +217,7 @@ describe('общий топ', () => {
     expect((await submit(run('Иван', 3000, 10, OTHER_LEVEL_ID))).json()).toEqual({
       rank: 2,
       playerCount: 2,
+      playerName: 'Иван',
     })
     // Лучший результат Василисы — в другом зале: зал в строке — тот, где рекорд
     await submit(run('Василиса', 8000, 10, OTHER_LEVEL_ID))
@@ -135,14 +235,24 @@ describe('общий топ', () => {
   it('рекорды прошлых версий баланса остаются в общем топе; ?balance= отбирает одну версию', async () => {
     // Прислать результат старой версии нельзя (422 ниже) — такие партии остались с тех пор,
     // когда эта версия была текущей. Кладём прямо в базу
-    insertRun(app.db, { ...run('Старожил', 9000), balanceVersion: BALANCE_VERSION - 1 })
+    app.db
+      .prepare(
+        `INSERT INTO runs (player_name, level_id, score, waves_cleared, balance_version)
+                VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run('Старожил', LEVEL_ID, 9000, 10, BALANCE_VERSION - 1)
     // Место нового игрока — в общей таблице вместе со старыми рекордами
-    expect((await submit(run('Василиса', 5000))).json()).toEqual({ rank: 2, playerCount: 2 })
+    expect((await submit(run('Василиса', 5000))).json()).toEqual({
+      rank: 2,
+      playerCount: 2,
+      playerName: 'Василиса',
+    })
 
     const all = (
       await app.inject({ method: 'GET', url: LEADERBOARD_PATH })
     ).json<LeaderboardResponse>()
     expect(all.entries.map((entry) => entry.playerName)).toEqual(['Старожил', 'Василиса'])
+    expect(all.entries[0].playerId).toBeUndefined()
 
     const current = (
       await app.inject({ method: 'GET', url: `${LEADERBOARD_PATH}?balance=${BALANCE_VERSION}` })
@@ -215,7 +325,7 @@ describe('общий топ', () => {
         method: 'POST',
         url: RUNS_PATH,
         payload: run('Вася', 100),
-        headers: { 'x-forwarded-for': '198.51.100.1' },
+        headers: { authorization: browserAuthorization('Вася'), 'x-forwarded-for': '198.51.100.1' },
       })
     for (let i = 0; i < 10; i++) expect((await fromOnePlayer()).statusCode).toBe(200)
     expect((await fromOnePlayer()).statusCode).toBe(429)

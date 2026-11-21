@@ -19,13 +19,15 @@ if (!playerName || (flag !== undefined && flag !== '--apply')) {
   process.exit(1)
 }
 const isApply = flag === '--apply'
+const displayName =
+  'COALESCE((SELECT player_name FROM players WHERE id = runs.player_id), runs.player_name)'
 
 const database = openDatabase(loadConfig().databasePath)
 try {
   const runs = database
     .prepare(
       `SELECT id, level_id, balance_version, score, waves_cleared, created_at FROM runs
-       WHERE player_name = :player_name ORDER BY created_at`,
+       WHERE ${displayName} = :player_name ORDER BY created_at`,
     )
     .all({ player_name: playerName })
 
@@ -35,7 +37,7 @@ try {
     console.table(runs)
     if (isApply) {
       const result = database
-        .prepare('DELETE FROM runs WHERE player_name = :player_name')
+        .prepare(`DELETE FROM runs WHERE ${displayName} = :player_name`)
         .run({ player_name: playerName })
       console.log(`Удалено результатов: ${result.changes}`)
     } else {

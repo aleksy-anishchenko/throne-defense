@@ -1,14 +1,14 @@
 import Type from 'typebox'
 import type { Static } from 'typebox'
 import { ID_PATTERN } from './paths.ts'
-import { PLAYER_NAME_MAX_LENGTH } from './player-name.ts'
+import { PlayerNameSchema } from './player-profile.ts'
 
 /** Тело POST /api/runs */
 export const SubmitRunRequestSchema = Type.Object(
   {
     // Длина в схеме — грубая проверка; точная (символы, а не байты, без невидимых) —
     // isValidPlayerName на сервере
-    playerName: Type.String({ minLength: 1, maxLength: PLAYER_NAME_MAX_LENGTH }),
+    playerName: PlayerNameSchema,
     levelId: Type.String({ pattern: ID_PATTERN }),
     score: Type.Integer({ minimum: 0 }),
     /** Сколько волн отбито — как поле wave в рекорде браузера */
@@ -24,17 +24,20 @@ export type SubmitRunRequest = Static<typeof SubmitRunRequestSchema>
 export const SubmitRunResponseSchema = Type.Object({
   /** 1 — первое место. У равных счетов одно место */
   rank: Type.Integer({ minimum: 1 }),
-  /** Сколько разных имён в общей таблице (все залы и версии баланса) */
+  /** Сколько игроков в общем топе (все залы и версии баланса) */
   playerCount: Type.Integer({ minimum: 1 }),
+  playerName: PlayerNameSchema,
 })
 export type SubmitRunResponse = Static<typeof SubmitRunResponseSchema>
 
-/** 422 — окончательный отказ; 503 server-updating — временное несовпадение версий. */
+/** Отказ принять результат или обновить профиль */
 export const SubmitRunRejectionSchema = Type.Object({
   code: Type.Union([
     Type.Literal('outdated-balance'),
     Type.Literal('invalid-run'),
     Type.Literal('server-updating'),
+    Type.Literal('profile-required'),
+    Type.Literal('invalid-name'),
   ]),
   message: Type.String(),
 })

@@ -337,7 +337,8 @@ async function checkShopCardsVisible(page) {
 
 async function desktop(browser, url) {
   console.log('\nКомпьютер')
-  const page = await browser.newPage({ viewport: { width: 1280, height: 860 } })
+  const context = await browser.newContext({ viewport: { width: 1280, height: 860 } })
+  const page = await context.newPage()
   const expectConsoleError = watchErrors(page, 'компьютер')
   const playButton = page.getByRole('button', { name: 'Играть' })
 
@@ -1064,15 +1065,26 @@ async function desktop(browser, url) {
     'Esc на «Лучших» возвращает к итогам партии',
     await appears(page.getByRole('heading', { name: 'Трон пал' }), 2000),
   )
+  const lastResult = await page.evaluate(() => {
+    const { score, wavesCleared } = window.__throne.game.state
+    return { score, wavesCleared }
+  })
+  const finishAnotherRun = () =>
+    page.evaluate((result) => {
+      const { game, store } = window.__throne
+      store.newGame()
+      Object.assign(game.state, result)
+      game.surrender()
+    }, lastResult)
+
   // Новая страница при ещё старом API: результат остаётся доступен для повтора.
   await page.route('**/api/runs', (route) => {
     const body = route.request().postDataJSON()
     body.balanceVersion++
     return route.continue({ postData: JSON.stringify(body) })
   })
-  await page.getByRole('button', { name: 'Сменить имя' }).click()
   expectConsoleError(/status of 503/)
-  await page.getByRole('button', { name: 'Сохранить' }).click()
+  await finishAnotherRun()
   check(
     'API ещё не обновлён: результат можно отправить повторно',
     await appears(page.getByRole('button', { name: 'Отправить ещё раз' })),
@@ -1090,9 +1102,8 @@ async function desktop(browser, url) {
     body.balanceVersion--
     return route.continue({ postData: JSON.stringify(body) })
   })
-  await page.getByRole('button', { name: 'Сменить имя' }).click()
   expectConsoleError(/status of 422/)
-  await page.getByRole('button', { name: 'Сохранить' }).click()
+  await finishAnotherRun()
   check(
     'старый баланс: есть объяснение и кнопка обновления',
     (await appears(page.getByRole('button', { name: 'Обновить игру' }))) &&
@@ -1409,12 +1420,35 @@ async function desktop(browser, url) {
   )
   await page.getByRole('button', { name: 'Сменить имя' }).click()
   check('«Сменить имя»: в поле прежнее имя', (await nameInput.inputValue()) === 'Страж 1')
+  let scorePostsOnRename = 0
+  const countScorePosts = (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/runs') {
+      scorePostsOnRename++
+    }
+  }
+  page.on('request', countScorePosts)
   await nameInput.fill('Страж 2')
   await nameInput.press('Enter')
   check(
-    '«Сменить имя»: результат под новым именем, в таблице двое',
-    await appears(page.locator('.run-place').filter({ hasText: 'Страж 2, вы на 1-м месте из 2' })),
+    '«Сменить имя»: новое имя и прежнее место без повторной отправки результата',
+    (await appears(page.locator('.run-place').filter({ hasText: 'Страж 2, вы первым' }))) &&
+      scorePostsOnRename === 0,
   )
+  page.off('request', countScorePosts)
+
+  const anotherTab = await context.newPage()
+  watchErrors(anotherTab, 'вторая вкладка')
+  try {
+    await anotherTab.goto(url)
+    await anotherTab.getByRole('button', { name: 'Лучшие результаты' }).click()
+    const ownRow = anotherTab.locator('.leaderboard li.is-player').filter({ hasText: 'Страж 2' })
+    check(
+      'вторая вкладка: у браузера одна выделенная запись с новым именем',
+      (await appears(ownRow)) && (await anotherTab.locator('.leaderboard li').count()) === 1,
+    )
+  } finally {
+    await anotherTab.close()
+  }
   await page.getByRole('button', { name: 'Играть дальше' }).click()
   await waitForFrames(page)
   check('бесконечный режим', (await page.locator('.hud .wave-label').textContent()) === 'Волна 31')
@@ -1636,7 +1670,7 @@ async function desktop(browser, url) {
     'подтверждённая сдача завершает партию',
     (await readGameSnapshot(page)).phase === 'lost' && (await readGameSnapshot(page)).lives === 0,
   )
-  await page.close()
+  await context.close()
 }
 
 /** Сервер недоступен: игра работает как раньше, просто без топа */

@@ -10,6 +10,7 @@ export {
   ID_PATTERN,
   LEADERBOARD_PATH,
   LEADERBOARD_SIZE,
+  PLAYER_PROFILE_PATH,
   RUNS_PATH,
 } from './paths.ts'
 export {
@@ -18,6 +19,8 @@ export {
   isValidPlayerName,
   normalizePlayerName,
 } from './player-name.ts'
+export { PlayerProfileSchema } from './player-profile.ts'
+export type { PlayerProfile } from './player-profile.ts'
 export { HealthResponseSchema, ReadyResponseSchema } from './health.ts'
 export type { HealthResponse, ReadyResponse } from './health.ts'
 export {
