@@ -27,7 +27,7 @@ export interface TowerStats {
   slowDuration?: number
   /** Сколько врагов пробивает снаряд насквозь, штук */
   pierceCount?: number
-  /** Огневик: сколько урона враг получит горением после попадания (сверх damage), единиц здоровья */
+  /** Сколько урона враг получит за полный поджог после попадания, сверх damage. */
   burnDamage?: number
   /** За сколько секунд догорает этот урон */
   burnDuration?: number
@@ -166,6 +166,7 @@ export interface EnemyDef {
 /** Постоянные и мгновенные эффекты благословений после рубежных волн */
 export type RewardEffect =
   | { kind: 'gold' }
+  | { kind: 'buyback' }
   | { kind: 'healToFull' }
   | { kind: 'damage'; amount: number }
   | { kind: 'fireRate'; amount: number }
@@ -177,12 +178,11 @@ export type RewardEffect =
   | { kind: 'lastStand'; damageBonus: number; rows: number }
   | { kind: 'enemySlow'; amount: number }
   | { kind: 'giantHealth'; amount: number }
-  | { kind: 'moatSlow'; amount: number }
   | { kind: 'enemyHealing'; amount: number }
-  | { kind: 'panic' }
   | { kind: 'doubleShot' }
   | { kind: 'twoBells'; amount: number }
   | { kind: 'iceAndFire' }
+  | { kind: 'iceNeedles' }
 
 export type RewardId =
   | 'war-chest'
@@ -197,17 +197,17 @@ export type RewardId =
   | 'last-stand'
   | 'rasputitsa'
   | 'giant-diet'
-  | 'throne-moat'
   | 'empty-vials'
-  | 'panic-in-formation'
   | 'double-shot'
   | 'two-bells'
   | 'ice-and-fire'
+  | 'buyback'
+  | 'ice-needles'
 
 export interface RewardPick {
   wave: number
   rewardId: RewardId
-  /** Фактическая выплата «Военной казны» на момент выбора. */
+  /** Фактическая выплата мгновенного денежного благословения. */
   goldGranted?: number
 }
 
@@ -229,12 +229,11 @@ export interface RewardStats {
   lastStandRows: number
   enemySpeedMultiplier: number
   giantHealthMultiplier: number
-  moatSpeedMultiplier: number
   enemyHealingMultiplier: number
-  panicTargets: number
   doubleShotArrows: number
   secondBellShare: number
   iceAndFire: boolean
+  iceNeedles: boolean
 }
 
 /** Как враг лечит соседей */
@@ -375,6 +374,8 @@ export interface Tower {
   goldSinceLastWave: number
   /** Сколько золота реально заплачено за обычные улучшения с учётом скидок благословений */
   upgradeGoldPaid: number
+  /** Сколько золота заплачено за выбранную специализацию с учётом скидки. */
+  aspectGoldPaid?: number
   /** Текущая цель серии «Метки охотника», если аспект выбран */
   hunterTargetId: number | null
   /** Текущая длина серии «Метки охотника» */
@@ -400,14 +401,9 @@ export interface Enemy {
   slowTimeLeft: number
   /** Сила текущего замедления: 0.35 — идёт на 35% медленнее */
   slowFactor: number
-  /** Сколько ещё секунд враг замедлен паникой после гибели соседа. */
-  panicTimeLeft: number
   /** Сколько секунд до следующего лечения соседей (только у тех, кто лечит) */
   healCooldownLeft: number
-  /**
-   * Запас огня: сколько урона враг ещё получит горением. Каждый поджог добавляет в запас,
-   * а не перезапускает горение — так урон огневика не теряется и не удваивается
-   */
+  /** Сколько урона враг ещё получит от текущего горения. */
   burnDamageLeft: number
   /** За сколько секунд догорит весь запас огня */
   burnTimeLeft: number
@@ -494,6 +490,8 @@ export interface LineShot {
   giantDamageBonus: number
   /** На сколько секунд попадание снимает броню; 0 — обычный болт. */
   armorBreakDuration: number
+  /** При первом попадании по врагу под морозом можно выпустить иглы. */
+  iceNeedles: boolean
   /** Сколько ещё врагов может пробить, штук */
   piercesLeft: number
   /** Кого болт уже задел (одного врага дважды не бьёт) */

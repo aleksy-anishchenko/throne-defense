@@ -53,14 +53,9 @@ export const REWARD_SETS = {
 
 export type RewardSetId = keyof typeof REWARD_SETS
 
-export const PANIC_IN_FORMATION = { targets: 3, radius: 2, slow: 0.35, duration: 3 }
 export const DOUBLE_SHOT_INTERVAL = 5
+export const ICE_NEEDLES = { targets: 4, radius: 1, damageShare: 0.25 }
 const SECOND_BELL_SHARE = 0.5
-
-export function panicDescription(targets = PANIC_IN_FORMATION.targets): string {
-  const { radius, slow, duration } = PANIC_IN_FORMATION
-  return `Гибель врага замедляет до ${targets} соседей в радиусе ${radius} клеток на ${Math.round(slow * 100)}% (${duration} с)`
-}
 
 export function doubleShotDescription(extraArrows = 1): string {
   const arrows =
@@ -118,7 +113,7 @@ export const REWARD_LIST: readonly RewardDef[] = [
     id: 'bounty',
     name: 'Щедрая награда',
     description: '+1 золото за каждого убитого врага',
-    rarity: 'rare',
+    rarity: 'common',
     setId: 'supplies',
     effect: { kind: 'killGold', amount: 1 },
   },
@@ -133,7 +128,7 @@ export const REWARD_LIST: readonly RewardDef[] = [
   {
     id: 'military-engineer',
     name: 'Военный инженер',
-    description: 'Скидка 30% на обычные улучшения башен',
+    description: 'Скидка 30% на улучшения и специализации стражей',
     rarity: 'legendary',
     setId: 'supplies',
     effect: { kind: 'upgradeDiscount', amount: 0.3 },
@@ -151,7 +146,7 @@ export const REWARD_LIST: readonly RewardDef[] = [
     name: 'Мастер контроля',
     description:
       'Морозко замедляет ещё на 10 процентных пунктов, сеть Ловчего длится на 20% дольше',
-    rarity: 'rare',
+    rarity: 'common',
     setId: 'watch',
     effect: { kind: 'control', slowBonus: 0.1, rootBonus: 0.2 },
   },
@@ -166,26 +161,18 @@ export const REWARD_LIST: readonly RewardDef[] = [
   {
     id: 'rasputitsa',
     name: 'Распутица',
-    description: 'Все враги идут на 20% медленнее',
+    description: 'Все враги идут на 25% медленнее',
     rarity: 'legendary',
     setId: 'watch',
-    effect: { kind: 'enemySlow', amount: 0.2 },
+    effect: { kind: 'enemySlow', amount: 0.25 },
   },
   {
     id: 'giant-diet',
     name: 'Разгрузочный день',
     description: 'У боссов и полубоссов на 20% меньше здоровья',
-    rarity: 'legendary',
+    rarity: 'rare',
     setId: 'watch',
     effect: { kind: 'giantHealth', amount: 0.2 },
-  },
-  {
-    id: 'throne-moat',
-    name: 'Ров у трона',
-    description: 'На последней четверти пути враги идут на 12% медленнее',
-    rarity: 'common',
-    setId: 'watch',
-    effect: { kind: 'moatSlow', amount: 0.12 },
   },
   {
     id: 'empty-vials',
@@ -194,14 +181,6 @@ export const REWARD_LIST: readonly RewardDef[] = [
     rarity: 'common',
     setId: 'watch',
     effect: { kind: 'enemyHealing', amount: 0.5 },
-  },
-  {
-    id: 'panic-in-formation',
-    name: 'Паника в строю',
-    description: panicDescription(),
-    rarity: 'legendary',
-    setId: 'watch',
-    effect: { kind: 'panic' },
   },
   {
     id: 'double-shot',
@@ -226,6 +205,22 @@ export const REWARD_LIST: readonly RewardDef[] = [
     rarity: 'rare',
     setId: 'watch',
     effect: { kind: 'iceAndFire' },
+  },
+  {
+    id: 'buyback',
+    name: 'Выкуп',
+    description: 'Между волнами продажа стража возвращает 100% вложенного золота.',
+    rarity: 'common',
+    setId: 'supplies',
+    effect: { kind: 'buyback' },
+  },
+  {
+    id: 'ice-needles',
+    name: 'Ледяные иглы',
+    description: `Болт Баллисты выпускает до ${ICE_NEEDLES.targets} игл при первом попадании по врагу под морозом. Иглы бьют разные цели в радиусе ${ICE_NEEDLES.radius} клетки, по ${Math.round(ICE_NEEDLES.damageShare * 100)}% урона болта.`,
+    rarity: 'rare',
+    setId: 'arsenal',
+    effect: { kind: 'iceNeedles' },
   },
 ]
 

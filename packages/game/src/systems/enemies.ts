@@ -2,7 +2,6 @@
 
 import { hpMultiplier } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
-import { PANIC_IN_FORMATION } from '../data/rewards.ts'
 import type { Enemy, World } from '../types.ts'
 import { rewardStats } from './rewards.ts'
 
@@ -47,7 +46,6 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
     y,
     slowTimeLeft: 0,
     slowFactor: 0,
-    panicTimeLeft: 0,
     healCooldownLeft: def.heal?.cooldown ?? 0,
     burnDamageLeft: 0,
     burnTimeLeft: 0,
@@ -69,18 +67,15 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
 export function moveEnemies(world: World, dt: number): boolean {
   const state = world.state
   const { path } = world.level
-  const { enemySpeedMultiplier, moatSpeedMultiplier } = rewardStats(state)
-  const moatStart = path.length * 0.75
+  const { enemySpeedMultiplier } = rewardStats(state)
 
   for (const enemy of state.enemies) {
     if (enemy.isDead) continue
     let speed = enemy.def.speed * enemySpeedMultiplier
-    if (enemy.pathDistance >= moatStart) speed *= moatSpeedMultiplier
-    const frostSlow = enemy.slowTimeLeft > 0 ? enemy.slowFactor : 0
-    const panicSlow =
-      enemy.panicTimeLeft > 0 ? PANIC_IN_FORMATION.slow * (1 - (enemy.def.slowResistance ?? 0)) : 0
-    speed *= 1 - Math.max(frostSlow, panicSlow)
-    if (enemy.slowTimeLeft > 0) enemy.slowTimeLeft -= dt
+    if (enemy.slowTimeLeft > 0) {
+      speed *= 1 - enemy.slowFactor
+      enemy.slowTimeLeft -= dt
+    }
     // В сети — стоит. Замедление при этом идёт своим чередом
     if (enemy.rootTimeLeft > 0) speed = 0
     tickStatusTimers(world, enemy, dt)
@@ -109,12 +104,11 @@ export function moveEnemies(world: World, dt: number): boolean {
 }
 
 /**
- * Часы паники, сети, проклятия, снятия брони и «устойчивости» после сети. Не ниже нуля.
+ * Таймеры сети, проклятия, снятия брони и устойчивости после сети.
  * Сеть кончилась на горящем враге — значит, сгорела (событие netBurn для картинки)
  */
 function tickStatusTimers(world: World, enemy: Enemy, dt: number): void {
   const wasRooted = enemy.rootTimeLeft > 0
-  enemy.panicTimeLeft = Math.max(0, enemy.panicTimeLeft - dt)
   enemy.rootTimeLeft = Math.max(0, enemy.rootTimeLeft - dt)
   if (wasRooted && enemy.rootTimeLeft === 0 && enemy.burnTimeLeft > 0) world.emit('netBurn', enemy)
   enemy.rootImmunityLeft = Math.max(0, enemy.rootImmunityLeft - dt)

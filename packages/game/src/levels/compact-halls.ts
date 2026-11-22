@@ -1,9 +1,16 @@
 import { createLevel } from '../core/level.ts'
 import type { LevelDef, LevelProp, Point } from '../types.ts'
 
+/** В компактных залах освобождаем клетки у поворотов, где стражи накрывают больше ковра. */
+const COMPACT_PROP_MOVES: Record<string, LevelProp | undefined> = {
+  'marble-hall': { kind: 'column', cell: [1, 1] },
+  svetlitsa: { kind: 'vase', cell: [1, 1] },
+  'anubis-temple': { kind: 'ankh', cell: [1, 2] },
+}
+
 /**
  * Перевод классического зала на сетку 7×11. Сохраняем ортогональные повороты и оформление,
- * а препятствия переносим на ближайшие свободные внутренние клетки.
+ * а препятствия переносим на ближайшие свободные внутренние клетки с учётом ручных переносов.
  */
 export function compactHall(original: LevelDef): LevelDef {
   const col = (x: number) => Math.min(6, Math.floor((x * 7) / original.cols)) + 0.5
@@ -35,9 +42,12 @@ export function compactHall(original: LevelDef): LevelDef {
   const blocked = createLevel(def).blockedCellKeys
   const used = new Set(blocked)
   const props: LevelProp[] = []
+  const move = COMPACT_PROP_MOVES[original.id]
   for (const prop of original.props ?? []) {
-    const targetCol = col(prop.cell[0] + 0.5) - 0.5
-    const targetRow = row(prop.cell[1] + 0.5) - 0.5
+    const [targetCol, targetRow] =
+      move?.kind === prop.kind
+        ? move.cell
+        : [col(prop.cell[0] + 0.5) - 0.5, row(prop.cell[1] + 0.5) - 0.5]
     const candidates: { col: number; row: number; distance: number }[] = []
     for (let y = 1; y < def.rows - 1; y++) {
       for (let x = 1; x < def.cols - 1; x++) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { treasuryBonusOf, treasuryIncomeOf, treasuryNeighbors } from '../src/index.ts'
-import { payTowerIncome } from '../src/systems/towers.ts'
+import { payTowerIncome } from '../src/systems/treasury.ts'
 import { newGame, worldOf } from './helpers.ts'
 
 describe('соседство Казён', () => {

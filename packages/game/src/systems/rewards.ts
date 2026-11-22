@@ -1,5 +1,4 @@
 import {
-  PANIC_IN_FORMATION,
   REWARD_CHECKPOINTS,
   REWARD_LIST,
   REWARD_RARITIES,
@@ -8,7 +7,6 @@ import {
   REWARD_WAVES,
   REWARDS,
   doubleShotDescription,
-  panicDescription,
   twoBellsDescription,
   type RewardSetId,
 } from '../data/rewards.ts'
@@ -64,20 +62,28 @@ export function isRewardWave(wave: number): boolean {
   return REWARD_WAVES.includes(wave)
 }
 
+function availableRewards(picks: readonly RewardPick[]) {
+  const selected = new Set(picks.map(({ rewardId }) => rewardId))
+  return REWARD_LIST.filter(({ id }) => !selected.has(id))
+}
+
 /**
  * Каждому месту в тройке соответствует 15% общего розыгрыша легендарки.
- * В одном предложении максимум одна легендарка, поэтому другая доступна при реролле.
+ * В предложении максимум одна легендарка из доступных для этого розыгрыша.
  */
 export function rollRewardOptions(
   state: GameState,
   wave: number,
   levelId: string,
-  previous?: Extract<PendingReward, { kind: 'wave' }>,
+  currentOffer?: Extract<PendingReward, { kind: 'wave' }>,
 ): RewardId[] {
-  const roll = previous ? previous.rerolls + 1 : 0
+  const roll = currentOffer ? currentOffer.rerolls + 1 : 0
   // Номер обновления в начале строки уменьшает связь с предыдущим броском.
   let seed = hashString(`${roll}:${levelId}:${wave}:${state.rewardSeed}`)
-  const available = REWARD_LIST.filter(({ id }) => !previous?.options.includes(id))
+  // При обновлении карты текущего окна пропускают только этот розыгрыш.
+  const available = availableRewards(state.selectedRewards).filter(
+    ({ id }) => !currentOffer?.options.includes(id),
+  )
   const legendaries = available.filter(({ rarity }) => rarity === 'legendary').map(({ id }) => id)
   const pools = Object.entries(REWARD_RARITIES)
     .filter(([rarity]) => rarity !== 'legendary')
@@ -121,11 +127,14 @@ function rewardCheckpoint(wave: number) {
   return checkpoint
 }
 
+function immediateGold(effect: RewardEffect, wave: number): number | undefined {
+  return effect.kind === 'gold' ? rewardCheckpoint(wave).warChestGold : undefined
+}
+
 export function rewardDescriptionForWave(rewardId: RewardId, wave: number): string {
   const reward = REWARDS[rewardId]
-  return reward.effect.kind === 'gold'
-    ? `+${rewardCheckpoint(wave).warChestGold} золота сразу`
-    : reward.description
+  const gold = immediateGold(reward.effect, wave)
+  return gold === undefined ? reward.description : `+${gold} золота сразу`
 }
 
 export function rewardRerollCost(wave: number, rerolls: number): number {
@@ -158,18 +167,18 @@ export function rewardSetCounts(picks: readonly RewardPick[]): Record<RewardSetI
 function offerCrownGift(
   state: GameState,
   previous: PendingReward,
-  chosenId: RewardId,
   levelId: string,
-): PendingReward {
+): PendingReward | null {
   const { wave } = previous
-  const common = REWARD_LIST.filter(({ id, rarity }) => rarity === 'common' && id !== chosenId).map(
-    ({ id }) => id,
-  )
+  const common = availableRewards(state.selectedRewards)
+    .filter(({ rarity }) => rarity === 'common')
+    .map(({ id }) => id)
+  if (!common.length) return null
   const fresh = common.filter((id) => !previous.options.includes(id))
-  // Если три обычные карты уже показали, второй вариант берём среди ранее пропущенных.
+  // Если новых карт мало, дополняем выбор пропущенными из предыдущего предложения.
   const unchosen = common.filter((id) => previous.options.includes(id))
   let seed = hashString(`${levelId}:${wave}:${state.rewardSeed}:crown-gift`)
-  const options = Array.from({ length: CROWN_GIFT_OPTION_COUNT }, () => {
+  const options = Array.from({ length: Math.min(CROWN_GIFT_OPTION_COUNT, common.length) }, () => {
     seed = nextRandom(seed)
     return takeReward(fresh.length ? fresh : unchosen, seed)
   })
@@ -184,12 +193,14 @@ export function applyReward(
 ): RewardPick | null {
   const pending = state.pendingReward
   if (state.phase !== 'reward' || !pending?.options.includes(rewardId)) return null
+  if (state.selectedRewards.some((pick) => pick.rewardId === rewardId)) return null
   const reward = REWARDS[rewardId]
   if (!reward) return null
   const pick: RewardPick = { wave: pending.wave, rewardId }
-  if (reward.effect.kind === 'gold') {
-    pick.goldGranted = rewardCheckpoint(pending.wave).warChestGold
-    state.gold += pick.goldGranted
+  const gold = immediateGold(reward.effect, pending.wave)
+  if (gold !== undefined) {
+    pick.goldGranted = gold
+    state.gold += gold
   } else if (reward.effect.kind === 'healToFull') {
     state.lives = Math.max(state.lives, state.maxLives)
   }
@@ -198,7 +209,7 @@ export function applyReward(
   const completesSet = rewardSetCounts(state.selectedRewards)[reward.setId] === REWARD_SET_SIZE
   state.pendingReward =
     completesSet && set.effect.kind === 'crown-gift'
-      ? offerCrownGift(state, pending, rewardId, levelId)
+      ? offerCrownGift(state, pending, levelId)
       : null
   if (!state.pendingReward) state.phase = 'build'
   return pick
@@ -219,14 +230,12 @@ function addStatEffect(stats: RewardStats, effect: RewardEffect): void {
     stats.lastStandRows = Math.max(stats.lastStandRows, effect.rows)
   } else if (effect.kind === 'enemySlow') stats.enemySpeedMultiplier *= 1 - effect.amount
   else if (effect.kind === 'giantHealth') stats.giantHealthMultiplier *= 1 - effect.amount
-  else if (effect.kind === 'moatSlow') stats.moatSpeedMultiplier *= 1 - effect.amount
   else if (effect.kind === 'enemyHealing') stats.enemyHealingMultiplier *= 1 - effect.amount
-  else if (effect.kind === 'panic')
-    stats.panicTargets = Math.max(PANIC_IN_FORMATION.targets, stats.panicTargets + 1)
   else if (effect.kind === 'doubleShot') stats.doubleShotArrows++
   else if (effect.kind === 'twoBells')
     stats.secondBellShare += (1 - stats.secondBellShare) * effect.amount
   else if (effect.kind === 'iceAndFire') stats.iceAndFire = true
+  else if (effect.kind === 'iceNeedles') stats.iceNeedles = true
 }
 
 /** Постоянные бонусы выбранных благословений и собранных наборов. */
@@ -244,12 +253,11 @@ export function rewardStats(state: Pick<GameState, 'selectedRewards'>): RewardSt
     lastStandRows: 4,
     enemySpeedMultiplier: 1,
     giantHealthMultiplier: 1,
-    moatSpeedMultiplier: 1,
     enemyHealingMultiplier: 1,
-    panicTargets: 0,
     doubleShotArrows: 0,
     secondBellShare: 0,
     iceAndFire: false,
+    iceNeedles: false,
   }
   for (const { rewardId } of state.selectedRewards) {
     const effect = REWARDS[rewardId]?.effect
@@ -270,13 +278,12 @@ export function rewardStats(state: Pick<GameState, 'selectedRewards'>): RewardSt
 export function effectiveTowerStats(state: GameState, tower: Tower, base: TowerStats): TowerStats {
   const rewards = rewardStats(state)
   const lastStand = tower.row < rewards.lastStandRows ? rewards.lastStandDamageMultiplier : 1
-  const damage = base.damage * lastStand
+  const burnDamage =
+    (base.burnDamage ?? 0) * (tower.def.id === 'mage' ? rewards.mageBurnMultiplier : 1)
   return {
     ...base,
-    damage,
-    burnDamage:
-      (base.burnDamage ?? 0) *
-      (tower.def.id === 'mage' ? rewards.mageBurnMultiplier * lastStand : lastStand),
+    damage: base.damage * lastStand,
+    burnDamage: burnDamage * lastStand,
     slowAmount:
       base.slowAmount === undefined
         ? undefined
@@ -292,6 +299,7 @@ export function effectiveTowerStats(state: GameState, tower: Tower, base: TowerS
 export function summarizeRewards(rewards: readonly RewardPick[]): RewardSummary[] {
   const counts = new Map<RewardId, number>()
   for (const { rewardId } of rewards) {
+    if (!Object.hasOwn(REWARDS, rewardId)) continue
     counts.set(rewardId, (counts.get(rewardId) ?? 0) + 1)
   }
   return [...counts].map(([rewardId, count]) => {
@@ -299,9 +307,9 @@ export function summarizeRewards(rewards: readonly RewardPick[]): RewardSummary[
     let description = reward.description
     switch (reward.effect.kind) {
       case 'gold': {
+        // До появления шкалы «Военная казна» всегда выдавала 140 золота.
         const total = rewards
           .filter((pick) => pick.rewardId === rewardId)
-          // До появления шкалы «Военная казна» всегда выдавала 140 золота.
           .reduce((sum, pick) => sum + (pick.goldGranted ?? 140), 0)
         description = `Получено ${total} золота`
         break
@@ -322,7 +330,7 @@ export function summarizeRewards(rewards: readonly RewardPick[]): RewardSummary[
         description = `+${Math.round(reward.effect.amount * count * 100)}% золота за отбитую волну`
         break
       case 'upgradeDiscount':
-        description = `−${Math.round((1 - (1 - reward.effect.amount) ** count) * 100)}% к цене улучшений`
+        description = `−${Math.round((1 - (1 - reward.effect.amount) ** count) * 100)}% к цене улучшений и специализаций`
         break
       case 'mageBurn':
         description = `+${Math.round(reward.effect.amount * count * 100)}% к горению Огневика`
@@ -343,14 +351,8 @@ export function summarizeRewards(rewards: readonly RewardPick[]): RewardSummary[
       case 'giantHealth':
         description = `У боссов и полубоссов на ${Math.round((1 - (1 - reward.effect.amount) ** count) * 100)}% меньше здоровья`
         break
-      case 'moatSlow':
-        description = `На последней четверти пути враги идут на ${Math.round((1 - (1 - reward.effect.amount) ** count) * 100)}% медленнее`
-        break
       case 'enemyHealing':
         description = `Знахари восстанавливают врагам на ${Math.round((1 - (1 - reward.effect.amount) ** count) * 100)}% меньше здоровья`
-        break
-      case 'panic':
-        description = panicDescription(PANIC_IN_FORMATION.targets + count - 1)
         break
       case 'doubleShot':
         description = doubleShotDescription(count)
@@ -363,11 +365,13 @@ export function summarizeRewards(rewards: readonly RewardPick[]): RewardSummary[
   })
 }
 
-export function offerReward(state: GameState, wave: number, levelId: string): PendingReward {
+export function offerReward(state: GameState, wave: number, levelId: string): PendingReward | null {
+  const options = rollRewardOptions(state, wave, levelId)
+  if (!options.length) return null
   const pendingReward: PendingReward = {
     kind: 'wave',
     wave,
-    options: rollRewardOptions(state, wave, levelId),
+    options,
     rerolls: 0,
   }
   state.phase = 'reward'

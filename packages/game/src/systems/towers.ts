@@ -1,7 +1,17 @@
 // Стража: выбор цели и выстрел. Сами башни — в data/towers.ts.
 
 import { REFUND_RATE } from '../data/balance.ts'
-import type { Enemy, StatKey, TargetMode, Tower, TowerDef, TowerStats, World } from '../types.ts'
+import { REWARDS } from '../data/rewards.ts'
+import type {
+  Enemy,
+  GameState,
+  StatKey,
+  TargetMode,
+  Tower,
+  TowerDef,
+  TowerStats,
+  World,
+} from '../types.ts'
 import { effectiveTowerStats, rewardStats } from './rewards.ts'
 
 export const towerStats = (tower: Pick<Tower, 'def' | 'tier'>): TowerStats =>
@@ -18,10 +28,15 @@ export const displayStatValue = (stats: TowerStats, key: StatKey): number | unde
 /** Все способы выбрать цель, в том порядке, в каком их перебирает кнопка в панели башни */
 export const TARGET_MODES: readonly TargetMode[] = ['first', 'strongest']
 
+/** Округлить цену ступени или специализации после скидки. */
+export function discountedUpgradePrice(price: number, discountMultiplier: number): number {
+  return Math.max(1, Math.round(price * discountMultiplier))
+}
+
 /** Цена следующего улучшения или null, если ступень максимальная */
 export function upgradeCost(tower: Tower, discountMultiplier = 1): number | null {
   if (tower.tier >= tower.def.tiers.length - 1) return null
-  return Math.max(1, Math.round(tower.def.upgradeCosts[tower.tier] * discountMultiplier))
+  return discountedUpgradePrice(tower.def.upgradeCosts[tower.tier], discountMultiplier)
 }
 
 /** Сколько вложено в башню: постройка, все обычные улучшения и выбранный аспект. */
@@ -33,20 +48,33 @@ export function investedGold(def: TowerDef, tier: number, aspectId: string | nul
 
 /** Сколько золота реально вложено в конкретную башню с учётом скидки на улучшения. */
 export function towerInvestedGold(tower: Tower): number {
-  const aspect = tower.def.aspects?.find((candidate) => candidate.id === tower.aspectId)
-  return tower.def.cost + tower.upgradeGoldPaid + (aspect?.cost ?? 0)
+  return tower.def.cost + tower.upgradeGoldPaid + paidAspectCost(tower)
 }
 
+/** В старых данных специализация всегда покупалась за полную цену. */
+export const paidAspectCost = (tower: Tower): number =>
+  tower.aspectGoldPaid ?? towerAspect(tower)?.cost ?? 0
+
 /**
- * Сколько вернут при продаже: золото, вложенное после начала последней волны, — целиком
- * (башня с ним ещё не была в бою — это «отмена»), остальное — с потерей (REFUND_RATE)
+ * «Выкуп» между волнами возвращает всё. При обычной продаже свежие вложения
+ * возвращаются целиком, а уже участвовавшие в бою — по базовой ставке.
  */
-export function refundFor(tower: Tower): number {
-  const usedGold = towerInvestedGold(tower) - tower.goldSinceLastWave
+export function refundFor(
+  tower: Tower,
+  state?: Pick<GameState, 'phase' | 'selectedRewards'>,
+): number {
+  const invested = towerInvestedGold(tower)
+  if (
+    state?.phase === 'build' &&
+    state.selectedRewards.some(({ rewardId }) => REWARDS[rewardId]?.effect.kind === 'buyback')
+  ) {
+    return invested
+  }
+  const usedGold = invested - tower.goldSinceLastWave
   return Math.floor(usedGold * REFUND_RATE) + tower.goldSinceLastWave
 }
 
-/** Вернёт ли продажа всё вложенное: башню ещё ни разу не пускали в бой */
+/** Можно ли подписать продажу как отмену постройки: башня ещё не участвовала в бою. */
 export const isFullRefund = (tower: Tower): boolean =>
   tower.goldSinceLastWave === towerInvestedGold(tower)
 
@@ -217,45 +245,5 @@ export function updateTowers(world: World, dt: number): void {
     tower.aimAngle = Math.atan2(target.y - tower.y, target.x - tower.x)
     fire(world, tower, target, stats)
     world.emit('fire', { tower, stats })
-  }
-}
-
-/** Казны на соседних клетках, включая диагонали; сама башня не сосед. */
-export function treasuryNeighbors(
-  towers: readonly Tower[],
-  tower: Pick<Tower, 'def' | 'col' | 'row'>,
-): Tower[] {
-  if (tower.def.id !== 'treasury') return []
-  return towers.filter(
-    (other) =>
-      other !== tower &&
-      other.def.id === 'treasury' &&
-      Math.abs(other.col - tower.col) <= 1 &&
-      Math.abs(other.row - tower.row) <= 1,
-  )
-}
-
-/** Бонус за Казны рядом: по 10%, максимум 30%. */
-export function treasuryBonusOf(
-  towers: readonly Tower[],
-  tower: Pick<Tower, 'def' | 'col' | 'row'>,
-): number {
-  return Math.min(3, treasuryNeighbors(towers, tower).length) * 0.1
-}
-
-/** Фактический доход за волну, округлённый вниз до целой монеты. */
-export function treasuryIncomeOf(towers: readonly Tower[], tower: Tower): number {
-  const base = towerStats(tower).goldPerWave ?? 0
-  const count = Math.min(3, treasuryNeighbors(towers, tower).length)
-  return Math.floor((base * (10 + count)) / 10)
-}
-
-/** Казна: выплата каждой башни учитывает её собственных соседей. */
-export function payTowerIncome(world: World): void {
-  for (const tower of world.state.towers) {
-    const gold = treasuryIncomeOf(world.state.towers, tower)
-    if (gold <= 0) continue
-    world.state.gold += gold
-    world.emit('income', { tower, gold })
   }
 }

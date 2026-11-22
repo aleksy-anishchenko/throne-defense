@@ -12,12 +12,12 @@ import controlMaster from '@/assets/rewards/control-master.svg'
 import lastStand from '@/assets/rewards/last-stand.svg'
 import rasputitsa from '@/assets/rewards/rasputitsa.svg'
 import giantDiet from '@/assets/rewards/giant-diet.svg'
-import throneMoat from '@/assets/rewards/throne-moat.svg'
 import emptyVials from '@/assets/rewards/empty-vials.svg'
-import panicInFormation from '@/assets/rewards/panic-in-formation.svg'
 import doubleShot from '@/assets/rewards/double-shot.svg'
 import twoBells from '@/assets/rewards/two-bells.svg'
 import iceAndFire from '@/assets/rewards/ice-and-fire.svg'
+import buyback from '@/assets/rewards/buyback.svg'
+import iceNeedles from '@/assets/rewards/ice-needles.svg'
 
 defineProps<{ rewardId: RewardId }>()
 
@@ -34,12 +34,12 @@ const illustrations = {
   'last-stand': lastStand,
   rasputitsa,
   'giant-diet': giantDiet,
-  'throne-moat': throneMoat,
   'empty-vials': emptyVials,
-  'panic-in-formation': panicInFormation,
   'double-shot': doubleShot,
   'two-bells': twoBells,
   'ice-and-fire': iceAndFire,
+  buyback,
+  'ice-needles': iceNeedles,
 } satisfies Record<RewardId, string>
 </script>
 

@@ -6,7 +6,7 @@ import { rewardSegmentForWave } from '../data/rewards.ts'
 import type { Level, SpawnEntry, WaveGroup, World } from '../types.ts'
 import { spawnEnemy } from './enemies.ts'
 import { offerReward, rewardStats } from './rewards.ts'
-import { payTowerIncome } from './towers.ts'
+import { payTowerIncome } from './treasury.ts'
 
 /** Состав волны waveNumber (после последней — бесконечный режим) */
 export function getWaveGroups(level: Level, waveNumber: number): readonly WaveGroup[] {
@@ -65,7 +65,8 @@ export function finishWave(world: World): void {
     world.emit('rewardMissed', segment)
     return
   }
-  world.emit('rewardOffered', offerReward(state, wave, world.level.def.id))
+  const reward = offerReward(state, wave, world.level.def.id)
+  if (reward) world.emit('rewardOffered', reward)
 }
 
 /** Очки за врага, если убить и его, и всех, на кого он распадается (Горыныч → змеёныши) */

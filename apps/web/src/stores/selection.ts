@@ -18,6 +18,7 @@ import {
   treasuryIncomeOf,
   treasuryNeighbors,
   towerAspect,
+  paidAspectCost,
   isFullRefund,
   refundFor,
   rewardStats,
@@ -79,6 +80,7 @@ export const useSelectionStore = defineStore('selection', () => {
     tier: 0,
     aspectId: null as string | null,
     aspectLocked: false,
+    aspectGoldPaid: 0,
     /** Кого башня выбирает целью */
     targetMode: 'first' as TargetMode,
     /** Сколько вернут при продаже */
@@ -120,8 +122,9 @@ export const useSelectionStore = defineStore('selection', () => {
     selected.tier = tower ? tower.tier : 0
     selected.aspectId = tower ? tower.aspectId : null
     selected.aspectLocked = tower ? tower.aspectLocked : false
+    selected.aspectGoldPaid = tower ? paidAspectCost(tower) : 0
     selected.targetMode = tower ? tower.targetMode : 'first'
-    selected.refund = tower ? refundFor(tower) : 0
+    selected.refund = tower ? refundFor(tower, game.state) : 0
     selected.isFullRefund = tower ? isFullRefund(tower) : false
     const bellSupport = tower
       ? fireRateContributionsOf(game.state.towers, tower, secondBellShare)

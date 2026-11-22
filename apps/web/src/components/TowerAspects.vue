@@ -18,7 +18,7 @@ const selection = useSelectionStore()
         type="button"
         @click="selection.undoSpecializationSelected"
       >
-        Отменить аспект — вернуть {{ info.aspect.cost }}
+        Отменить аспект — вернуть {{ info.aspectGoldPaid }}
       </button>
       <p class="aspect-hint">
         {{

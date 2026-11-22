@@ -5,6 +5,8 @@ import {
   createGame,
   createLevel,
   type LevelDef,
+  type Point,
+  type PropKind,
   type WaveGroup,
 } from '../src/index.ts'
 import { createPath } from '../src/core/path.ts'
@@ -160,10 +162,20 @@ describe('залы', () => {
     ])
   })
 
-  it('в Храме Анубиса анкх занимает клетку нижнего обелиска', () => {
-    const def = PLAYABLE_LEVELS.find((level) => level.id === 'anubis-temple')!
-    expect(def.props).toContainEqual({ kind: 'ankh', cell: [2, 7] })
-    expect(createGame(def).isCellFree(2, 7)).toBe(false)
+  it('в трёх залах декор освобождает клетки у поворотов для постройки', () => {
+    const moves: { id: string; kind: PropKind; from: Point; to: Point }[] = [
+      { id: 'marble-hall', kind: 'column', from: [2, 4], to: [1, 1] },
+      { id: 'svetlitsa', kind: 'vase', from: [4, 7], to: [1, 1] },
+      { id: 'anubis-temple', kind: 'ankh', from: [2, 7], to: [1, 2] },
+    ]
+    for (const { id, kind, from, to } of moves) {
+      const def = PLAYABLE_LEVELS.find((level) => level.id === id)!
+      expect(def.props, id).toContainEqual({ kind, cell: to })
+      const game = createGame(def)
+      game.reset()
+      expect(game.build('archer', ...from), id).not.toBeNull()
+      expect(game.build('archer', ...to), id).toBeNull()
+    }
   })
 
   it('доступные залы компактны, имеют корректный путь и препятствия', () => {

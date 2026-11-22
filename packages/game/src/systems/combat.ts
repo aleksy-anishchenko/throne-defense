@@ -1,7 +1,7 @@
 // Урон, снаряды и «выстрелы-ауры». Башни (data/towers.ts) собираются из этих кирпичиков.
 
 import { SCORE } from '../data/balance.ts'
-import { PANIC_IN_FORMATION } from '../data/rewards.ts'
+import { ICE_NEEDLES } from '../data/rewards.ts'
 import type { DamageKind, Enemy, HomingShot, LineShot, Tower, TowerStats, World } from '../types.ts'
 import { bannerArmorOf, queueSplit } from './enemies.ts'
 import { rewardStats } from './rewards.ts'
@@ -28,6 +28,9 @@ export const THAW_BURN_MULTIPLIER = 0.75
 /** Запас на попадание для снаряда, летящего по прямой (болт баллисты), в клетках: чуть щедрее радиуса врага */
 const LINE_SHOT_HIT_MARGIN = 0.1
 
+/** Скорость ледяных игл, клеток в секунду. */
+const ICE_NEEDLE_SPEED = 8
+
 /** Какую долю радиуса врага добавляем к радиусу взрыва, в долях радиуса (0.5 = половину) */
 const SPLASH_ENEMY_RADIUS_SHARE = 0.5
 
@@ -39,7 +42,7 @@ export const ROOT_IMMUNITY_SECONDS = 2
 
 /** Настройки снаряда, который летит за целью */
 export interface HomingShotOptions {
-  /** Как рисовать снаряд: 'arrow' | 'orb' | 'bolt' | 'twinBolt' (см. SHOT_ART в apps/web) */
+  /** Как рисовать снаряд (см. SHOT_ART в apps/web). */
   look: string
   /** Скорость полёта, клеток в секунду */
   speed: number
@@ -63,7 +66,7 @@ export interface HomingShotOptions {
 
 /** Настройки снаряда, который летит по прямой */
 export interface LineShotOptions {
-  /** Как рисовать снаряд: 'arrow' | 'orb' | 'bolt' | 'twinBolt' (см. SHOT_ART в apps/web) */
+  /** Как рисовать снаряд (см. SHOT_ART в apps/web). */
   look: string
   /** Скорость полёта, клеток в секунду */
   speed: number
@@ -77,6 +80,7 @@ export interface LineShotOptions {
   giantDamageBonus?: number
   /** Длительность снятия брони после попадания. */
   armorBreakDuration?: number
+  iceNeedles?: boolean
 }
 
 function armorWithBanner(world: World, enemy: Enemy): number {
@@ -117,31 +121,33 @@ function loseHp(world: World, enemy: Enemy, amount: number): void {
     state.gold += enemy.def.reward + rewards.killGoldBonus
     state.score += enemy.def.reward * SCORE.perGold
     state.kills++
-    if (rewards.panicTargets > 0) spreadPanic(state.enemies, enemy, rewards.panicTargets)
     queueSplit(world, enemy)
     world.emit('kill', enemy)
   }
 }
 
-/** Ближайшие живые враги получают свежий таймер паники. */
-function spreadPanic(enemies: readonly Enemy[], fallen: Enemy, maxTargets: number): void {
-  const { radius, duration } = PANIC_IN_FORMATION
-  const targets = enemies
-    .filter((enemy) => !enemy.isDead)
+function nearbyEnemies(
+  enemies: readonly Enemy[],
+  origin: Enemy,
+  radius: number,
+  maxTargets: number,
+): Enemy[] {
+  return enemies
+    .filter((enemy) => enemy !== origin && !enemy.isDead)
     .map((enemy) => ({
       enemy,
-      distanceSquared: (enemy.x - fallen.x) ** 2 + (enemy.y - fallen.y) ** 2,
+      distanceSquared: (enemy.x - origin.x) ** 2 + (enemy.y - origin.y) ** 2,
     }))
     .filter(({ distanceSquared }) => distanceSquared <= radius ** 2)
     .sort((a, b) => a.distanceSquared - b.distanceSquared || a.enemy.id - b.enemy.id)
     .slice(0, maxTargets)
-  for (const { enemy } of targets) enemy.panicTimeLeft = duration
+    .map(({ enemy }) => enemy)
 }
 
 /** Снаряд, который летит за целью. С splashRadius > 0 взрывается и бьёт всех вокруг */
 export function shootHoming(
   world: World,
-  tower: Tower,
+  origin: Pick<Tower, 'x' | 'y' | 'aimAngle'>,
   target: Enemy,
   options: HomingShotOptions,
 ): void {
@@ -149,9 +155,9 @@ export function shootHoming(
   world.state.shots.push({
     kind: 'homing',
     look: options.look,
-    x: tower.x - (offset ? Math.sin(tower.aimAngle) * offset : 0),
-    y: tower.y + (offset ? Math.cos(tower.aimAngle) * offset : 0),
-    angle: tower.aimAngle,
+    x: origin.x - (offset ? Math.sin(origin.aimAngle) * offset : 0),
+    y: origin.y + (offset ? Math.cos(origin.aimAngle) * offset : 0),
+    angle: origin.aimAngle,
     target,
     targetX: target.x,
     targetY: target.y,
@@ -190,6 +196,7 @@ export function shootLine(
     damageKind: options.damageKind,
     giantDamageBonus: options.giantDamageBonus ?? 0,
     armorBreakDuration: options.armorBreakDuration ?? 0,
+    iceNeedles: options.iceNeedles ?? false,
     piercesLeft: options.pierceCount,
     hitEnemies: new Set(),
     isDone: false,
@@ -273,7 +280,11 @@ function firstLineHit(shot: LineShot, enemy: Enemy, travelDistance: number): num
 
 /** Сдвинуть все снаряды на dt секунд и нанести урон тем, в кого попали */
 export function updateShots(world: World, dt: number): void {
-  for (const shot of world.state.shots) {
+  const { shots } = world.state
+  // Иглы, появившиеся при попадании, начнут полёт на следующем шаге.
+  const initialShotCount = shots.length
+  for (let index = 0; index < initialShotCount; index++) {
+    const shot = shots[index]
     if (shot.kind === 'line') updateLineShot(world, shot, dt)
     else updateHomingShot(world, shot, dt)
   }
@@ -299,6 +310,10 @@ function updateLineShot(world: World, shot: LineShot, dt: number): void {
     }
     const damageMultiplier = enemy.def.isGiant ? 1 + shot.giantDamageBonus : 1
     damageEnemy(world, enemy, shot.damage * damageMultiplier, shot.damageKind)
+    if (shot.iceNeedles && enemy.slowTimeLeft > 0 && enemy.slowFactor > 0) {
+      shot.iceNeedles = false
+      shootIceNeedles(world, shot, enemy)
+    }
     shot.piercesLeft--
     if (shot.piercesLeft <= 0) {
       traveled = distance
@@ -310,6 +325,23 @@ function updateLineShot(world: World, shot: LineShot, dt: number): void {
   shot.y += shot.directionY * traveled
   shot.distanceLeft -= traveled
   if (shot.distanceLeft <= 0) shot.isDone = true
+}
+
+function shootIceNeedles(world: World, bolt: LineShot, origin: Enemy): void {
+  for (const target of nearbyEnemies(
+    world.state.enemies,
+    origin,
+    ICE_NEEDLES.radius,
+    ICE_NEEDLES.targets,
+  )) {
+    const aimAngle = Math.atan2(target.y - origin.y, target.x - origin.x)
+    shootHoming(world, { x: origin.x, y: origin.y, aimAngle }, target, {
+      look: 'iceNeedle',
+      speed: ICE_NEEDLE_SPEED,
+      damage: bolt.damage * ICE_NEEDLES.damageShare,
+      damageKind: bolt.damageKind,
+    })
+  }
 }
 
 /** Снаряд летит за целью либо в зафиксированную точку. */
@@ -334,12 +366,9 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
   shot.isDone = true
   if (shot.splashRadius > 0) {
     for (const enemy of world.state.enemies) {
-      if (
-        !enemy.isDead &&
-        Math.hypot(enemy.x - shot.targetX, enemy.y - shot.targetY) <=
-          shot.splashRadius + enemy.def.radius * SPLASH_ENEMY_RADIUS_SHARE
-      ) {
-        const distance = Math.hypot(enemy.x - shot.targetX, enemy.y - shot.targetY)
+      if (enemy.isDead) continue
+      const distance = Math.hypot(enemy.x - shot.targetX, enemy.y - shot.targetY)
+      if (distance <= shot.splashRadius + enemy.def.radius * SPLASH_ENEMY_RADIUS_SHARE) {
         const fraction = Math.min(1, distance / shot.splashRadius)
         const damageShare = 1 - (1 - shot.splashEdgeDamageShare) * fraction
         hitWithShot(world, shot, enemy, damageShare)

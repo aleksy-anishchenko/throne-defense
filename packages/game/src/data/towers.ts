@@ -12,6 +12,7 @@ import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/comba
 import { rewardStats } from '../systems/rewards.ts'
 import { towerAspect } from '../systems/towers.ts'
 import type { Enemy, TowerDef } from '../types.ts'
+import { MAGE_BURN } from './balance.ts'
 import { DOUBLE_SHOT_INTERVAL } from './rewards.ts'
 
 /** Болт баллисты летит дальше её радиуса обстрела: дальность полёта = range × 1.15 (множитель) */
@@ -104,12 +105,15 @@ const archer: TowerDef = {
         arrows += bonusArrows
       }
     }
+    const arrow = {
+      look: 'arrow',
+      speed: 13,
+      damageKind: 'physical' as const,
+    }
     for (let index = 0; index < arrows; index++) {
       shootHoming(world, tower, target, {
-        look: 'arrow',
-        speed: 13,
+        ...arrow,
         damage,
-        damageKind: 'physical',
         originOffset: (index - (arrows - 1) / 2) * DOUBLE_SHOT_SPACING,
       })
     }
@@ -123,10 +127,8 @@ const archer: TowerDef = {
     )
     for (const [index, extra] of extraTargets.entries()) {
       shootHoming(world, tower, extra, {
-        look: 'arrow',
-        speed: 13,
+        ...arrow,
         damage: stats.damage * ricochet.shares[index],
-        damageKind: 'physical',
       })
     }
   },
@@ -143,10 +145,14 @@ const mage: TowerDef = {
   upgradeCosts: [80, 130],
   tiers: [
     // Горение без накопления силы; v15: попадание само по себе не ранит.
-    { damage: 0, cooldown: 1.2, range: 1.5, splashRadius: 0.55, burnDamage: 15.3, burnDuration: 5 },
-    { damage: 0, cooldown: 1.1, range: 1.7, splashRadius: 0.65, burnDamage: 37.4, burnDuration: 5 },
-    { damage: 0, cooldown: 1, range: 1.9, splashRadius: 0.75, burnDamage: 61.2, burnDuration: 5 },
-  ],
+    { damage: 0, cooldown: 1.2, range: 1.5, splashRadius: 0.55 },
+    { damage: 0, cooldown: 1.1, range: 1.7, splashRadius: 0.65 },
+    { damage: 0, cooldown: 1, range: 1.9, splashRadius: 0.75 },
+  ].map((stats, tier) => ({
+    ...stats,
+    burnDamage: MAGE_BURN.damageByTier[tier],
+    burnDuration: MAGE_BURN.duration,
+  })),
   displayStats: ['burnDamage', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
@@ -234,6 +240,7 @@ const ballista: TowerDef = {
       maxDistance: stats.range * BALLISTA_REACH_FACTOR,
       giantDamageBonus: aspect?.giantDamageBonus,
       armorBreakDuration: aspect?.armorBreakDuration,
+      iceNeedles: rewardStats(world.state).iceNeedles,
     })
   },
 }

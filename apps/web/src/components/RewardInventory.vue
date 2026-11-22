@@ -77,7 +77,7 @@ onUnmounted(() => {
       <button
         type="button"
         class="reward-inventory-button"
-        :aria-label="`${blessing.name} ×${blessing.count}`"
+        :aria-label="blessing.count > 1 ? `${blessing.name} ×${blessing.count}` : blessing.name"
         :aria-describedby="`reward-info-${blessing.rewardId}`"
         @focus="focus($event, blessing.rewardId)"
         @blur="focused = null"

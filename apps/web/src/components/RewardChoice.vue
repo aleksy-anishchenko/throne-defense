@@ -17,7 +17,6 @@ const cards = computed(() => {
     return {
       ...reward,
       description: rewardDescriptionForWave(rewardId, store.rewards.wave),
-      owned: store.rewards.selected.filter((pick) => pick.rewardId === rewardId).length,
       setCount: counts[reward.setId],
     }
   })
@@ -71,10 +70,6 @@ async function reroll(event: MouseEvent) {
           <span class="reward-rarity reward-rarity-chip">{{
             REWARD_RARITIES[card.rarity].label
           }}</span>
-          <template v-if="card.owned">
-            <span class="reward-count" aria-hidden="true">×{{ card.owned }}</span>
-            <span class="visually-hidden">У вас уже есть {{ card.owned }}</span>
-          </template>
         </span>
         <span class="reward-card-copy">
           <strong>{{ card.name }}</strong>

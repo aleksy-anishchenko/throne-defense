@@ -278,7 +278,7 @@ async function checkControlsFit(page) {
   check(`${width}: кнопки управления помещаются в строку`, fits)
 }
 
-/** Все шесть карточек магазина на экране, и имя башни в каждой влезло целиком (без «…») */
+/** Все девять карточек доступны целиком, в том числе при прокрутке магазина. */
 async function checkShopCardsVisible(page) {
   const { width, height } = page.viewportSize()
   // Телефон в вертикальной раскладке: кнопка на экране, а девять стражей — в меню
@@ -309,27 +309,30 @@ async function checkShopCardsVisible(page) {
     )
     return
   }
-  const cards = await page.locator('.shop .card').evaluateAll((elements) =>
-    elements.map((card) => {
-      const bounds = card.getBoundingClientRect()
-      const name = card.querySelector('.card-name')
-      return {
-        name: name.textContent,
-        isNameCut: name.scrollWidth > name.clientWidth,
-        left: bounds.left,
-        top: bounds.top,
-        right: bounds.right,
-        bottom: bounds.bottom,
-      }
-    }),
-  )
-  const badCards = cards.filter(
-    (card) =>
-      card.isNameCut || card.left < 0 || card.top < 0 || card.right > width || card.bottom > height,
-  )
+  const shop = page.locator('.shop')
+  const cards = await shop.locator('.card').all()
+  const badCards = []
+  for (const card of cards) {
+    await card.scrollIntoViewIfNeeded()
+    const problem = await card.evaluate((element) => {
+      const { left, top, right, bottom } = element.getBoundingClientRect()
+      const shopBounds = element.closest('.shop').getBoundingClientRect()
+      const name = element.querySelector('.card-name').textContent
+      const text = [...element.querySelectorAll('.card-name, .card-description, .card-stats')]
+      const fits =
+        left >= 0 &&
+        right <= innerWidth &&
+        top >= Math.max(0, shopBounds.top) - 1 &&
+        bottom <= Math.min(innerHeight, shopBounds.bottom) + 1 &&
+        text.length === 3 &&
+        text.every((line) => line.clientWidth > 0 && line.scrollWidth <= line.clientWidth)
+      return fits ? null : { name, top, bottom, shopHeight: shopBounds.height }
+    })
+    if (problem) badCards.push(problem)
+  }
+  await shop.evaluate((element) => (element.scrollTop = 0))
   check(
-    `${width}×${height}: все карточки магазина (${cards.length}) видны целиком`,
-    // Девять башен (TOWER_LIST в packages/game/src/data/towers.ts)
+    `${width}×${height}: все карточки магазина (${cards.length}) можно прочитать целиком`,
     cards.length === 9 && badCards.length === 0,
     JSON.stringify(badCards),
   )
@@ -413,9 +416,15 @@ async function desktop(page, url) {
 
   // Постройка мышью
   const archerCard = page.getByRole('button', { name: /Лучник/ })
+  const cannonCard = page.getByRole('button', { name: /^Пушкарь/ })
+  const cannonCardText = await cannonCard.innerText()
   check(
-    'в магазине показана цена Пушкаря 340',
-    (await page.getByRole('button', { name: /Пушкарь/ }).innerText()).includes('340'),
+    'в карточке Пушкаря цена 340, описание и характеристики',
+    cannonCardText.includes('340') &&
+      cannonCardText.includes('Ядро взрывается.') &&
+      cannonCardText.includes('урон 100') &&
+      (await cannonCard.getAttribute('title')) === null &&
+      !(await cannonCard.getAttribute('aria-description')).includes('Ядро летит в точку'),
   )
   await archerCard.click()
   check('карточка в магазине нажата', (await archerCard.getAttribute('aria-pressed')) === 'true')
@@ -652,8 +661,11 @@ async function desktop(page, url) {
   })
   await clickCell(page, 5, 9)
   check(
-    'Колдун I: показано ослабление лечения 20% → 30%',
-    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −20% → −30%'),
+    'выбранный Колдун I показывает ослабление лечения и детали проклятия',
+    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −20% → −30%') &&
+      (await page.locator('.tower-interaction').innerText()).includes(
+        'Проклятие ослабляет лечение самого проклятого врага.',
+      ),
   )
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
@@ -940,11 +952,11 @@ async function desktop(page, url) {
     const enemy = game.state.enemies.find((candidate) => candidate.def.id === 'rebel')
     return enemy && enemy.y + enemy.def.radius + 0.15 < game.level.def.rows
   })
-  await page.evaluate(() => window.__throne.game.setPaused(true))
   check(
     'подсказка «Врагов осталось»',
     (await page.locator('#hint').textContent()).startsWith('Врагов осталось'),
   )
+  await page.evaluate(() => window.__throne.game.setPaused(true))
   const enemyPixels = await compareEnemyPixels(page, PIXEL_CHANGE_THRESHOLD)
   check(
     'враг нарисован на поле',
@@ -1117,7 +1129,7 @@ async function desktop(page, url) {
   // Фиксируем розыгрыш: три редкости, а после обновления доступны «Заточенные клинки».
   const rewardGoal = page.locator('.hud').getByText(/за волны/)
   check('в шапке нет статуса отрезка для благословения', (await rewardGoal.count()) === 0)
-  await finishRewardWave(page, 5, 1195)
+  await finishRewardWave(page, 5, 5252)
   const rewardCards = page.locator('.reward-card')
   const rewardNames = await rewardCards.locator('strong').allTextContents()
   check(
@@ -1150,12 +1162,12 @@ async function desktop(page, url) {
     JSON.stringify(desktopRewardBounds),
   )
   const pendingReward = await readGameSnapshot(page)
+  const giantDiet = rewardCards.filter({ hasText: 'Разгрузочный день' })
   check(
-    'карточка «Разгрузочный день» показывает, кому снижено здоровье',
-    (await rewardCards
-      .filter({ hasText: 'Разгрузочный день' })
-      .locator('.reward-description')
-      .innerText()) === 'У боссов и полубоссов на 20% меньше здоровья',
+    '«Разгрузочный день» стал редким и показывает, кому снижено здоровье',
+    (await giantDiet.getAttribute('data-rarity')) === 'rare' &&
+      (await giantDiet.locator('.reward-description').innerText()) ===
+        'У боссов и полубоссов на 20% меньше здоровья',
   )
   check(
     '«Целебный обоз» доступен и при полном здоровье',
@@ -1214,7 +1226,7 @@ async function desktop(page, url) {
       pendingReward.rewardWave === 5,
     JSON.stringify({ pendingReward, chosenReward }),
   )
-  const bladesIcon = page.getByRole('button', { name: /Заточенные клинки ×/ })
+  const bladesIcon = page.getByRole('button', { name: 'Заточенные клинки', exact: true })
   const inventoryBounds = await bladesIcon.boundingBox()
   const boardBounds = await page.locator('#board').boundingBox()
   check(
@@ -1274,23 +1286,34 @@ async function desktop(page, url) {
       !(await page.locator('.toast').innerText()).includes('упущено') &&
       (await rewardGoal.count()) === 0,
   )
-  await finishRewardWave(page, 15, 21)
-  const bladesSet = blades.locator('.reward-card-set')
+  await finishRewardWave(page, 15, 115)
   check(
-    'повторная карточка показывает копию, сбор набора и сброшенную цену обновления',
-    (await blades.locator('.reward-count').innerText()).trim() === '×1' &&
-      (await bladesSet.locator('.reward-set-threshold').innerText()).includes('×2') &&
-      (await bladesSet.locator('.reward-set-pips .is-filled').count()) === 1 &&
-      (await bladesSet.locator('.reward-set-pips .is-preview').count()) === 1 &&
-      (await bladesSet.locator('.reward-set-effect').innerText()).includes('+10%') &&
-      (await blades.locator('.reward-set-ready').isVisible()) &&
-      (await rerollPrice.innerText()).trim() === '−100',
+    'после 15-й волны выбранные «Клинки» исчезли из предложения и цена сброшена',
+    (await blades.count()) === 0 && (await rerollPrice.innerText()).trim() === '−100',
   )
   check(
-    'после 15-й волны может выпасть «Щедрая награда»',
-    await rewardCards.filter({ hasText: 'Щедрая награда' }).isVisible(),
+    'после 15-й волны может выпасть обычная «Щедрая награда»',
+    (await rewardCards.filter({ hasText: 'Щедрая награда' }).getAttribute('data-rarity')) ===
+      'common',
   )
-  await blades.click()
+  await rerollButton.click()
+  const iceNeedles = rewardCards.filter({ hasText: 'Ледяные иглы' })
+  const iceNeedlesSet = iceNeedles.locator('.reward-card-set')
+  check(
+    'после обновления «Ледяные иглы» показывают эффект и сбор набора',
+    (await blades.count()) === 0 &&
+      (await iceNeedles.getAttribute('data-rarity')) === 'rare' &&
+      (await iceNeedles.locator('.reward-description').innerText()).includes('25%') &&
+      (await iceNeedles
+        .locator('img')
+        .evaluate((icon) => icon.complete && icon.naturalWidth > 0)) &&
+      (await iceNeedlesSet.locator('.reward-set-threshold').innerText()).includes('×2') &&
+      (await iceNeedlesSet.locator('.reward-set-pips .is-filled').count()) === 1 &&
+      (await iceNeedlesSet.locator('.reward-set-pips .is-preview').count()) === 1 &&
+      (await iceNeedlesSet.locator('.reward-set-effect').innerText()).includes('+10%') &&
+      (await iceNeedles.locator('.reward-set-ready').isVisible()),
+  )
+  await iceNeedles.click()
   await waitForFrames(page)
   check(
     'завершение набора показывает сообщение',
@@ -1298,9 +1321,10 @@ async function desktop(page, url) {
   )
   await bladesIcon.hover()
   check(
-    'две копии на значке, в подсказке общий эффект, бонус набора и два заполненных ромба',
-    (await bladesIcon.locator('.reward-count').innerText()).trim() === '×2' &&
-      (await tooltip.innerText()).includes('+36% ко всему урону стражей') &&
+    'два разных благословения в инвентаре заполняют оба ромба набора',
+    (await readGameSnapshot(page)).rewards.join(',') === 'sharpened-steel,ice-needles' &&
+      (await bladesIcon.locator('.reward-count').count()) === 0 &&
+      (await tooltip.innerText()).includes('+18% ко всему урону стражей') &&
       (await tooltip.locator('.reward-set-effect').innerText()).includes(
         '+10% ко всему урону стражей',
       ) &&
@@ -1312,6 +1336,7 @@ async function desktop(page, url) {
   await page.evaluate(() => {
     const { game, store } = window.__throne
     game.state.wave = 20
+    game.state.rewardSeed = 4
     store.syncHud()
   })
   await waitForFrames(page)
@@ -1345,7 +1370,7 @@ async function desktop(page, url) {
     (await readGameSnapshot(page)).rewardWave === 20 &&
       (await rerollPrice.innerText()).trim() === '−120',
   )
-  await rewardCards.first().click()
+  await rewardCards.filter({ hasText: 'Двойной выстрел' }).click()
   await waitForFrames(page)
   check(
     'после 20-й волны началась подготовка к 21-й',
@@ -1353,7 +1378,7 @@ async function desktop(page, url) {
       (await readGameSnapshot(page)).phase === 'build',
   )
 
-  await finishRewardWave(page, 29, 11)
+  await finishRewardWave(page, 29, 56)
   const finalOffer = await readGameSnapshot(page)
   check(
     'после 29-й волны может выпасть «Военный налог», первое обновление за 160',
@@ -1366,6 +1391,12 @@ async function desktop(page, url) {
     'после 29-й волны обновление списало 160 золота, следующее стоит 180',
     (await readGameSnapshot(page)).gold === finalOffer.gold - 160 &&
       (await rerollPrice.innerText()).trim() === '−180',
+  )
+  const slowCard = rewardCards.filter({ hasText: 'Распутица' })
+  check(
+    '«Распутица» показывается как легендарная карта с замедлением 25%',
+    (await slowCard.getAttribute('data-rarity')) === 'legendary' &&
+      (await slowCard.locator('.reward-description').innerText()).includes('25%'),
   )
   const finalChest = rewardCards.filter({ hasText: 'Военная казна' })
   check(
@@ -1719,11 +1750,14 @@ async function phone(page, url) {
     drawerText.includes('Поджигает цель и врагов рядом с ней.') && /урон \d/.test(drawerText),
     drawerText.slice(0, 200),
   )
+  const warlockCard = drawer.getByRole('button', { name: /^Колдун/ })
   check(
-    'Колдун: на телефоне ослабление лечения видно до покупки',
-    (await drawer.getByRole('button', { name: /^Колдун/ }).innerText()).includes(
+    'карточка Колдуна показывает ослабление лечения без подробностей проклятия',
+    (await warlockCard.locator('.drawer-card-stats').innerText()).includes(
       'получаемое лечение −20%',
-    ),
+    ) &&
+      !(await warlockCard.innerText()).includes('Проклятие ослабляет лечение') &&
+      !(await warlockCard.getAttribute('aria-description')).includes('Проклятие ослабляет лечение'),
   )
   await page.keyboard.press('Escape')
   await waitForFrames(page)
@@ -1906,7 +1940,7 @@ async function phone(page, url) {
   check('320×568: до первой награды счётчик скрыт', !(await phoneBlessings.isVisible()))
 
   // На узком экране три карточки выбора идут столбиком и не выходят по ширине.
-  await finishRewardWave(page, 10, 1)
+  await finishRewardWave(page, 10, 8)
   const phoneRewardCards = page.locator('.reward-card')
   const warChest = phoneRewardCards.filter({ hasText: 'Военная казна' })
   const phoneRewardBounds = await phoneRewardCards.evaluateAll((cards) =>
@@ -2007,13 +2041,27 @@ async function phone(page, url) {
       (await phoneBlessings.evaluate((button) => document.activeElement === button)),
   )
 
-  await finishRewardWave(page, 20, 2)
+  await page.evaluate(() => {
+    const { game } = window.__throne
+    game.build('treasury', 4, 9)
+    game.build('treasury', 5, 9)
+    game.upgrade(4, 9)
+    game.startWave()
+  })
+  await finishRewardWave(page, 20, 30)
   const beforeGift = await readGameSnapshot(page)
+  const engineer = phoneRewardCards.filter({ hasText: 'Военный инженер' })
   check(
-    '320×568: на карточке Казны после 20-й волны видно 360 золота',
-    (await warChest.locator('.reward-description').innerText()) === '+360 золота сразу',
+    '320×568: «Военный инженер» показывает скидку на специализации и собирает набор',
+    (await warChest.count()) === 0 &&
+      (await engineer.getAttribute('data-rarity')) === 'legendary' &&
+      (await engineer.locator('.reward-description').innerText()).includes(
+        '30% на улучшения и специализации',
+      ) &&
+      (await engineer.locator('.reward-set-ready').isVisible()) &&
+      (await engineer.locator('img').evaluate((icon) => icon.complete && icon.naturalWidth > 0)),
   )
-  await warChest.tap()
+  await engineer.tap()
   const gift = page.getByRole('dialog', { name: 'Дар короны', exact: true })
   await gift.waitFor()
   const giftCards = gift.locator('.reward-card')
@@ -2025,39 +2073,95 @@ async function phone(page, url) {
     }),
   )
   check(
-    '320×568: «Дар короны» открывает две обычные карточки, поле остаётся выключенным',
+    '320×568: «Дар короны» предлагает две новые обычные карты, поле выключено',
     (await giftCards.count()) === 2 &&
+      (await warChest.count()) === 0 &&
       (await giftCards.evaluateAll((cards) =>
         cards.every((card) => card.dataset.rarity === 'common'),
       )) &&
       giftCardsFit &&
       (await gift.locator('.reward-reroll').count()) === 0 &&
       (await page.locator('.stage').evaluate((stage) => stage.inert)) &&
-      duringGift.gold === beforeGift.gold + 360,
+      duringGift.gold === beforeGift.gold,
   )
-  await giftCards.first().tap()
+  const buybackCard = giftCards.filter({ hasText: 'Выкуп' })
+  check(
+    '320×568: карточка «Выкуп» показывает возврат 100% между волнами',
+    (await buybackCard.locator('.reward-description').innerText()).includes('100%') &&
+      (await buybackCard.locator('img').evaluate((icon) => icon.complete && icon.naturalWidth > 0)),
+  )
+  await buybackCard.tap()
   const afterGift = await readGameSnapshot(page)
   check(
-    '320×568: дар добавляет третье благословение и возвращает к подготовке 21-й волны',
+    '320×568: «Выкуп» из дара возвращает к подготовке 21-й волны',
     (await gift.count()) === 0 &&
       afterGift.phase === 'build' &&
       afterGift.wave === 21 &&
-      afterGift.rewards.length === 3 &&
+      new Set(afterGift.rewards).size === 3 &&
+      afterGift.rewards.includes('buyback') &&
       afterGift.gold === duringGift.gold,
   )
   await phoneBlessings.tap()
   const chestEntry = phoneRewardSheet
     .locator('.reward-drawer-entry')
     .filter({ hasText: 'Военная казна' })
+  const engineerEntry = phoneRewardSheet
+    .locator('.reward-drawer-entry')
+    .filter({ hasText: 'Военный инженер' })
   const crownSet = phoneRewardSheet.locator('.reward-set').filter({ hasText: 'Дар короны' })
   check(
-    '320×568: счётчик включает копии, Казна суммирует выплаты, набор показывает 2/2',
+    '320×568: счётчик показывает три полученные карты, набор показывает 2/2',
     (await phoneBlessings.getAttribute('aria-label')) === 'Благословения, получено 3' &&
-      (await chestEntry.locator('.reward-drawer-count').innerText()) === '×2' &&
-      (await chestEntry.locator('.reward-description').innerText()) === 'Получено 560 золота' &&
+      (await phoneRewardSheet.locator('.reward-drawer-entry').count()) === 3 &&
+      (await chestEntry.locator('.reward-description').innerText()) === 'Получено 200 золота' &&
+      (await engineerEntry.locator('.reward-description').innerText()) ===
+        '−30% к цене улучшений и специализаций' &&
       (await crownSet.locator('.reward-set-count').innerText()) === '2/2',
   )
   await phoneRewardSheet.getByRole('button', { name: 'Закрыть' }).tap()
+  const boundsWithTreasury = await phoneBoard.boundingBox()
+  await page.touchscreen.tap(
+    boundsWithTreasury.x + (4.5 / COLS) * boundsWithTreasury.width,
+    boundsWithTreasury.y + (9.5 / ROWS) * boundsWithTreasury.height,
+  )
+  const treasuryMenu = page.getByRole('dialog', { name: 'Башня: Казна II', exact: true })
+  const sellTreasury = treasuryMenu.getByRole('button', { name: /Продать/ })
+  const sellText = await sellTreasury.innerText()
+  const goldBeforeSale = (await readGameSnapshot(page)).gold
+  await sellTreasury.tap()
+  check(
+    '320×568: «Выкуп» показывает и возвращает все 150 золота за Казну II',
+    sellText.includes('150') && (await readGameSnapshot(page)).gold === goldBeforeSale + 150,
+  )
+  await treasuryMenu.waitFor({ state: 'hidden', timeout: 5000 })
+
+  await page.evaluate(() => {
+    const { game, store } = window.__throne
+    if (!game.build('archer', 4, 9) || !game.upgrade(4, 9) || !game.upgrade(4, 9)) {
+      throw new Error('Не удалось подготовить Лучника III для проверки скидки')
+    }
+    game.state.gold = 84
+    store.syncHud()
+  })
+  await page.touchscreen.tap(
+    boundsWithTreasury.x + (4.5 / COLS) * boundsWithTreasury.width,
+    boundsWithTreasury.y + (9.5 / ROWS) * boundsWithTreasury.height,
+  )
+  const discountedArcher = page.getByRole('dialog', { name: 'Башня: Лучник III', exact: true })
+  await discountedArcher.waitFor({ timeout: 5000 })
+  await discountedArcher
+    .getByRole('button', { name: 'Рикошет за 84 золота', exact: true })
+    .tap({ timeout: 5000 })
+  const undoDiscounted = page
+    .getByRole('dialog', { name: 'Башня: Лучник IV', exact: true })
+    .getByRole('button', { name: 'Отменить аспект — вернуть 84', exact: true })
+  const paidAspect = (await readGameSnapshot(page)).gold === 0
+  await undoDiscounted.tap({ timeout: 5000 })
+  check(
+    '320×568: «Рикошет» со скидкой стоит 84, при отмене возвращаются те же 84',
+    paidAspect && (await readGameSnapshot(page)).gold === 84,
+  )
+  await page.keyboard.press('Escape')
 
   // Максимум за кампанию — шесть рубежей и «Дар короны». Заполняем инвентарь для проверки размеров.
   await page.evaluate(() => {

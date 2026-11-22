@@ -114,6 +114,10 @@ function drawCannonball(ctx: Canvas2D, shot: Shot) {
 const SHOT_ART: Record<string, (ctx: Canvas2D, shot: Shot) => void> = {
   arrow: (ctx, shot) => drawStreak(ctx, shot, 0.24, PARCHMENT, 0.035),
   bolt: (ctx, shot) => drawStreak(ctx, shot, BOLT_LENGTH, BOLT_COLOR, BOLT_WIDTH),
+  iceNeedle(ctx, shot) {
+    drawStreak(ctx, shot, 0.32, '#68b8de', 0.085)
+    drawStreak(ctx, shot, 0.23, '#e2f7ff', 0.04)
+  },
   // Баллиста III: два болта рядом. В логике снаряд один — сдвигаем рисунок поперёк полёта
   twinBolt(ctx, shot) {
     const acrossX = -Math.sin(shot.angle) * TWIN_BOLT_OFFSET

@@ -92,12 +92,6 @@ const STATUS_LOOKS: readonly StatusLook[] = [
     drawMark: (ctx, radius) => drawBrokenArmor(ctx, radius),
   },
   {
-    isActive: (enemy) => enemy.panicTimeLeft > 0,
-    rgb: '255,212,134',
-    hasTint: false,
-    drawMark: (ctx, radius) => drawPanicMark(ctx, radius),
-  },
-  {
     // Сеть: сама сеть поверх врага, чуть шире его; без кольца и оттенка.
     // Горит (враг в огне) — грузила тлеют оранжевым: сеть скоро сгорит
     isActive: (enemy) => enemy.rootTimeLeft > 0,
@@ -149,28 +143,6 @@ function drawBrokenArmor(ctx: Canvas2D, radius: number) {
   ctx.lineTo(-0.12, 0)
   ctx.lineTo(0.12, 0.12)
   ctx.lineTo(0, 0.45)
-  ctx.stroke()
-  ctx.restore()
-}
-
-function drawPanicMark(ctx: Canvas2D, radius: number) {
-  ctx.save()
-  ctx.translate(-radius * 0.8, -radius * 0.85)
-  ctx.scale(radius, radius)
-  ctx.fillStyle = '#ffd486'
-  ctx.strokeStyle = '#4b302b'
-  ctx.lineWidth = 0.09
-  ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(-0.17, -0.37)
-  ctx.lineTo(0.17, -0.37)
-  ctx.lineTo(0.09, 0.08)
-  ctx.lineTo(-0.09, 0.08)
-  ctx.closePath()
-  ctx.fill()
-  ctx.stroke()
-  circle(ctx, 0, 0.27, 0.12)
-  ctx.fill()
   ctx.stroke()
   ctx.restore()
 }

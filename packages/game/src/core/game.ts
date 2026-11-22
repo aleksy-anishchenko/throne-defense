@@ -7,6 +7,8 @@ import { TOWERS } from '../data/towers.ts'
 import { moveEnemies, spawnSplits, updateHealers } from '../systems/enemies.ts'
 import {
   TARGET_MODES,
+  discountedUpgradePrice,
+  paidAspectCost,
   refundFor,
   towerAspect,
   updateTowers,
@@ -217,10 +219,11 @@ export function createGame(levelDef: LevelDef): Game {
         tier: 0,
         aspectId: null,
         aspectLocked: false,
+        aspectGoldPaid: 0,
         cooldownLeft: 0,
         aimAngle: INITIAL_AIM_ANGLE,
         targetMode: def.defaultTargetMode,
-        // Построена во время волны — сразу в бою, полного возврата нет
+        // Постройка во время волны сразу считается участвовавшей в бою.
         goldSinceLastWave: state.phase === 'build' ? def.cost : 0,
         upgradeGoldPaid: 0,
         hunterTargetId: null,
@@ -257,11 +260,14 @@ export function createGame(levelDef: LevelDef): Game {
         return false
       }
       const aspect = tower.def.aspects?.find((candidate) => candidate.id === aspectId)
-      if (!aspect || state.gold < aspect.cost) return false
-      state.gold -= aspect.cost
-      tower.goldSinceLastWave += aspect.cost
+      if (!aspect) return false
+      const cost = discountedUpgradePrice(aspect.cost, rewardStats(state).upgradeCostMultiplier)
+      if (state.gold < cost) return false
+      state.gold -= cost
+      tower.goldSinceLastWave += cost
       tower.aspectId = aspect.id
       tower.aspectLocked = false
+      tower.aspectGoldPaid = cost
       tower.hunterTargetId = null
       tower.hunterStacks = 0
       world.emit('upgrade', tower)
@@ -270,12 +276,14 @@ export function createGame(levelDef: LevelDef): Game {
 
     undoSpecialization(col, row) {
       const tower = towerAt(col, row)
-      if (!tower || state.phase !== 'build' || tower.aspectLocked) return false
-      const aspect = towerAspect(tower)
-      if (!aspect) return false
-      state.gold += aspect.cost
-      tower.goldSinceLastWave -= aspect.cost
+      if (!tower || state.phase !== 'build' || tower.aspectLocked || !towerAspect(tower)) {
+        return false
+      }
+      const cost = paidAspectCost(tower)
+      state.gold += cost
+      tower.goldSinceLastWave -= cost
       tower.aspectId = null
+      tower.aspectGoldPaid = 0
       tower.hunterTargetId = null
       tower.hunterStacks = 0
       return true
@@ -284,7 +292,7 @@ export function createGame(levelDef: LevelDef): Game {
     sell(col, row) {
       const tower = towerAt(col, row)
       if (!tower || !isPlaying()) return null
-      const refund = refundFor(tower)
+      const refund = refundFor(tower, state)
       state.gold += refund
       state.towers.splice(state.towers.indexOf(tower), 1)
       state.towersByCell.delete(cellKey(col, row))

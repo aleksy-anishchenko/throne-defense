@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ENEMIES,
+  REFUND_RATE,
   REWARDS,
   REWARD_LIST,
   REWARD_WAVES,
@@ -21,10 +22,11 @@ import {
   upgradeCost,
   type PendingReward,
   type RewardId,
+  type RewardSetId,
   type Tower,
 } from '../src/index.ts'
 import { damageEnemy, frostPulse, updateShots } from '../src/systems/combat.ts'
-import { moveEnemies, updateHealers } from '../src/systems/enemies.ts'
+import { updateHealers } from '../src/systems/enemies.ts'
 import { updateTowers } from '../src/systems/towers.ts'
 import { newGame, placeEnemy, worldOf } from './helpers.ts'
 
@@ -60,12 +62,20 @@ function waveOffer(game: ReturnType<typeof newGame>) {
 }
 
 describe('благословения после волн', () => {
-  it('рубежи — только после волн 5, 10, 15, 20, 25 и 29', () => {
+  it('рубежи и количество благословений по наборам и редкости', () => {
     expect(REWARD_WAVES).toEqual([5, 10, 15, 20, 25, 29])
+    const raritiesIn = (setId: RewardSetId) =>
+      ['common', 'rare', 'legendary'].map(
+        (rarity) =>
+          REWARD_LIST.filter((card) => card.setId === setId && card.rarity === rarity).length,
+      )
     expect(REWARD_LIST).toHaveLength(18)
-    expect(REWARD_LIST.filter((reward) => reward.rarity === 'common')).toHaveLength(7)
-    expect(REWARD_LIST.filter((reward) => reward.rarity === 'rare')).toHaveLength(6)
-    expect(REWARD_LIST.filter((reward) => reward.rarity === 'legendary')).toHaveLength(5)
+    expect(raritiesIn('arsenal')).toEqual([3, 2, 1])
+    expect(raritiesIn('supplies')).toEqual([3, 2, 1])
+    expect(raritiesIn('watch')).toEqual([3, 2, 1])
+    expect(REWARDS.bounty.rarity).toBe('common')
+    expect(REWARDS['control-master'].rarity).toBe('common')
+    expect(REWARDS['giant-diet'].rarity).toBe('rare')
   })
 
   it('в бесконечном режиме выходит не больше шести знахарей', () => {
@@ -229,9 +239,10 @@ describe('благословения после волн', () => {
     ])
   })
 
-  it('обновляет три карточки за золото, повышает цену и сбрасывает её на следующем рубеже', () => {
+  it('обновление пропускает текущую тройку и возвращает ранее показанные карты в пул', () => {
     const game = newGame()
     game.state.gold = 500
+    game.state.rewardSeed = 8
     finishWave(game, 10)
     const first = waveOffer(game)
     const gold = game.state.gold
@@ -252,12 +263,17 @@ describe('благословения после волн', () => {
     const third = game.state.pendingReward!
     expect(third.options.every((id) => !second.options.includes(id))).toBe(true)
     expect(new Set(third.options).size).toBe(3)
+    expect(first.options).toContain('war-chest')
+    expect(third.options).toContain('war-chest')
 
-    expect(game.chooseReward(third.options[0])).toBe(true)
+    expect(game.chooseReward('war-chest')).toBe(true)
     finishWave(game, 15)
     const nextCheckpoint = waveOffer(game)
     expect(nextCheckpoint.rerolls).toBe(0)
     expect(rewardRerollCost(nextCheckpoint.wave, nextCheckpoint.rerolls)).toBe(100)
+    expect(first.options).toContain('last-stand')
+    expect(nextCheckpoint.options).toContain('last-stand')
+    expect(nextCheckpoint.options).not.toContain('war-chest')
   })
 
   it('сохраняет карточки и золото при отказе и принимает точную цену', () => {
@@ -292,6 +308,38 @@ describe('благословения после волн', () => {
     expect(game.chooseReward(options[0])).toBe(false)
   })
 
+  it('выбранная награда исключается на следующем рубеже и при обновлении до новой партии', () => {
+    const game = newGame()
+    finishWave(game, 5)
+    expect(waveOffer(game).options).toContain('war-chest')
+    expect(game.chooseReward('war-chest')).toBe(true)
+
+    finishWave(game, 15)
+    const offer = waveOffer(game).options
+    expect(offer).toHaveLength(3)
+    expect(offer).not.toContain('war-chest')
+    expect(game.rerollRewards()).toBe(true)
+    const rerolled = waveOffer(game).options
+    expect(rerolled).toHaveLength(3)
+    expect(rerolled).not.toContain('war-chest')
+    expect(rerolled.every((id) => !offer.includes(id))).toBe(true)
+
+    game.reset()
+    finishWave(game, 5)
+    expect(waveOffer(game).options).toContain('war-chest')
+  })
+
+  it('рубежевая награда без доступных карт сразу возвращает к строительству', () => {
+    const game = newGame()
+    game.state.selectedRewards = REWARD_LIST.map(({ id }) => ({ wave: 5, rewardId: id }))
+
+    finishWave(game, 29)
+
+    expect(game.state.pendingReward).toBeNull()
+    expect(game.state.phase).toBe('build')
+    expect(game.state.wave).toBe(30)
+  })
+
   it.each([
     { wave: 5, payout: 140 },
     { wave: 10, payout: 200 },
@@ -313,6 +361,32 @@ describe('благословения после волн', () => {
       ])
     },
   )
+
+  it('«Выкуп» между волнами возвращает фактическую цену постройки, улучшений и специализации', () => {
+    const game = newGame()
+    choose(game, 'military-engineer')
+    game.state.gold = 1000
+    const tower = game.build('archer', 5, 11)!
+    expect(game.upgrade(5, 11)).toBe(true)
+    expect(game.upgrade(5, 11)).toBe(true)
+    expect(game.specialize(5, 11, 'ricochet')).toBe(true)
+    const invested = 1000 - game.state.gold
+    expect(game.startWave()).toBe(true)
+    finishWave(game, 1)
+    expect(refundFor(tower, game.state)).toBe(Math.floor(invested * REFUND_RATE))
+
+    choose(game, 'buyback', 10)
+    expect(game.state.pendingReward?.kind).toBe('crown-gift')
+    expect(game.chooseReward(game.state.pendingReward!.options[0])).toBe(true)
+    const gold = game.state.gold
+    expect(refundFor(tower, game.state)).toBe(invested)
+    expect(game.sell(5, 11)).toBe(invested)
+    expect(game.state.gold).toBe(gold + invested)
+
+    const replacement = game.build('archer', 5, 11)!
+    expect(game.startWave()).toBe(true)
+    expect(game.sell(5, 11)).toBe(Math.floor(replacement.def.cost * REFUND_RATE))
+  })
 
   it('«Целебный обоз» полностью лечит раненый трон', () => {
     const livesGame = newGame()
@@ -371,16 +445,24 @@ describe('благословения после волн', () => {
     expect(refundFor(tower)).toBe(95)
   })
 
-  it('скидка военного инженера не распространяется на аспекты', () => {
+  it('«Военный инженер» снижает цену аспекта и при отмене возвращается уплаченная сумма', () => {
     const game = newGame()
     game.state.gold = 1000
     choose(game, 'military-engineer')
     const tower = game.build('ballista', 5, 11)!
     expect(game.upgrade(tower.col, tower.row)).toBe(true)
     expect(game.upgrade(tower.col, tower.row)).toBe(true)
-    const gold = game.state.gold
+    const beforeAspect = towerInvestedGold(tower)
+    game.state.gold = 125
+    expect(game.specialize(tower.col, tower.row, 'giant-slayer')).toBe(false)
+    expect(game.state.gold).toBe(125)
+    game.state.gold = 126
     expect(game.specialize(tower.col, tower.row, 'giant-slayer')).toBe(true)
-    expect(game.state.gold).toBe(gold - 180)
+    expect(game.state.gold).toBe(0)
+    expect(towerInvestedGold(tower)).toBe(beforeAspect + 126)
+    expect(game.undoSpecialization(tower.col, tower.row)).toBe(true)
+    expect(game.state.gold).toBe(126)
+    expect(towerInvestedGold(tower)).toBe(beforeAspect)
   })
 
   it('новые награды меняют нужные характеристики башен и врагов', () => {
@@ -426,21 +508,6 @@ describe('благословения после волн', () => {
     }
   })
 
-  it('«Ров у трона» замедляет даже Узурпатора, начиная с последней четверти пути', () => {
-    const game = newGame()
-    choose(game, 'throne-moat', 29)
-    game.state.wave = 30
-    const moatStart = game.level.path.length * 0.75
-    const approach = moatStart - 1
-    const rebel = placeEnemy(game, 'rebel', approach)
-    const boss = placeEnemy(game, 'boss', moatStart)
-
-    game.step(SIMULATION_STEP)
-
-    expect(rebel.pathDistance - approach).toBeCloseTo(rebel.def.speed * SIMULATION_STEP, 8)
-    expect(boss.pathDistance - moatStart).toBeCloseTo(boss.def.speed * 0.88 * SIMULATION_STEP, 8)
-  })
-
   it('«Пустые склянки» уменьшают лечение врагов вдвое вместе с эффектом проклятия', () => {
     const game = newGame()
     choose(game, 'empty-vials')
@@ -461,84 +528,99 @@ describe('благословения после волн', () => {
     expect(boss.hp).toBe(boss.maxHp / 2)
   })
 
-  it('«Паника в строю» обновляет три секунды замедления у ближайших врагов', () => {
+  it('отклоняет уже полученное благословение даже в устаревшем предложении', () => {
     const game = newGame()
-    choose(game, 'panic-in-formation')
+    choose(game, 'double-shot')
+    game.state.phase = 'reward'
+    game.state.pendingReward = {
+      kind: 'wave',
+      wave: 10,
+      options: ['double-shot', 'field-medic'],
+      rerolls: 0,
+    }
+
+    expect(game.chooseReward('double-shot')).toBe(false)
+    expect(game.state.selectedRewards).toEqual([{ wave: 5, rewardId: 'double-shot' }])
+    expect(rewardStats(game.state).doubleShotArrows).toBe(1)
+    expect(game.chooseReward('field-medic')).toBe(true)
+  })
+
+  it('«Двойной выстрел» выпускает вторую стрелу на пятой атаке каждого Лучника', () => {
+    const game = newGame()
+    choose(game, 'double-shot')
+    const archer = game.build('archer', 5, 11)!
+    const other = game.build('archer', 3, 11)!
+    const target = placeEnemy(game, 'boss', 2)
     const world = worldOf(game)
-    const fallen = placeEnemy(game, 'rebel')
-    const farther = placeEnemy(game, 'rebel', 1.75)
-    const outside = placeEnemy(game, 'rebel', 2.5)
-    const boss = placeEnemy(game, 'boss', 0.25)
-    const rebel = placeEnemy(game, 'rebel', 0.5)
-    const frozen = placeEnemy(game, 'rebel', 1)
-    frozen.slowFactor = 0.45
-    frozen.slowTimeLeft = 4
+    function fire(tower: Tower) {
+      game.state.shots = []
+      tower.def.fire!(world, tower, target, towerStats(tower))
+      return game.state.shots
+    }
 
-    damageEnemy(world, fallen, fallen.hp, 'magic')
-    expect([boss, rebel, frozen].map((enemy) => enemy.panicTimeLeft)).toEqual([3, 3, 3])
-    expect([farther, outside].map((enemy) => enemy.panicTimeLeft)).toEqual([0, 0])
-
-    moveEnemies(world, SIMULATION_STEP)
-    expect(boss.pathDistance - 0.25).toBeCloseTo(boss.def.speed * 0.825 * SIMULATION_STEP, 8)
-    expect(rebel.pathDistance - 0.5).toBeCloseTo(rebel.def.speed * 0.65 * SIMULATION_STEP, 8)
-    expect(frozen.pathDistance - 1).toBeCloseTo(frozen.def.speed * 0.55 * SIMULATION_STEP, 8)
-    expect(rebel.panicTimeLeft).toBeCloseTo(3 - SIMULATION_STEP)
-
-    const nextFallen = placeEnemy(game, 'rebel')
-    damageEnemy(world, nextFallen, nextFallen.hp, 'magic')
-    expect(rebel.panicTimeLeft).toBe(3)
-    moveEnemies(world, 3)
-    expect(rebel.panicTimeLeft).toBe(0)
-  })
-
-  it('повторная «Паника в строю» добавляет одну цель и показывает это в подсказке', () => {
-    const game = newGame()
-    choose(game, 'panic-in-formation')
-    choose(game, 'panic-in-formation')
-    const fallen = placeEnemy(game, 'rebel')
-    const neighbors = [0.25, 0.5, 1, 1.5, 2.5].map((distance) =>
-      placeEnemy(game, 'rebel', distance),
+    for (let attack = 0; attack < 4; attack++) expect(fire(archer)).toHaveLength(1)
+    expect(fire(other)).toHaveLength(1)
+    const volley = fire(archer)
+    expect(volley).toHaveLength(2)
+    expect(volley.every((shot) => shot.kind === 'homing' && shot.target === target)).toBe(true)
+    expect(volley.every((shot) => shot.damage === towerStats(archer).damage)).toBe(true)
+    expect(new Set(volley.map((shot) => `${shot.x},${shot.y}`)).size).toBe(volley.length)
+    const hp = target.hp
+    updateShots(world, 1)
+    expect(hp - target.hp).toBeCloseTo(
+      2 * (towerStats(archer).damage - target.def.armor) * rewardStats(game.state).damageMultiplier,
+      8,
     )
-
-    damageEnemy(worldOf(game), fallen, fallen.hp, 'magic')
-
-    expect(neighbors.map((enemy) => enemy.panicTimeLeft)).toEqual([3, 3, 3, 3, 0])
-    expect(summarizeRewards(game.state.selectedRewards)[0].description).toContain('до 4 соседей')
+    expect(target.burnDamageLeft).toBe(0)
+    expect(fire(archer)).toHaveLength(1)
   })
 
-  it.each([1, 2])(
-    '«Двойной выстрел» с %i копиями выпускает лишние стрелы на пятой атаке каждого Лучника',
-    (copies) => {
-      const game = newGame()
-      for (let copy = 0; copy < copies; copy++) choose(game, 'double-shot')
-      const archer = game.build('archer', 5, 11)!
-      const other = game.build('archer', 3, 11)!
-      const target = placeEnemy(game, 'boss', 2)
-      const world = worldOf(game)
-      function fire(tower: Tower) {
-        game.state.shots = []
-        tower.def.fire!(world, tower, target, towerStats(tower))
-        return game.state.shots
-      }
+  it('«Ледяные иглы» один раз за болт бьют до четырёх разных соседей замедленной цели', () => {
+    const game = newGame()
+    game.state.gold = 1000
+    choose(game, 'ice-needles')
+    const ballista = game.build('ballista', 5, 11)!
+    const frost = game.build('frost', 3, 11)!
+    const world = worldOf(game)
+    const stats = towerStats(ballista)
+    const primary = Object.assign(placeEnemy(game, 'boss'), { x: 4.5, y: 11.5 })
+    const placeNear = (dx: number, dy: number) =>
+      Object.assign(placeEnemy(game, 'boss'), { x: primary.x + dx, y: primary.y + dy })
+    const second = placeNear(-0.9, 0)
+    const farther = placeNear(0.3, -0.8)
+    const outside = placeNear(0.4, 1)
+    const nearest = [
+      placeNear(0, 0.55),
+      placeNear(0, -0.6),
+      placeNear(0.25, 0.65),
+      placeNear(-0.35, -0.65),
+    ]
+    const unchanged = [farther, outside]
+    const unchangedHp = unchanged.map(({ hp }) => hp)
 
-      for (let attack = 0; attack < 4; attack++) expect(fire(archer)).toHaveLength(1)
-      expect(fire(other)).toHaveLength(1)
-      const volley = fire(archer)
-      expect(volley).toHaveLength(1 + copies)
-      expect(volley.every((shot) => shot.kind === 'homing' && shot.target === target)).toBe(true)
-      expect(volley.every((shot) => shot.damage === towerStats(archer).damage)).toBe(true)
-      expect(new Set(volley.map((shot) => `${shot.x},${shot.y}`)).size).toBe(volley.length)
-      const hp = target.hp
-      updateShots(world, 1)
-      expect(hp - target.hp).toBeCloseTo(
-        (1 + copies) *
-          (towerStats(archer).damage - target.def.armor) *
-          rewardStats(game.state).damageMultiplier,
-        8,
-      )
-      expect(fire(archer)).toHaveLength(1)
-    },
-  )
+    ballista.def.fire!(world, ballista, primary, stats)
+    updateShots(world, 1)
+    expect(game.state.shots).toHaveLength(1)
+    game.state.shots = []
+
+    frostPulse(world, frost, towerStats(frost))
+    expect(second.slowTimeLeft).toBeGreaterThan(0)
+    ballista.def.fire!(world, ballista, primary, stats)
+    updateShots(world, 1)
+    const [bolt, ...needles] = game.state.shots
+    expect(bolt.kind === 'line' && [...bolt.hitEnemies]).toEqual([primary, second])
+    const targetIds = needles.map((shot) => shot.kind === 'homing' && shot.target.id)
+    expect(targetIds).toEqual(nearest.map(({ id }) => id))
+    expect(needles.every(({ damage }) => damage === stats.damage / 4)).toBe(true)
+
+    game.state.shots = needles
+    const beforeHits = nearest.map(({ hp }) => hp)
+    updateShots(world, 1)
+    for (const [index, enemy] of nearest.entries()) {
+      expect(beforeHits[index] - enemy.hp).toBeCloseTo(stats.damage / 4 - enemy.def.armor / 2)
+    }
+    expect(unchanged.map(({ hp }) => hp)).toEqual(unchangedHp)
+  })
 
   it('«Два колокола» используют полный сильнейший бонус и половину второго', () => {
     const game = newGame()
@@ -565,9 +647,7 @@ describe('благословения после волн', () => {
       { source: strong, bonus: 0.4 },
       { source: weak, bonus: 0.1 },
     ])
-    choose(game, 'two-bells')
-    expect(contributions()[1].bonus).toBeCloseTo(0.15)
-    expect(summarizeRewards(game.state.selectedRewards)[0].description).toContain('75%')
+    expect(summarizeRewards(game.state.selectedRewards)[0].description).toContain('50%')
   })
 
   it('«Лёд и пламя» совмещают горение и мороз в обоих порядках', () => {
@@ -600,48 +680,46 @@ describe('благословения после волн', () => {
     choose(game, 'rapid-orders')
     expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.28)
     expect(rewardStats(game.state).fireRateMultiplier).toBeCloseTo(1.15)
-    choose(game, 'sharpened-steel')
     const enemy = placeEnemy(game, 'rebel', 1.5)
     const hp = enemy.hp
     damageEnemy(worldOf(game), enemy, 10, 'magic')
-    expect(hp - enemy.hp).toBeCloseTo(14.6)
+    expect(hp - enemy.hp).toBeCloseTo(12.8)
   })
 
   it('второе благословение «Тяжёлого марша» замедляет врагов вместе с «Распутицей»', () => {
     const game = newGame()
     choose(game, 'rasputitsa')
-    expect(rewardStats(game.state).enemySpeedMultiplier).toBeCloseTo(0.8)
+    expect(rewardStats(game.state).enemySpeedMultiplier).toBeCloseTo(0.75)
     choose(game, 'field-medic')
     const enemy = placeEnemy(game, 'rebel')
     game.step(SIMULATION_STEP)
-    expect(enemy.pathDistance).toBeCloseTo(enemy.def.speed * 0.8 * 0.95 * SIMULATION_STEP, 8)
+    expect(enemy.pathDistance).toBeCloseTo(enemy.def.speed * 0.75 * 0.95 * SIMULATION_STEP, 8)
   })
 
-  it.each([
-    { wave: 10, seed: 1, payout: 200 },
-    { wave: 15, seed: 0, payout: 280 },
-    { wave: 29, seed: 0, payout: 560 },
-  ])('копии собирают «Дар короны» после $wave-й волны', ({ wave, seed, payout }) => {
+  it('два разных благословения собирают «Дар короны» с выбором новой обычной карты', () => {
     const game = newGame()
     choose(game, 'war-chest')
-    game.state.rewardSeed = seed
+    const wave = 10
+    game.state.rewardSeed = 11
     const offers: PendingReward[] = []
     game.on('rewardOffered', (offer) => offers.push(offer))
     finishWave(game, wave)
     const previous = waveOffer(game)
     const gold = game.state.gold
 
-    expect(game.chooseReward('war-chest')).toBe(true)
+    expect(previous.options).not.toContain('war-chest')
+    expect(game.chooseReward('royal-tax')).toBe(true)
     const gift = game.state.pendingReward!
     expect(gift.kind).toBe('crown-gift')
     expect(gift.wave).toBe(wave)
     expect(offers).toEqual([previous, gift])
-    expect(game.state.gold).toBe(gold + payout)
+    expect(game.state.gold).toBe(gold)
     expect(game.state.phase).toBe('reward')
     expect(game.state.wave).toBe(wave + 1)
     expect(game.startWave()).toBe(false)
     expect(gift.options).toHaveLength(2)
     expect(new Set(gift.options).size).toBe(2)
+    expect(gift.options).not.toContain('war-chest')
     expect(gift.options.every((id) => REWARDS[id].rarity === 'common')).toBe(true)
     expect(gift.options.every((id) => !previous.options.includes(id))).toBe(true)
     expect(game.rerollRewards()).toBe(false)
@@ -653,10 +731,40 @@ describe('благословения после волн', () => {
     expect(game.chooseReward(other)).toBe(false)
     expect(game.state.selectedRewards).toHaveLength(3)
     expect(game.state.selectedRewards.at(-1)).toEqual({ wave, rewardId })
-    expect(game.state.gold).toBe(gold + payout)
+    expect(game.state.gold).toBe(gold)
     expect(game.state.pendingReward).toBeNull()
     expect(game.state.phase).toBe('build')
     expect(offers).toHaveLength(2)
+  })
+
+  it('«Дар короны» дополняет выбор пропущенной обычной картой, когда новых мало', () => {
+    const game = newGame()
+    for (const id of [
+      'war-chest',
+      'field-medic',
+      'wildfire',
+      'last-stand',
+      'double-shot',
+    ] as const) {
+      choose(game, id)
+    }
+    game.state.phase = 'reward'
+    game.state.pendingReward = {
+      kind: 'wave',
+      wave: 29,
+      options: ['buyback', 'control-master', 'empty-vials'],
+      rerolls: 0,
+    }
+
+    expect(game.chooseReward('buyback')).toBe(true)
+    expect(game.state.pendingReward).toMatchObject({
+      kind: 'crown-gift',
+      wave: 29,
+    })
+    const options = game.state.pendingReward!.options
+    expect(options).toHaveLength(2)
+    expect(options[0]).toBe('bounty')
+    expect(['control-master', 'empty-vials']).toContain(options[1])
   })
 
   it('«Дар короны» даётся один раз за партию, его карточка засчитывается в другой набор', () => {
@@ -664,7 +772,7 @@ describe('благословения после волн', () => {
     game.state.rewardSeed = 1
     choose(game, 'sharpened-steel')
     choose(game, 'war-chest')
-    choose(game, 'war-chest')
+    choose(game, 'bounty')
     const attackReward = game.state.pendingReward!.options.find(
       (id) => REWARDS[id].setId === 'arsenal',
     )!
@@ -672,17 +780,17 @@ describe('благословения после волн', () => {
     expect(game.chooseReward(attackReward)).toBe(true)
     expect(rewardSetCounts(game.state.selectedRewards).arsenal).toBe(2)
     expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.28)
-    choose(game, 'war-chest', 20)
+    choose(game, 'two-bells', 20)
     expect(rewardSetCounts(game.state.selectedRewards).supplies).toBe(3)
     expect(game.state.pendingReward).toBeNull()
     game.reset()
     expect(rewardSetCounts(game.state.selectedRewards).supplies).toBe(0)
     choose(game, 'war-chest')
-    choose(game, 'war-chest')
+    choose(game, 'bounty')
     expect(game.state.pendingReward?.kind).toBe('crown-gift')
   })
 
-  it('сводка показывает суммарный эффект повторно выбранных наград', () => {
+  it('сводка отображает суммарный эффект списка с повторяющимися записями', () => {
     expect(
       summarizeRewards([
         { wave: 5, rewardId: 'sharpened-steel' },
@@ -703,7 +811,7 @@ describe('благословения после волн', () => {
       {
         rewardId: 'military-engineer',
         name: 'Военный инженер',
-        description: '−51% к цене улучшений',
+        description: '−51% к цене улучшений и специализаций',
         count: 2,
       },
       {

@@ -62,7 +62,7 @@
        подсказка бывает то в одну строку, то в две, и стой она над магазином, карточки
        прыгали бы. Панель выбранной башни встаёт на место магазина (как на телефоне) —
        так не нужно держать под неё пустое место */
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, max-content) auto minmax(0, 1fr) auto;
     gap: 10px;
     padding: 6px 16px 18px 0;
     /* Страховка: если панель всё же не влезла по высоте, её можно прокрутить,
@@ -92,6 +92,8 @@
     display: flex;
     grid-row: 2;
     height: auto;
+    min-height: 0;
+    overflow-y: auto;
     flex-wrap: wrap;
     align-content: start;
     gap: 8px;
@@ -108,9 +110,15 @@
   .shop {
     display: grid;
     grid-row: 2;
-    height: auto;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    align-content: start;
     gap: 8px;
+    min-height: 0;
+    padding: 5px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
   .shop-toggle,
   .shop-drawer:not(.reward-drawer) {
@@ -122,8 +130,11 @@
   }
   .card {
     display: grid;
-    grid-template-columns: 48px 1fr auto;
-    grid-template-areas: 'ico nm cost' 'ico ds ds';
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'ico nm cost'
+      'ico ds ds'
+      'ico st st';
     column-gap: 10px;
     row-gap: 2px;
     align-items: center;
@@ -145,9 +156,13 @@
   }
   .card .card-description {
     grid-area: ds;
-    display: block;
     font-size: 0.9rem;
     line-height: 1.25;
+  }
+  .card .card-stats {
+    grid-area: st;
+    font-size: 0.82rem;
+    line-height: 1.2;
     color: var(--parch-dim);
   }
   .controls {
@@ -165,7 +180,7 @@
 }
 /* Обычный экран компьютера с боковой панелью: девять карточек в один столбец влезают только
    в очень высокий экран, иначе панель пришлось бы прокручивать. Ставим их в два столбца —
-   с описаниями: значок, рядом имя и цена, описание под ними во всю ширину карточки */
+   с описанием и характеристиками под значком, именем и ценой */
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 1150px),
   (min-width: 940px) and (min-aspect-ratio: 9/10) and (max-height: 1150px) {
   .shop {
@@ -174,7 +189,11 @@
   }
   .card {
     grid-template-columns: 40px minmax(0, 1fr);
-    grid-template-areas: 'ico nm' 'ico cost' 'ds ds';
+    grid-template-areas:
+      'ico nm'
+      'ico cost'
+      'ds ds'
+      'st st';
     align-content: start;
     column-gap: 8px;
     row-gap: 1px;
@@ -190,27 +209,15 @@
     line-height: 1.2;
   }
 }
-/* Невысокий экран с боковой панелью (ноутбук): и карточки с описаниями в два столбца
-   не влезают — оставляем значок, имя и цену. Описание видно в подсказке над магазином */
+/* На невысоком экране меньше значки и отступы. Список можно прокручивать. */
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 760px) {
   .card {
     grid-template-columns: 30px minmax(0, 1fr);
-    grid-template-areas: 'ico nm' 'ico cost';
     padding: 3px 8px 3px 5px;
   }
   .card canvas {
     width: 30px;
     height: 30px;
-  }
-  .card .card-description {
-    display: none;
-  }
-  /* Описаний в карточках нет — подсказка снова показывает описание башни «в руке» */
-  .hint-armed-description {
-    display: inline;
-  }
-  .hint-armed-action {
-    display: none;
   }
 }
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 430px) {
@@ -224,9 +231,8 @@
     bottom: auto;
   }
 }
-/* Низкий экран с боковой панелью (телефон набок): панель компактная —
-   без описаний в карточках и подсказки про клавиши, а панель башни
-   встаёт на место магазина, как на телефоне в вертикальной раскладке */
+/* Низкий экран с боковой панелью (телефон набок): карточки в двух столбцах,
+   подсказка короткая, кнопки управления в одну строку */
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 560px) {
   #app {
     grid-template-columns: minmax(0, 1fr) 300px;
@@ -243,7 +249,7 @@
     bottom: 0;
   }
   .panel {
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, max-content) minmax(0, 1fr) auto;
     gap: 6px;
     padding: 2px 16px 10px 0;
   }
@@ -269,21 +275,9 @@
   .tower-info {
     grid-row: 2;
   }
-  /* Карточки в два столбца, имя над ценой: в один столбец они не влезают по высоте */
   .shop {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
   }
-  .card {
-    grid-template-columns: 30px minmax(0, 1fr);
-    grid-template-areas: 'ico nm' 'ico cost';
-    padding: 3px 8px 3px 5px;
-  }
-  .card canvas {
-    width: 30px;
-    height: 30px;
-  }
-  .card .card-description,
   .keys {
     display: none;
   }
@@ -302,10 +296,7 @@
     grid-template-rows: auto minmax(0, 1fr) 0 auto;
   }
   .shop {
-    min-height: 0;
-    overflow-y: auto;
     gap: 4px;
-    grid-auto-rows: minmax(40px, 1fr);
   }
   .card {
     grid-template-columns: 26px minmax(0, 1fr);
@@ -320,10 +311,6 @@
   }
   .card .cost {
     font-size: 0.85rem;
-  }
-  .tower-info {
-    min-height: 0;
-    overflow-y: auto;
   }
 }
 /* Низкий экран без боковой панели (узкое окно на компьютере) */

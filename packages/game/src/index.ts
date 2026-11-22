@@ -40,16 +40,16 @@ export {
   fireRateContributionsOf,
   fireRateSourceOf,
   bellCoverage,
-  treasuryNeighbors,
-  treasuryBonusOf,
-  treasuryIncomeOf,
   refundFor,
   towerInvestedGold,
   towerStats,
   towerAspect,
+  paidAspectCost,
+  discountedUpgradePrice,
   displayStatValue,
   upgradeCost,
 } from './systems/towers.ts'
+export { treasuryNeighbors, treasuryBonusOf, treasuryIncomeOf } from './systems/treasury.ts'
 // Для сервера: проверка правдоподобия присланного счёта
 export { maxPossibleScore } from './systems/waves.ts'
 export {

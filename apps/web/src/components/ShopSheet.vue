@@ -2,18 +2,21 @@
 // Меню выбора стража на телефоне: список с описанием и характеристиками до покупки.
 // Нажал на стража — меню закрылось, он «в руке», осталось нажать на свободную плиту.
 // С боковой панелью (компьютер, телефон набок) меню скрыто стилями, там работает ShopPanel
-import { TOWER_LIST, type TowerDef } from '@throne/game'
+import { TOWER_LIST } from '@throne/game'
 import { useTemplateRef } from 'vue'
 import { useMenuFocus } from '@/composables/useMenuFocus'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
-import { describeNewTowerStats, towerInteractionHint } from '@/utils/towerStats'
+import { describeNewTowerStats } from '@/utils/towerStats'
 import TowerIcon from './TowerIcon.vue'
 
 const store = useGameStore()
 const selection = useSelectionStore()
 const drawerElement = useTemplateRef('drawerElement')
-const hintFor = (def: TowerDef) => towerInteractionHint(def, store.blessingEffects)
+const shopCards = TOWER_LIST.map((towerDef) => ({
+  towerDef,
+  stats: describeNewTowerStats(towerDef),
+}))
 
 useMenuFocus(() => selection.isShopOpen, drawerElement)
 </script>
@@ -41,16 +44,14 @@ useMenuFocus(() => selection.isShopOpen, drawerElement)
         </button>
       </header>
       <ul class="shop-drawer-list">
-        <li v-for="towerDef in TOWER_LIST" :key="towerDef.id">
+        <li v-for="{ towerDef, stats } in shopCards" :key="towerDef.id">
           <button
             type="button"
             class="drawer-card"
             :class="{ poor: store.hud.gold < towerDef.cost }"
             :aria-pressed="selection.armedTowerId === towerDef.id"
             :aria-label="`${towerDef.name}, цена ${towerDef.cost}`"
-            :aria-description="
-              `${towerDef.description} ${describeNewTowerStats(towerDef)}. ${hintFor(towerDef) ?? ''}`.trim()
-            "
+            :aria-description="`${towerDef.description} ${stats}.`"
             @click="selection.chooseShopTower(towerDef.id)"
           >
             <TowerIcon :tower-id="towerDef.id" class="drawer-card-icon" />
@@ -62,10 +63,7 @@ useMenuFocus(() => selection.isShopOpen, drawerElement)
               <span class="visually-hidden">цена</span>{{ towerDef.cost }}
             </span>
             <span class="drawer-card-description">{{ towerDef.description }}</span>
-            <span class="drawer-card-stats">{{ describeNewTowerStats(towerDef) }}</span>
-            <span v-if="hintFor(towerDef)" class="drawer-card-interaction">{{
-              hintFor(towerDef)
-            }}</span>
+            <span class="drawer-card-stats">{{ stats }}</span>
             <span v-if="store.hud.gold < towerDef.cost" class="drawer-card-poor">
               не хватает {{ towerDef.cost - store.hud.gold }}
             </span>

@@ -1,7 +1,7 @@
 // Что показать про выбранную башню: название, характеристики, цены «Улучшить» и «Продать».
 // Общее для панели башни на компьютере (TowerInfo) и меню башни на телефоне (TowerSheet).
 
-import { TOWERS, type TargetMode } from '@throne/game'
+import { TOWERS, discountedUpgradePrice, type TargetMode } from '@throne/game'
 import { computed } from 'vue'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
@@ -63,10 +63,14 @@ export function useSelectedTowerInfo() {
       lines,
       hasAspects,
       aspect,
-      aspects: (hasAspects ? (def.aspects ?? []) : []).map((candidate) => ({
-        ...candidate,
-        canAfford: store.hud.gold >= candidate.cost,
-      })),
+      aspectGoldPaid: selection.selected.aspectGoldPaid,
+      aspects: (hasAspects ? (def.aspects ?? []) : []).map((candidate) => {
+        const cost = discountedUpgradePrice(
+          candidate.cost,
+          selection.selected.upgradeCostMultiplier,
+        )
+        return { ...candidate, cost, canAfford: store.hud.gold >= cost }
+      }),
       canSpecialize: store.hud.phase === 'build',
       canUndoSpecialization:
         Boolean(aspect) && !selection.selected.aspectLocked && store.hud.phase === 'build',
