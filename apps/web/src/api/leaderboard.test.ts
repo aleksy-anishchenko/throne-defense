@@ -53,6 +53,14 @@ describe('ответы рейтинга', () => {
     expect(await submitRun(run)).toMatchObject({ ok: false, code: 'unavailable' })
     expect(await fetchLeaderboard({})).toBeNull()
   })
+  it('в режиме без сети сразу возвращает заглушку для рейтинга', async () => {
+    const fetch = vi.fn()
+    vi.stubGlobal('navigator', { onLine: false })
+    vi.stubGlobal('fetch', fetch)
+    expect(await submitRun(run)).toMatchObject({ ok: false, code: 'unavailable' })
+    expect(await fetchLeaderboard({})).toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
+  })
   it('ограничение частоты объясняет, когда можно повторить', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 429 })))
     expect(await submitRun(run)).toMatchObject({

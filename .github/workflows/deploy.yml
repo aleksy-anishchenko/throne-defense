@@ -53,7 +53,7 @@ jobs:
       - run: npm ci
       # check собирает игру в apps/web/dist; e2e проверяет эту сборку в браузере
       - run: npm run check
-      - run: npm run e2e
+      - run: npm run e2e -w @throne/web
 
       # Предохранитель: пустую сборку не публикуем
       - name: Сборка не пустая

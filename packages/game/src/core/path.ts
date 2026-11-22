@@ -14,15 +14,28 @@ export interface Path {
 export function createPath(points: readonly Point[]): Path {
   if (points.length < 2) throw new Error('В пути должно быть хотя бы две точки')
 
+  for (const [index, [x, y]] of points.entries()) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      throw new Error(
+        `Координаты точки пути ${index + 1} (${x}, ${y}) должны быть конечными числами`,
+      )
+    }
+  }
+
   const segmentLengths: number[] = [] // длина каждого отрезка, клеток
   const distanceAtSegmentStart: number[] = [0] // сколько клеток пройдено к началу каждого отрезка
   for (let i = 0; i < points.length - 1; i++) {
     const [x0, y0] = points[i]
     const [x1, y1] = points[i + 1]
-    segmentLengths.push(Math.hypot(x1 - x0, y1 - y0))
-    distanceAtSegmentStart.push(distanceAtSegmentStart[i] + segmentLengths[i])
+    const segmentLength = Math.hypot(x1 - x0, y1 - y0)
+    if (!Number.isFinite(segmentLength) || segmentLength <= 0) {
+      throw new Error(`Длина отрезка пути ${i + 1}–${i + 2} должна быть конечной и больше нуля`)
+    }
+    segmentLengths.push(segmentLength)
+    distanceAtSegmentStart.push(distanceAtSegmentStart[i] + segmentLength)
   }
   const length = distanceAtSegmentStart[distanceAtSegmentStart.length - 1]
+  if (!Number.isFinite(length)) throw new Error('Полная длина пути должна быть конечной')
 
   function positionAt(distance: number): [number, number] {
     if (distance <= 0) return [points[0][0], points[0][1]]

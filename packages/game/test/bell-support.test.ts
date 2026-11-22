@@ -39,13 +39,14 @@ describe('источник ускорения Звонаря', () => {
     const archer = game.build('archer', 1, 0)!
     game.build('bell', 0, 0)
     const strong = game.build('bell', 1, 1)!
-    game.upgrade(strong.col, strong.row)
-    game.upgrade(strong.col, strong.row)
-    archer.cooldownLeft = 1
-    expect(fireRateSourceOf(game.state.towers, archer)).toBe(strong)
-    expect(fireRateBonusOf(game.state.towers, archer)).toBe(0.4)
-    game.step(SIMULATION_STEP)
-    expect(archer.cooldownLeft).toBeCloseTo(1 - SIMULATION_STEP * 1.4)
+    for (const bonus of [0.3, 0.4]) {
+      expect(game.upgrade(strong.col, strong.row)).toBe(true)
+      expect(fireRateSourceOf(game.state.towers, archer)).toBe(strong)
+      expect(fireRateBonusOf(game.state.towers, archer)).toBe(bonus)
+      archer.cooldownLeft = 1
+      game.step(SIMULATION_STEP)
+      expect(archer.cooldownLeft).toBeCloseTo(1 - SIMULATION_STEP * (1 + bonus))
+    }
   })
 
   it('равные ауры дают одну устойчивую связь независимо от порядка массива', () => {

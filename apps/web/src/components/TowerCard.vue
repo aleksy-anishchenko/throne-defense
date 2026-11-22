@@ -25,7 +25,7 @@ const emit = defineEmits<{ pick: [] }>()
     :aria-pressed="isArmed"
     :title="hint"
     :aria-label="`${def.name}, цена ${def.cost}`"
-    :aria-description="`${def.description}. ${hint ?? ''}`"
+    :aria-description="`${def.description} ${hint ?? ''}`.trim()"
     @click="emit('pick')"
   >
     <TowerIcon :tower-id="def.id" />

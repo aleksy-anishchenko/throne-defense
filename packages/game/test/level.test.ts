@@ -7,6 +7,7 @@ import {
   type LevelDef,
   type WaveGroup,
 } from '../src/index.ts'
+import { createPath } from '../src/core/path.ts'
 import { throneHall } from '../src/levels/throne-hall.ts'
 
 const withWaves = (waves: WaveGroup[][]): LevelDef => ({ ...throneHall, waves })
@@ -24,8 +25,9 @@ describe('проверка уровня при загрузке', () => {
   })
 
   it('первая точка пути может быть за краем — это дверь', () => {
-    expect(throneHall.pathPoints[0][1]).toBeGreaterThanOrEqual(throneHall.rows)
-    expect(() => createLevel(throneHall)).not.toThrow()
+    const entrance = throneHall.pathPoints[0]
+    expect(entrance[1]).toBeGreaterThanOrEqual(throneHall.rows)
+    expect(createLevel(throneHall).path.positionAt(0)).toEqual(entrance)
   })
 
   const invalidEndlessWave = throneHall.waves.length + 5
@@ -57,6 +59,21 @@ describe('проверка уровня при загрузке', () => {
     },
     { name: 'нет волн', patch: withWaves([]), message: 'нет ни одной волны' },
     { name: 'трон за краем', patch: { throne: [4.5, 20] }, message: 'трон' },
+    {
+      name: 'NaN в координате входа',
+      patch: { pathPoints: [[NaN, 13.5], throneHall.throne] },
+      message: 'Координаты точки пути 1',
+    },
+    {
+      name: 'путь из двух совпадающих точек',
+      patch: { pathPoints: [throneHall.throne, throneHall.throne] },
+      message: 'Длина отрезка пути 1–2',
+    },
+    {
+      name: 'совпадающие соседние точки на пути ненулевой длины',
+      patch: { pathPoints: [throneHall.pathPoints[0], ...throneHall.pathPoints] },
+      message: 'Длина отрезка пути 1–2',
+    },
     {
       name: 'путь уходит за край',
       patch: {
@@ -101,6 +118,33 @@ describe('проверка уровня при загрузке', () => {
       expect(() => createLevel({ ...throneHall, ...patch })).toThrow(message)
     })
   }
+})
+
+describe('расчёт пути', () => {
+  it.each([Infinity, -Infinity])('координата %s в промежуточной точке недопустима', (value) => {
+    expect(() => createPath([[4.5, 13.5], [4.5, value], throneHall.throne])).toThrow(
+      'Координаты точки пути 2',
+    )
+  })
+
+  it('длина отрезка может переполниться даже при конечных координатах', () => {
+    expect(() =>
+      createPath([
+        [-Number.MAX_VALUE, 0],
+        [Number.MAX_VALUE, 0],
+      ]),
+    ).toThrow('Длина отрезка пути 1–2')
+  })
+
+  it('полная длина может переполниться при сложении конечных длин отрезков', () => {
+    expect(() =>
+      createPath([
+        [0, 0],
+        [Number.MAX_VALUE, 0],
+        [0, 0],
+      ]),
+    ).toThrow('Полная длина пути должна быть конечной')
+  })
 })
 
 describe('залы', () => {

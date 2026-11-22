@@ -13,7 +13,7 @@ const WAVE_FORMS = ['волна', 'волны', 'волн'] as const
     Загружаю…
   </p>
   <p v-else-if="store.leaderboard.status === 'failed'" class="leaderboard-status" role="status">
-    Не удалось загрузить таблицу. Проверьте интернет и попробуйте позже.
+    Таблица лучших сейчас недоступна.
   </p>
   <p v-else-if="store.leaderboard.entries.length === 0" class="leaderboard-status">
     Пока никого. Сыграйте — и будете первым.

@@ -30,6 +30,8 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<Req
     code: 'unavailable',
     message: 'Таблица лучших сейчас недоступна.',
   } as const
+  if (globalThis.navigator?.onLine === false) return unavailable
+
   try {
     // AbortController, а не AbortSignal.timeout(): того нет в Safari до 16-й версии,
     // и на старом iPhone топ молча не работал бы никогда

@@ -1,5 +1,5 @@
 # Проверка кода на каждый пуш (кроме main — там это делает deploy.yml) и на каждый pull request.
-# То же, что npm run check и npm run e2e у себя на компьютере.
+# Проверка проекта и браузерный прогон собранной игры.
 
 name: Проверка
 
@@ -34,4 +34,4 @@ jobs:
       - run: npm ci
       - run: npm run check
       # Проверка в браузере. На ubuntu-latest Google Chrome уже установлен
-      - run: npm run e2e
+      - run: npm run e2e -w @throne/web

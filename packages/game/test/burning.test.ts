@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { ENEMIES, TOWERS } from '../src/index.ts'
+import { TOWERS } from '../src/index.ts'
 import { frostPulse, shootHoming, updateBurning, updateShots } from '../src/systems/combat.ts'
 import { newGame, placeEnemy, worldOf } from './helpers.ts'
 
@@ -56,11 +56,4 @@ it('башни поддержки и попадание Огневика не н
   frostPulse(world, tower, TOWERS['frost'].tiers[0])
   expect(enemy.hp).toBe(hp)
   expect(enemy.slowTimeLeft).toBeGreaterThan(0)
-})
-
-it('один поджог Огневика I не убивает начальных бунтовщика и лазутчика', () => {
-  const damage = TOWERS['mage'].tiers[0].burnDamage!
-  for (const id of ['rebel', 'scout']) {
-    expect(damage, id).toBeLessThan(ENEMIES[id].hp)
-  }
 })

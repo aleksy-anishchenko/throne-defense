@@ -48,7 +48,9 @@ useMenuFocus(() => selection.isShopOpen, drawerElement)
             :class="{ poor: store.hud.gold < towerDef.cost }"
             :aria-pressed="selection.armedTowerId === towerDef.id"
             :aria-label="`${towerDef.name}, цена ${towerDef.cost}`"
-            :aria-description="`${towerDef.description}. ${describeNewTowerStats(towerDef)}. ${hintFor(towerDef) ?? ''}`"
+            :aria-description="
+              `${towerDef.description} ${describeNewTowerStats(towerDef)}. ${hintFor(towerDef) ?? ''}`.trim()
+            "
             @click="selection.chooseShopTower(towerDef.id)"
           >
             <TowerIcon :tower-id="towerDef.id" class="drawer-card-icon" />

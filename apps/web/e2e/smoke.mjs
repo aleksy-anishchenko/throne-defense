@@ -1,7 +1,9 @@
 // npm run e2e — проверка собранной игры в настоящем браузере (Chrome без окна).
+// npm run e2e -- offline — один сценарий по имени (desktop, phone или offline).
 //
 // Сам поднимает `vite preview` с папкой dist (её собирает `npm run build`) и настоящий
-// API (apps/server) на временной базе, открывает игру с ?debug и проходит её как игрок:
+// API (apps/server) со свежей временной базой для каждого сценария.
+// Открывает игру с ?debug и проходит её как игрок:
 // меню, постройка мышью, касанием и с клавиатуры, улучшение, продажа, волна, пауза,
 // музыка, настройки звука, поражение, рекорд, общий топ, победа, телефон, игра без сервера.
 // Состояние игры читает через window.__throne (доступен только с ?debug).
@@ -87,6 +89,23 @@ const waitForFrames = (page) =>
   page.evaluate(
     () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
   )
+
+/** Доиграть волну штатными шагами симуляции за один вызов браузера. */
+async function playWaveToEnd(page, changes = {}) {
+  await page.evaluate((changes) => {
+    const { game } = window.__throne
+    Object.assign(game.state, changes)
+    const stepsPerSecond = 60
+    const timeLimit = 180
+    for (let step = 0; step < timeLimit * stepsPerSecond && game.state.phase === 'wave'; step++) {
+      game.step(1 / stepsPerSecond)
+    }
+    if (game.state.phase === 'wave') {
+      throw new Error(`Волна ${game.state.wave} не завершилась за ${timeLimit} секунд симуляции`)
+    }
+  }, changes)
+  await waitForFrames(page)
+}
 
 async function finishWave(page, wave, rewardSeed) {
   await page.evaluate(
@@ -316,9 +335,7 @@ async function checkShopCardsVisible(page) {
   )
 }
 
-async function desktop(browser, url) {
-  console.log('\nКомпьютер')
-  const page = await browser.newPage({ viewport: { width: 1280, height: 860 } })
+async function desktop(page, url) {
   const expectConsoleError = watchErrors(page, 'компьютер')
   const playButton = page.getByRole('button', { name: 'Играть' })
 
@@ -941,13 +958,11 @@ async function desktop(browser, url) {
     JSON.stringify(burnPixels),
   )
   await page.evaluate(() => window.__throne.game.setPaused(false))
-  await page.waitForFunction(() => window.__throne.game.state.phase === 'build', null, {
-    timeout: 60_000,
-  })
+  await playWaveToEnd(page)
   snapshot = await readGameSnapshot(page)
   check(
     'первая волна отбита без потерь',
-    snapshot.wave === 2 && snapshot.lives === 20,
+    snapshot.phase === 'build' && snapshot.wave === 2 && snapshot.lives === 20,
     JSON.stringify(snapshot),
   )
   check(
@@ -989,11 +1004,8 @@ async function desktop(browser, url) {
   check('после паузы музыка снова не приглушена', !(await readMusic(page)).isMuffled)
 
   // Поражение
-  await page.evaluate(() => {
-    window.__throne.game.state.lives = 1
-  })
-  await page.getByRole('heading', { name: 'Трон пал' }).waitFor({ timeout: 60_000 })
-  await waitForFrames(page)
+  await playWaveToEnd(page, { lives: 1 })
+  await page.getByRole('heading', { name: 'Трон пал' }).waitFor({ timeout: 5000 })
   check(
     'экран поражения',
     (await page.locator('.sheet p').first().textContent()).startsWith('Отбито волн: 1.'),
@@ -1620,56 +1632,62 @@ async function desktop(browser, url) {
     'подтверждённая сдача завершает партию',
     (await readGameSnapshot(page)).phase === 'lost' && (await readGameSnapshot(page)).lives === 0,
   )
-  await page.close()
 }
 
 /** Сервер недоступен: игра работает как раньше, просто без топа */
-async function offline(browser, url) {
-  console.log('\nБез сервера')
-  const page = await browser.newPage({ viewport: { width: 1280, height: 860 } })
-  // Браузер сам пишет в консоль о каждом неудавшемся запросе — здесь это и проверяем
+async function offline(page, url) {
+  const playerName = 'Страж без сети'
+  const score = 100
+  // Браузер сам пишет в консоль о запросах, которые оборвала проверка.
   watchErrors(page, 'без сервера', /Failed to load resource/)
   await page.route('**/api/**', (route) => route.abort('connectionrefused'))
   // Имя уже есть: результат сразу пытается уйти на сервер
-  await page.addInitScript(() => localStorage.setItem('throne-name', 'Страж'))
+  await page.addInitScript((name) => localStorage.setItem('throne-name', name), playerName)
   await page.goto(url)
   await page.getByRole('button', { name: 'Играть' }).click()
   await page.getByRole('button', { name: 'Начать волну' }).click()
-  await page.evaluate(() => {
-    const state = window.__throne.game.state
-    state.score = 100
-    state.lives = 1
+  await playWaveToEnd(page, { score, lives: 1 })
+  await page.getByRole('heading', { name: 'Трон пал' }).waitFor({ timeout: 5000 })
+  const retry = page.getByRole('button', { name: 'Отправить ещё раз' })
+  check(
+    'нет сервера: итоги на месте, результат можно отправить повторно',
+    (await appears(page.locator('.run-place').filter({ hasText: 'недоступна' }))) &&
+      (await retry.isVisible()),
+  )
+  const openRanking = page.getByRole('button', { name: 'Лучшие результаты' })
+  const back = page.getByRole('button', { name: 'Назад', exact: true })
+  const rankingPlaceholder = page.locator('.leaderboard-status').filter({
+    hasText: 'Таблица лучших сейчас недоступна.',
   })
-  await page.getByRole('heading', { name: 'Трон пал' }).waitFor({ timeout: 60_000 })
+  await openRanking.click()
+  check('нет сервера: в таблице лучших видна заглушка', await appears(rankingPlaceholder))
+  await back.click()
+  await page.unroute('**/api/**')
+  await page.context().setOffline(true)
+  await openRanking.click()
+  check('нет интернета: в таблице лучших видна заглушка', await appears(rankingPlaceholder))
+  await back.click()
+  await page.context().setOffline(false)
+  await retry.click()
   check(
-    'нет сервера: итоги на месте, «таблица лучших недоступна»',
-    await appears(page.locator('.run-place').filter({ hasText: 'недоступна' })),
+    'после подключения повторная отправка сохраняет результат этой партии',
+    await appears(page.locator('.run-place').filter({ hasText: `${playerName}, вы первым` })),
   )
-  await page.getByRole('button', { name: 'Отправить ещё раз' }).click()
+  await openRanking.click()
+  const playerRow = page.locator('.leaderboard li').filter({ hasText: playerName })
   check(
-    'нет сервера: «Отправить ещё раз» пробует снова и честно говорит «недоступна»',
-    await appears(page.locator('.run-place').filter({ hasText: 'недоступна' })),
+    'после подключения таблица показывает результат этой партии',
+    (await appears(playerRow)) &&
+      (await playerRow.locator('.leaderboard-score').innerText()) === String(score),
   )
-  await page.getByRole('button', { name: 'Лучшие результаты' }).click()
-  check(
-    'нет сервера: «Лучшие результаты» говорят, что не загрузились',
-    await appears(page.locator('.leaderboard-status').filter({ hasText: 'Не удалось' })),
-  )
-  await page.getByRole('button', { name: 'Назад', exact: true }).click()
+  await back.click()
+  await page.context().setOffline(true)
   await page.getByRole('button', { name: 'Сыграть ещё раз' }).click()
   await waitForFrames(page)
-  check('нет сервера: новая партия начинается', (await readGameSnapshot(page)).phase === 'build')
-  await page.close()
+  check('нет интернета: новая партия начинается', (await readGameSnapshot(page)).phase === 'build')
 }
 
-async function phone(browser, url) {
-  console.log('\nТелефон')
-  const page = await browser.newPage({
-    viewport: { width: 390, height: 844 },
-    deviceScaleFactor: 3,
-    isMobile: true,
-    hasTouch: true,
-  })
+async function phone(page, url) {
   watchErrors(page, 'телефон')
   await page.goto(url)
   await page.getByRole('button', { name: 'Играть' }).tap()
@@ -1698,7 +1716,7 @@ async function phone(browser, url) {
   const drawerText = await drawer.innerText()
   check(
     'в меню до покупки есть описание и характеристики',
-    drawerText.includes('Поджигает врагов') && /урон \d/.test(drawerText),
+    drawerText.includes('Поджигает цель и врагов рядом с ней.') && /урон \d/.test(drawerText),
     drawerText.slice(0, 200),
   )
   check(
@@ -2107,10 +2125,26 @@ async function phone(browser, url) {
     '768×1024: нижняя панель, кнопка «Выбрать стража»',
     await page.locator('.shop-toggle').isVisible(),
   )
-  await page.close()
 }
 
-try {
+const scenarios = [
+  { name: 'desktop', title: 'Компьютер', run: desktop },
+  {
+    name: 'phone',
+    title: 'Телефон',
+    run: phone,
+    pageOptions: {
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true,
+    },
+  },
+  { name: 'offline', title: 'Без сервера и интернета', run: offline },
+]
+
+async function runScenario(browser, scenario) {
+  console.log(`\n${scenario.title}`)
   await withResources(async (cleanup) => {
     const api = await startApi()
     cleanup(() => api.stop())
@@ -2122,12 +2156,33 @@ try {
     cleanup(() => server.close())
     // Фиксированный зал: проверки ставят башни на конкретные клетки.
     const url = `${server.resolvedUrls.local[0]}?debug&level=throne-hall`
+    const page = await browser.newPage({
+      viewport: { width: 1280, height: 860 },
+      ...scenario.pageOptions,
+    })
+    cleanup(() => page.close())
+    console.log(`Проверяю ${url}`)
+    await scenario.run(page, url)
+  })
+}
+
+try {
+  const args = process.argv.slice(2)
+  const selected = args.length ? scenarios.filter(({ name }) => name === args[0]) : scenarios
+  if (args.length > 1 || selected.length === 0) {
+    throw new Error(`Укажи один сценарий из списка ${scenarios.map(({ name }) => name).join(', ')}`)
+  }
+  await withResources(async (cleanup) => {
     const browser = await launchBrowser()
     cleanup(() => browser.close())
-    console.log(`Проверяю ${url}`)
-    await desktop(browser, url)
-    await phone(browser, url)
-    await offline(browser, url)
+    for (const scenario of selected) {
+      try {
+        await runScenario(browser, scenario)
+      } catch (error) {
+        failed++
+        console.error(`Сценарий ${scenario.name} прервался: ${error.message}`)
+      }
+    }
     console.log('\nКонсоль браузера')
     check('нет ошибок', errors.length === 0, errors.join('\n'))
   })

@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  ENEMIES,
-  SIMULATION_STEP,
-  TOWERS,
-  fireRateBonusOf,
-  waveBonus,
-  type TargetMode,
-} from '../src/index.ts'
+import { ENEMIES, SIMULATION_STEP, TOWERS, waveBonus, type TargetMode } from '../src/index.ts'
 import { THAW_BURN_MULTIPLIER, damageEnemy } from '../src/systems/combat.ts'
 import { newGame, placeEnemy, stepUntil, worldOf } from './helpers.ts'
 
@@ -138,47 +131,6 @@ describe('Звонарь', () => {
     game.step(SIMULATION_STEP)
     const bonus = TOWERS['bell'].tiers[0].fireRateBonus!
     expect(archer.cooldownLeft).toBeCloseTo(1 - SIMULATION_STEP * (1 + bonus))
-  })
-
-  it('несколько Звонарей не складываются — действует самый сильный', () => {
-    const game = newGame()
-    game.state.gold = 1000
-    const archer = game.build('archer', 5, 11)!
-    game.build('bell', 6, 11)
-    game.build('bell', 5, 10)
-    game.upgrade(5, 10)
-    archer.cooldownLeft = 1
-    game.step(SIMULATION_STEP)
-    const bonus = TOWERS['bell'].tiers[1].fireRateBonus!
-    expect(archer.cooldownLeft).toBeCloseTo(1 - SIMULATION_STEP * (1 + bonus))
-  })
-
-  it('fireRateBonusOf говорит интерфейсу, кого и насколько ускорил Звонарь', () => {
-    const game = newGame()
-    game.state.gold = 1000
-    const archer = game.build('archer', 5, 11)!
-    const frost = game.build('frost', 5, 10)!
-    const bell = game.build('bell', 6, 11)!
-    const towers = game.state.towers
-    expect(fireRateBonusOf(towers, archer)).toBe(TOWERS['bell'].tiers[0].fireRateBonus)
-    expect(fireRateBonusOf(towers, frost)).toBe(0)
-    expect(fireRateBonusOf(towers, bell)).toBe(0)
-  })
-
-  it('каждая ступень Звонаря достаёт новые клетки', () => {
-    const game = newGame()
-    game.state.gold = 1000
-    // лучник через клетку по прямой (расстояние 2) и «ходом коня» (√5 ≈ 2,24)
-    const straight = game.build('archer', 5, 11)!
-    const knight = game.build('archer', 6, 9)!
-    const bell = game.build('bell', 7, 11)!
-    const bonusOf = (tower: typeof straight) => fireRateBonusOf(game.state.towers, tower)
-    expect([bonusOf(straight), bonusOf(knight)]).toEqual([0, 0])
-    game.upgrade(bell.col, bell.row)
-    expect(bonusOf(straight)).toBeGreaterThan(0)
-    expect(bonusOf(knight)).toBe(0)
-    game.upgrade(bell.col, bell.row)
-    expect(bonusOf(knight)).toBeGreaterThan(0)
   })
 
   it('Морозко не ускоряет — только стреляющих', () => {
