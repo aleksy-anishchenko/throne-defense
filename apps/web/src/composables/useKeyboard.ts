@@ -34,8 +34,8 @@ export function useKeyboard(): void {
     // На кнопке пробел и Enter должны нажимать саму кнопку (фокус на кнопке бывает только
     // с клавиатуры — после щелчка мышью его снимает onClick ниже)
     const isButtonFocused = event.target instanceof HTMLButtonElement
-    // Любой экран поверх поля блокирует игровые клавиши. Escape остаётся навигацией
-    if (store.screen !== null && event.key !== 'Escape') return
+    // Поверх игры открыто окно или список благословений. Из игровых клавиш оставляем Escape.
+    if ((store.screen !== null || selection.isRewardSheetOpen) && event.key !== 'Escape') return
 
     // Цифры 1–9, см. MAX_HOTKEY_DIGIT. По положению клавиши (event.code), а не по символу:
     // с зажатым Shift (режим «ставить подряд») клавиша «2» даёт «@», а не «2»

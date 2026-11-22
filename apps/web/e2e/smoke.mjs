@@ -244,25 +244,6 @@ async function checkStartButtonVisible(page) {
   )
 }
 
-async function checkFullRewardInventoryFits(page) {
-  const { width, height } = page.viewportSize()
-  const buttons = await page.locator('.reward-inventory-button').evaluateAll((entries) =>
-    entries.map((entry) => {
-      const { top, right, bottom, left } = entry.getBoundingClientRect()
-      return { top, right, bottom, left }
-    }),
-  )
-  check(
-    `${width}×${height}: семь значков благословений целиком на экране`,
-    buttons.length === 7 &&
-      buttons.every(
-        ({ top, right, bottom, left }) =>
-          top >= 0 && right <= width && bottom <= height && left >= 0,
-      ),
-    JSON.stringify(buttons),
-  )
-}
-
 /** Нижняя строка кнопок помещается по ширине (на телефоне вертикально — одна строка) */
 async function checkControlsFit(page) {
   const { width } = page.viewportSize()
@@ -1122,11 +1103,8 @@ async function desktop(browser, url) {
   )
 
   // Фиксируем розыгрыш: три редкости, а после обновления доступны «Заточенные клинки».
-  const rewardGoal = page.locator('.hud-reward')
-  check(
-    'в шапке видна цель первого отрезка',
-    (await rewardGoal.innerText()) === 'Бонус за волны 1–5 без урона',
-  )
+  const rewardGoal = page.locator('.hud').getByText(/за волны/)
+  check('в шапке нет статуса отрезка для благословения', (await rewardGoal.count()) === 0)
   await finishRewardWave(page, 5, 1195)
   const rewardCards = page.locator('.reward-card')
   const rewardNames = await rewardCards.locator('strong').allTextContents()
@@ -1251,6 +1229,15 @@ async function desktop(browser, url) {
   await page.locator('#board').focus()
   await page.keyboard.press('Shift+Tab')
   check('фокус с клавиатуры показывает подсказку', await tooltip.isVisible())
+  await page.locator('#board').focus()
+  await bladesIcon.evaluate((button) => {
+    button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }))
+    button.dispatchEvent(
+      new PointerEvent('click', { bubbles: true, pointerType: 'mouse', detail: 1 }),
+    )
+  })
+  check('подсказка значка открывается от касания с click типа mouse', await tooltip.isVisible())
+  await page.keyboard.press('Escape')
 
   // Двигаем вышедшего бунтовщика до трона и даём игре самой засчитать урон.
   await page.evaluate(() => {
@@ -1263,18 +1250,17 @@ async function desktop(browser, url) {
   })
   await waitForFrames(page)
   check(
-    'после прорыва шапка показывает пропуск текущего отрезка',
-    (await rewardGoal.innerText()) === 'Бонус за волны 6–10 упущен' &&
-      (await readGameSnapshot(page)).lives === 19,
+    'прорыв отнимает жизнь без отдельного статуса благословения в шапке',
+    (await readGameSnapshot(page)).lives === 19 && (await rewardGoal.count()) === 0,
   )
   await finishWave(page, 10)
   await waitForFrames(page)
   check(
-    'после 10-й волны с прорывом выбор пропущен, открыт следующий отрезок',
+    'после 10-й волны с прорывом следующий отрезок начинается без выбора и уведомления',
     (await page.locator('.overlay').count()) === 0 &&
       (await readGameSnapshot(page)).wave === 11 &&
-      (await page.locator('.toast').innerText()).includes('Благословение за волны 6–10 упущено') &&
-      (await rewardGoal.innerText()) === 'Бонус за волны 11–15 без урона',
+      !(await page.locator('.toast').innerText()).includes('упущено') &&
+      (await rewardGoal.count()) === 0,
   )
   await finishRewardWave(page, 15, 21)
   const bladesSet = blades.locator('.reward-card-set')
@@ -1378,9 +1364,7 @@ async function desktop(browser, url) {
   const beforeFinalWave = await readGameSnapshot(page)
   check(
     'Казна начисляет показанные 560 золота, открывается 30-я волна',
-    beforeFinalWave.gold === finalOffer.gold - 160 + 560 &&
-      beforeFinalWave.wave === 30 &&
-      (await rewardGoal.count()) === 0,
+    beforeFinalWave.gold === finalOffer.gold - 160 + 560 && beforeFinalWave.wave === 30,
   )
   await page.getByRole('button', { name: 'Начать волну' }).click()
   check(
@@ -1895,7 +1879,15 @@ async function phone(browser, url) {
   }, phoneGoldBeforeBell)
   await waitForFrames(page)
 
-  // На узком экране три благословения идут столбиком и не выходят по ширине.
+  const phoneBlessings = page.locator('.hud-reward-toggle')
+  const phoneRewardSheet = page.getByRole('dialog', { name: 'Благословения', exact: true })
+  const phoneBoard = page.locator('#board')
+  const phoneBoardBeforeRewards = JSON.stringify(await phoneBoard.boundingBox())
+  const samePhoneBoard = async () =>
+    JSON.stringify(await phoneBoard.boundingBox()) === phoneBoardBeforeRewards
+  check('320×568: до первой награды счётчик скрыт', !(await phoneBlessings.isVisible()))
+
+  // На узком экране три карточки выбора идут столбиком и не выходят по ширине.
   await finishRewardWave(page, 10, 1)
   const phoneRewardCards = page.locator('.reward-card')
   const warChest = phoneRewardCards.filter({ hasText: 'Военная казна' })
@@ -1939,17 +1931,63 @@ async function phone(browser, url) {
     (await page.locator('.overlay').count()) === 0 &&
       (await readGameSnapshot(page)).rewards.length === 1,
   )
-  const phoneBlessing = page.locator('.reward-inventory-button').first()
-  const phoneTooltip = page.getByRole('tooltip')
-  await phoneBlessing.tap()
+  const counterBounds = await phoneBlessings.boundingBox()
+  const goldBounds = await page.locator('.hud-stats .stat').nth(1).boundingBox()
   check(
-    '320×568: касание значка открывает подсказку с бонусом набора и одним заполненным ромбом',
-    (await phoneTooltip.isVisible()) &&
-      (await phoneTooltip.locator('.reward-set-title').innerText()) === 'Дар короны' &&
-      (await phoneTooltip.locator('.reward-set-pips .is-filled').count()) === 1,
+    '320×568: первая награда добавляет кнопку 44×44 рядом с золотом, поле остаётся на месте',
+    counterBounds?.width >= 44 &&
+      counterBounds?.height >= 44 &&
+      counterBounds.x >= goldBounds.x + goldBounds.width &&
+      counterBounds.x + counterBounds.width <= 320 &&
+      (await phoneBlessings.getAttribute('aria-label')) === 'Благословения, получено 1' &&
+      (await page.locator('.reward-inventory').isHidden()) &&
+      (await samePhoneBoard()),
   )
-  await phoneBlessing.tap()
-  check('320×568: повторное касание закрывает описание', !(await phoneTooltip.isVisible()))
+  await phoneBlessings.tap()
+  check(
+    '320×568: тап открывает панель поверх поля с эффектом и прогрессом 1/2',
+    (await phoneRewardSheet.isVisible()) &&
+      (await phoneRewardSheet.locator('.reward-description').innerText()) ===
+        'Получено 200 золота' &&
+      (await phoneRewardSheet.locator('.reward-set-title').innerText()) === 'Дар короны' &&
+      (await phoneRewardSheet.locator('.reward-set-count').innerText()) === '1/2' &&
+      (await page.locator('.stage').evaluate((stage) => stage.inert)) &&
+      (await samePhoneBoard()),
+  )
+  await phoneRewardSheet.getByRole('button', { name: 'Закрыть' }).tap()
+  check('320×568: крестик закрывает панель благословений', !(await phoneRewardSheet.isVisible()))
+
+  // Safari может прислать click с pointerType mouse от обычного касания.
+  await phoneBlessings.evaluate((button) => {
+    button.dispatchEvent(
+      new PointerEvent('click', { bubbles: true, pointerType: 'mouse', detail: 1 }),
+    )
+  })
+  check('320×568: click типа mouse также открывает панель', await phoneRewardSheet.isVisible())
+  await page.locator('.reward-drawer .shop-drawer-backdrop').tap({ position: { x: 10, y: 10 } })
+  check('320×568: касание затемнения закрывает панель', !(await phoneRewardSheet.isVisible()))
+
+  await phoneBlessings.press('Enter')
+  await page.keyboard.press('1')
+  let focusStayedInRewards = true
+  for (const key of ['Tab', 'Tab', 'Tab', 'Shift+Tab']) {
+    await page.keyboard.press(key)
+    focusStayedInRewards &&= await phoneRewardSheet.evaluate((sheet) =>
+      sheet.contains(document.activeElement),
+    )
+  }
+  check(
+    '320×568: Tab остаётся в панели, горячая клавиша не выбирает стража под ней',
+    focusStayedInRewards &&
+      (await page.evaluate(() => window.__throne.selection.armedTowerId)) === null,
+  )
+  await page.keyboard.press('Escape')
+  await waitForFrames(page)
+  check(
+    '320×568: Escape закрывает панель и возвращает фокус на счётчик',
+    !(await phoneRewardSheet.isVisible()) &&
+      (await phoneBlessings.evaluate((button) => document.activeElement === button)),
+  )
 
   await finishRewardWave(page, 20, 2)
   const beforeGift = await readGameSnapshot(page)
@@ -1989,12 +2027,19 @@ async function phone(browser, url) {
       afterGift.rewards.length === 3 &&
       afterGift.gold === duringGift.gold,
   )
-  await phoneBlessing.tap()
+  await phoneBlessings.tap()
+  const chestEntry = phoneRewardSheet
+    .locator('.reward-drawer-entry')
+    .filter({ hasText: 'Военная казна' })
+  const crownSet = phoneRewardSheet.locator('.reward-set').filter({ hasText: 'Дар короны' })
   check(
-    '320×568: значок Казны суммирует выплаты 200 и 360',
-    (await phoneTooltip.innerText()).includes('Получено 560 золота'),
+    '320×568: счётчик включает копии, Казна суммирует выплаты, набор показывает 2/2',
+    (await phoneBlessings.getAttribute('aria-label')) === 'Благословения, получено 3' &&
+      (await chestEntry.locator('.reward-drawer-count').innerText()) === '×2' &&
+      (await chestEntry.locator('.reward-description').innerText()) === 'Получено 560 золота' &&
+      (await crownSet.locator('.reward-set-count').innerText()) === '2/2',
   )
-  await phoneBlessing.tap()
+  await phoneRewardSheet.getByRole('button', { name: 'Закрыть' }).tap()
 
   // Максимум за кампанию — шесть рубежей и «Дар короны». Заполняем инвентарь для проверки размеров.
   await page.evaluate(() => {
@@ -2015,7 +2060,18 @@ async function phone(browser, url) {
     game.chooseReward('rapid-orders')
   })
   await waitForFrames(page)
-  await checkFullRewardInventoryFits(page)
+  await phoneBlessings.tap()
+  check(
+    '320×568: все семь наград в прокручиваемой панели, размер и место поля сохраняются',
+    (await phoneBlessings.getAttribute('aria-label')) === 'Благословения, получено 7' &&
+      (await phoneRewardSheet.locator('.reward-drawer-entry').count()) === 7 &&
+      (await phoneRewardSheet.getByRole('region').evaluate((list) => {
+        list.scrollTop = list.scrollHeight
+        return list.scrollTop > 0
+      })) &&
+      (await samePhoneBoard()),
+  )
+  await phoneRewardSheet.getByRole('button', { name: 'Закрыть' }).tap()
   await checkStartButtonVisible(page)
 
   await page.setViewportSize({ width: 932, height: 430 }) // iPhone Plus/Max набок
@@ -2027,7 +2083,13 @@ async function phone(browser, url) {
   await checkStartButtonVisible(page)
   await checkControlsFit(page)
   await checkShopCardsVisible(page)
-  await checkFullRewardInventoryFits(page)
+  check(
+    '667×375: на сенсорном экране набок остаётся счётчик вместо ряда значков',
+    (await phoneBlessings.isVisible()) && (await page.locator('.reward-inventory').isHidden()),
+  )
+  await phoneBlessings.tap()
+  check('667×375: счётчик открывает нижнюю панель', await phoneRewardSheet.isVisible())
+  await phoneRewardSheet.getByRole('button', { name: 'Закрыть' }).tap()
   // Почти квадратное окно: по бокам поля пусто — там боковая панель с карточками, а не меню
   await page.setViewportSize({ width: 983, height: 987 })
   await waitForFrames(page)

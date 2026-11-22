@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { audioEngine } from '@/audio/engine'
 import { music } from '@/audio/music'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { useGameStore } from '@/stores/game'
+import { useSelectionStore } from '@/stores/selection'
 import GameBoard from './components/GameBoard.vue'
 import HudBar from './components/HudBar.vue'
+import RewardSheet from './components/RewardSheet.vue'
 import ScreenOverlay from './components/ScreenOverlay.vue'
 import SidePanel from './components/SidePanel.vue'
 
 const store = useGameStore()
+const selection = useSelectionStore()
+const isGameInert = computed(() => store.screen !== null || selection.isRewardSheetOpen)
 useKeyboard()
 
 // Браузер разрешает звук только после действия игрока
@@ -33,10 +37,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- Пока открыт экран поверх поля (меню, итоги), всё под ним выключено атрибутом inert:
-       ни кликнуть, ни дойти клавишей Tab. Атрибут ляжет на корневой элемент компонента -->
-  <HudBar :inert="store.screen !== null" />
-  <GameBoard :inert="store.screen !== null" />
-  <SidePanel :inert="store.screen !== null" />
+  <!-- inert отключает нажатия и Tab в игре под открытым диалогом. -->
+  <HudBar :inert="isGameInert" />
+  <GameBoard :inert="isGameInert" />
+  <SidePanel :inert="isGameInert" />
+  <RewardSheet />
   <ScreenOverlay />
 </template>

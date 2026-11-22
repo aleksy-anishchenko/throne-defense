@@ -2,7 +2,12 @@
 import { REWARD_SETS, REWARD_SET_SIZE, type RewardSetId } from '@throne/game'
 import { computed } from 'vue'
 
-const props = defineProps<{ setId: RewardSetId; count: number; preview?: boolean }>()
+const props = defineProps<{
+  setId: RewardSetId
+  count: number
+  preview?: boolean
+  numeric?: boolean
+}>()
 
 const set = computed(() => REWARD_SETS[props.setId])
 const collected = computed(() => Math.min(props.count, REWARD_SET_SIZE))
@@ -11,9 +16,12 @@ const collected = computed(() => Math.min(props.count, REWARD_SET_SIZE))
 <template>
   <span
     class="reward-set"
-    :class="{ 'reward-set-ready': preview && collected === REWARD_SET_SIZE - 1 }"
+    :class="{
+      'reward-set-ready': preview && collected === REWARD_SET_SIZE - 1,
+      'reward-set-numeric': numeric,
+    }"
   >
-    <span class="reward-set-threshold">
+    <span v-if="!numeric" class="reward-set-threshold">
       <span aria-hidden="true">×{{ REWARD_SET_SIZE }}</span>
       <span class="visually-hidden">Бонус за {{ REWARD_SET_SIZE }} благословения</span>
     </span>
@@ -24,7 +32,10 @@ const collected = computed(() => Math.min(props.count, REWARD_SET_SIZE))
     <span class="reward-set-status">
       <template v-if="preview && collected === REWARD_SET_SIZE">Собран</template>
       <template v-else>
-        <span class="reward-set-pips" aria-hidden="true">
+        <span v-if="numeric" class="reward-set-count" aria-hidden="true">
+          {{ collected }}/{{ REWARD_SET_SIZE }}
+        </span>
+        <span v-else class="reward-set-pips" aria-hidden="true">
           <span
             v-for="part in REWARD_SET_SIZE"
             :key="part"

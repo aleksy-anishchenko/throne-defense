@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import {
-  REWARDS,
-  REWARD_RARITIES,
-  REWARD_SET_SIZE,
-  rewardSetCounts,
-  summarizeRewards,
-  type RewardId,
-} from '@throne/game'
+import { REWARD_RARITIES, REWARD_SET_SIZE, type RewardId } from '@throne/game'
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
@@ -20,19 +13,7 @@ const hovered = ref<RewardId | null>(null)
 const focused = ref<RewardId | null>(null)
 const tapped = ref<RewardId | null>(null)
 const inspected = computed(() => hovered.value ?? focused.value ?? tapped.value)
-
-const blessings = computed(() => {
-  const counts = rewardSetCounts(store.rewards.selected)
-  return summarizeRewards(store.rewards.selected).map((summary) => {
-    const reward = REWARDS[summary.rewardId]
-    return {
-      ...summary,
-      rarity: reward.rarity,
-      setId: reward.setId,
-      setCount: counts[reward.setId],
-    }
-  })
-})
+let pressedWithMouse = false
 
 function hover(event: PointerEvent, rewardId: RewardId | null) {
   if (event.pointerType === 'mouse') hovered.value = rewardId
@@ -48,10 +29,12 @@ function focus(event: FocusEvent, rewardId: RewardId) {
 
 function inspect(event: MouseEvent, rewardId: RewardId) {
   if (event.detail === 0) focused.value = rewardId
-  else if (!(event instanceof PointerEvent) || event.pointerType !== 'mouse') {
+  // Safari на iPhone может пометить click от касания как мышь. Тип берём из pointerdown.
+  else if (!pressedWithMouse) {
     hovered.value = null
     tapped.value = tapped.value === rewardId ? null : rewardId
   }
+  pressedWithMouse = false
 }
 
 function closeTooltip() {
@@ -84,7 +67,7 @@ onUnmounted(() => {
 <template>
   <ul ref="inventory" class="reward-inventory" aria-label="Полученные благословения">
     <li
-      v-for="blessing in blessings"
+      v-for="blessing in store.receivedBlessings"
       :key="blessing.rewardId"
       class="reward-inventory-entry"
       :data-rarity="blessing.rarity"
@@ -98,6 +81,7 @@ onUnmounted(() => {
         :aria-describedby="`reward-info-${blessing.rewardId}`"
         @focus="focus($event, blessing.rewardId)"
         @blur="focused = null"
+        @pointerdown="pressedWithMouse = $event.pointerType === 'mouse'"
         @click="inspect($event, blessing.rewardId)"
       >
         <RewardIcon :reward-id="blessing.rewardId" />
@@ -108,7 +92,7 @@ onUnmounted(() => {
           <span
             v-for="part in REWARD_SET_SIZE"
             :key="part"
-            :class="{ 'is-filled': part <= blessing.setCount }"
+            :class="{ 'is-filled': part <= store.blessingSetCounts[blessing.setId] }"
           ></span>
         </span>
       </button>
@@ -122,7 +106,10 @@ onUnmounted(() => {
           <span class="reward-rarity">{{ REWARD_RARITIES[blessing.rarity].label }}</span>
           <strong>{{ blessing.name }}</strong>
           <span class="reward-tooltip-effect">{{ blessing.description }}</span>
-          <RewardSetStrip :set-id="blessing.setId" :count="blessing.setCount" />
+          <RewardSetStrip
+            :set-id="blessing.setId"
+            :count="store.blessingSetCounts[blessing.setId]"
+          />
         </div>
       </div>
     </li>

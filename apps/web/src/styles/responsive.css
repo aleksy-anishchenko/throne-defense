@@ -21,6 +21,9 @@
   .hud {
     grid-column: 1 / -1;
     padding: 12px 16px 8px;
+  }
+  .hud,
+  .hud-stats {
     gap: 22px;
   }
   .brand {
@@ -28,7 +31,6 @@
   }
   .stage {
     grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr);
   }
   .board-area {
     grid-column: 2;
@@ -36,18 +38,22 @@
   }
   .reward-inventory {
     grid-column: 1;
+    grid-template-columns: max-content;
     align-self: start;
-    flex-direction: column;
-    flex-wrap: nowrap;
+    justify-items: start;
     padding: 6px 9px 0 5px;
   }
   .reward-inventory-entry {
     position: relative;
   }
-  .reward-tooltip {
-    top: 0;
-    left: 100%;
-    padding: 0 0 0 8px;
+  /* На сенсорном телефоне счётчик остаётся в шапке и при повороте. */
+  @media not all and (pointer: coarse) {
+    .hud-reward-toggle {
+      display: none;
+    }
+    .reward-inventory {
+      display: grid;
+    }
   }
   .panel {
     grid-column: 2;
@@ -107,7 +113,7 @@
     gap: 8px;
   }
   .shop-toggle,
-  .shop-drawer {
+  .shop-drawer:not(.reward-drawer) {
     display: none;
   }
   /* Панель выбранной башни встаёт на место магазина */
@@ -209,7 +215,6 @@
 }
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 430px) {
   .reward-inventory:has(.reward-inventory-entry:nth-child(6)) {
-    display: grid;
     grid-template-columns: repeat(2, max-content);
   }
   .reward-inventory:has(.reward-inventory-entry:nth-child(6))

@@ -55,12 +55,12 @@ export const useSelectionStore = defineStore('selection', () => {
   /** Клетка под мышью */
   const hoverCell = ref<Cell | null>(null)
   /**
-   * Какое меню открыто на телефоне: выбор стража (ShopSheet.vue) или действия с выбранной
-   * башней (TowerSheet.vue). С боковой панелью меню нет — там всё лежит на панели
+   * Какое меню открыто поверх игры в мобильной раскладке.
    */
-  const openMenu = ref<'shop' | 'tower' | null>(null)
+  const openMenu = ref<'shop' | 'tower' | 'rewards' | null>(null)
   const isShopOpen = computed(() => openMenu.value === 'shop')
   const isTowerMenuOpen = computed(() => openMenu.value === 'tower')
+  const isRewardSheetOpen = computed(() => openMenu.value === 'rewards')
 
   /**
    * Сделает ли что-нибудь нажатие на клетку под мышью: выберет башню или построит стража.
@@ -198,7 +198,7 @@ export const useSelectionStore = defineStore('selection', () => {
 
   // Новая партия — выбор прошлой не нужен
   watch(() => gameStore.runCount, clearSelection, { flush: 'sync' })
-  // Экран поверх поля (меню, итоги, настройки) закрывает и меню стражей
+  // Полноэкранный диалог закрывает меню, открытое поверх поля.
   watch(
     () => gameStore.screen,
     (screen) => {
@@ -219,6 +219,12 @@ export const useSelectionStore = defineStore('selection', () => {
 
   function openShop() {
     if (gameStore.isPlaying()) openMenu.value = 'shop'
+  }
+
+  function openRewards() {
+    if (gameStore.screen === null && gameStore.isPlaying() && gameStore.rewards.selected.length) {
+      openMenu.value = 'rewards'
+    }
   }
 
   /**
@@ -422,6 +428,7 @@ export const useSelectionStore = defineStore('selection', () => {
     openMenu,
     isShopOpen,
     isTowerMenuOpen,
+    isRewardSheetOpen,
     selected,
     isBoardClickable,
     hint,
@@ -430,6 +437,7 @@ export const useSelectionStore = defineStore('selection', () => {
     boardView,
     clearSelection,
     openShop,
+    openRewards,
     openTowerMenu,
     closeMenu,
     syncMenuWithLayout,

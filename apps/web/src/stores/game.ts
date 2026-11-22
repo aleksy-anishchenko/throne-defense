@@ -21,6 +21,7 @@ import {
   rewardRerollCost,
   rewardSetCounts,
   rewardStats,
+  summarizeRewards,
   type LevelDef,
   type PendingReward,
   type Phase,
@@ -97,7 +98,6 @@ export const useGameStore = defineStore('game', () => {
     waveCount: game.level.waveCount,
     gold: state.gold,
     lives: state.lives,
-    lastThroneDamageWave: state.lastThroneDamageWave,
     score: state.score,
     wavesCleared: state.wavesCleared,
     isPaused: state.isPaused,
@@ -113,7 +113,6 @@ export const useGameStore = defineStore('game', () => {
     hud.wave = state.wave
     hud.gold = state.gold
     hud.lives = state.lives
-    hud.lastThroneDamageWave = state.lastThroneDamageWave
     hud.score = state.score
     hud.wavesCleared = state.wavesCleared
     hud.isPaused = state.isPaused
@@ -138,6 +137,13 @@ export const useGameStore = defineStore('game', () => {
     selected: [] as RewardPick[],
   })
   const blessingEffects = computed(() => rewardStats({ selectedRewards: rewards.selected }))
+  const blessingSetCounts = computed(() => rewardSetCounts(rewards.selected))
+  const receivedBlessings = computed(() =>
+    summarizeRewards(rewards.selected).map((summary) => {
+      const { rarity, setId } = REWARDS[summary.rewardId]
+      return { ...summary, rarity, setId }
+    }),
+  )
 
   function syncRewards() {
     const pending = state.pendingReward
@@ -323,10 +329,6 @@ export const useGameStore = defineStore('game', () => {
     syncHud()
     screen.value = 'reward'
   })
-  game.on('rewardMissed', ({ firstWave, lastWave }) => {
-    syncHud()
-    void showToast(`Благословение за волны ${firstWave}–${lastWave} упущено`)
-  })
   game.on('rewardChosen', ({ rewardId }) => {
     // Если открылся «Дар короны», экран обновится по событию rewardOffered.
     if (state.pendingReward) return
@@ -496,6 +498,8 @@ export const useGameStore = defineStore('game', () => {
     screen,
     rewards,
     blessingEffects,
+    blessingSetCounts,
+    receivedBlessings,
     audioSettings,
     toast,
     bumpCounters,
