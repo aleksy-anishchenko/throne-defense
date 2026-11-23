@@ -94,9 +94,11 @@ export interface TowerAspectDef {
 export interface TowerDef {
   id: string
   name: string
-  /** Короткое описание для магазина, с маленькой буквы */
+  /** Краткая роль стража в магазине */
+  shortDescription: string
+  /** Описание механики выбранного стража */
   description: string
-  /** Подсказка о взаимодействии с другими башнями — до и после покупки */
+  /** Подсказка о взаимодействии с другими башнями */
   interactionHint?: string
   /** Цена постройки, золота */
   cost: number

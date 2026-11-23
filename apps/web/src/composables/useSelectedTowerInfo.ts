@@ -60,6 +60,7 @@ export function useSelectedTowerInfo() {
     }
     return {
       title: `${def.name} ${toRoman(tier + (aspect ? 1 : 0))}`,
+      description: def.description,
       lines,
       hasAspects,
       aspect,

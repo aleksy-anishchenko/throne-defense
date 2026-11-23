@@ -65,6 +65,7 @@ function onBackdropClick() {
           ✕
         </button>
       </header>
+      <p class="tower-description">{{ info.description }}</p>
       <ul class="tower-sheet-stats">
         <li v-for="line in info.lines" :key="line">{{ line }}</li>
         <li v-if="info.interactionHint">{{ info.interactionHint }}</li>

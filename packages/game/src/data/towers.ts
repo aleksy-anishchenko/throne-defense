@@ -54,6 +54,7 @@ function ricochetTargets(
 const archer: TowerDef = {
   id: 'archer',
   name: 'Лучник',
+  shortDescription: 'Часто стреляет',
   description: 'Часто стреляет. Броня снижает урон стрел.',
   cost: 60,
   upgradeCosts: [50, 80],
@@ -137,6 +138,7 @@ const archer: TowerDef = {
 const mage: TowerDef = {
   id: 'mage',
   name: 'Огневик',
+  shortDescription: 'Поджигает врагов',
   description:
     'Поджигает цель и врагов рядом с ней. Горение наносит урон постепенно и игнорирует броню.',
   interactionHint:
@@ -173,6 +175,7 @@ const mage: TowerDef = {
 const frost: TowerDef = {
   id: 'frost',
   name: 'Морозко',
+  shortDescription: 'Замедляет врагов',
   description: 'Волна холода замедляет врагов вокруг.',
   interactionHint:
     'Холод тушит огонь без урона. Ставьте Морозко и Огневика на разных участках дороги.',
@@ -194,6 +197,7 @@ const frost: TowerDef = {
 const ballista: TowerDef = {
   id: 'ballista',
   name: 'Баллиста',
+  shortDescription: 'Пробивает броню',
   description: 'Болт пробивает до двух врагов и игнорирует половину брони каждого.',
   cost: 160,
   upgradeCosts: [140, 210],
@@ -248,6 +252,7 @@ const ballista: TowerDef = {
 const cannon: TowerDef = {
   id: 'cannon',
   name: 'Пушкарь',
+  shortDescription: 'Бьёт по площади',
   description: 'Ядро взрывается. Враги ближе к центру получают больше урона.',
   interactionHint: 'Ядро летит в точку выстрела: быстрые враги могут уйти из зоны взрыва.',
   cost: 340,
@@ -280,6 +285,7 @@ const cannon: TowerDef = {
 const trapper: TowerDef = {
   id: 'trapper',
   name: 'Ловчий',
+  shortDescription: 'Ловит в сеть',
   description: 'Бросает сеть и ненадолго останавливает врагов, которых она накрыла.',
   interactionHint:
     'На горящих врагах сеть держится в пять раз меньше. Используйте Ловчего рядом с Лучниками, Баллистами и Пушкарями.',
@@ -311,6 +317,7 @@ const trapper: TowerDef = {
 const warlock: TowerDef = {
   id: 'warlock',
   name: 'Колдун',
+  shortDescription: 'Ослабляет врагов',
   description: 'Проклинает врагов рядом. Они получают больше урона и меньше лечения.',
   interactionHint:
     'Проклятие ослабляет лечение самого проклятого врага. Несколько Колдунов не складываются — действует сильнейшее проклятие.',
@@ -332,6 +339,7 @@ const warlock: TowerDef = {
 const bell: TowerDef = {
   id: 'bell',
   name: 'Звонарь',
+  shortDescription: 'Ускоряет стрельбу',
   description: 'Сокращает паузу между выстрелами у стражей поблизости.',
   interactionHint:
     'Не ускоряет Морозко, Колдуна, Казну и других Звонарей. Бонусы не складываются — действует сильнейший. При равной силе связь показана с одним источником.',
@@ -354,6 +362,7 @@ const bell: TowerDef = {
 const treasury: TowerDef = {
   id: 'treasury',
   name: 'Казна',
+  shortDescription: 'Приносит золото',
   description: 'Приносит золото после каждой отбитой волны. Соседние Казны увеличивают доход.',
   interactionHint:
     'Соседние Казны, включая диагонали, дают по +10% дохода, максимум +30%. Через клетку бонуса нет. Монетка отмечает активную синергию; проценты и связи видны при выборе Казны.',

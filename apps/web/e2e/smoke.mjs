@@ -278,7 +278,7 @@ async function checkControlsFit(page) {
   check(`${width}: кнопки управления помещаются в строку`, fits)
 }
 
-/** Все девять карточек доступны целиком, в том числе при прокрутке магазина. */
+/** Все девять карточек видны без прокрутки боковой панели. */
 async function checkShopCardsVisible(page) {
   const { width, height } = page.viewportSize()
   // Телефон в вертикальной раскладке: кнопка на экране, а девять стражей — в меню
@@ -309,32 +309,30 @@ async function checkShopCardsVisible(page) {
     )
     return
   }
-  const shop = page.locator('.shop')
-  const cards = await shop.locator('.card').all()
-  const badCards = []
-  for (const card of cards) {
-    await card.scrollIntoViewIfNeeded()
-    const problem = await card.evaluate((element) => {
-      const { left, top, right, bottom } = element.getBoundingClientRect()
-      const shopBounds = element.closest('.shop').getBoundingClientRect()
-      const name = element.querySelector('.card-name').textContent
-      const text = [...element.querySelectorAll('.card-name, .card-description, .card-stats')]
-      const fits =
-        left >= 0 &&
-        right <= innerWidth &&
-        top >= Math.max(0, shopBounds.top) - 1 &&
-        bottom <= Math.min(innerHeight, shopBounds.bottom) + 1 &&
-        text.length === 3 &&
-        text.every((line) => line.clientWidth > 0 && line.scrollWidth <= line.clientWidth)
-      return fits ? null : { name, top, bottom, shopHeight: shopBounds.height }
+  const layout = await page.locator('.shop').evaluate((shop) => {
+    const shopBounds = shop.getBoundingClientRect()
+    const cards = [...shop.querySelectorAll('.card')]
+    const clipped = cards.filter((card) => {
+      const { left, top, right, bottom } = card.getBoundingClientRect()
+      const labels = [...card.querySelectorAll('.card-name, .card-description, .cost')]
+      return (
+        left < 0 ||
+        right > innerWidth ||
+        top < Math.max(0, shopBounds.top) - 1 ||
+        bottom > Math.min(innerHeight, shopBounds.bottom) + 1 ||
+        labels.some((line) => line.scrollWidth > line.clientWidth)
+      )
     })
-    if (problem) badCards.push(problem)
-  }
-  await shop.evaluate((element) => (element.scrollTop = 0))
+    return {
+      count: cards.length,
+      overflow: shop.scrollHeight - shop.clientHeight,
+      clipped: clipped.map((card) => card.querySelector('.card-name').textContent),
+    }
+  })
   check(
-    `${width}×${height}: все карточки магазина (${cards.length}) можно прочитать целиком`,
-    cards.length === 9 && badCards.length === 0,
-    JSON.stringify(badCards),
+    `${width}×${height}: все девять карточек боковой панели видны без прокрутки`,
+    layout.count === 9 && layout.overflow <= 1 && layout.clipped.length === 0,
+    JSON.stringify(layout),
   )
 }
 
@@ -419,20 +417,18 @@ async function desktop(page, url) {
   const cannonCard = page.getByRole('button', { name: /^Пушкарь/ })
   const cannonCardText = await cannonCard.innerText()
   check(
-    'в карточке Пушкаря цена 340, описание и характеристики',
+    'в карточке Пушкаря цена 340 и короткая подпись о роли',
     cannonCardText.includes('340') &&
-      cannonCardText.includes('Ядро взрывается.') &&
-      cannonCardText.includes('урон 100') &&
-      (await cannonCard.getAttribute('title')) === null &&
-      !(await cannonCard.getAttribute('aria-description')).includes('Ядро летит в точку'),
+      cannonCardText.includes('Бьёт по площади') &&
+      !cannonCardText.includes('Ядро взрывается') &&
+      !cannonCardText.includes('урон 100') &&
+      (await cannonCard.getAttribute('aria-description')) === 'Бьёт по площади',
   )
   await archerCard.click()
   check('карточка в магазине нажата', (await archerCard.getAttribute('aria-pressed')) === 'true')
-  // innerText, а не textContent: учитывает, что скрыто стилями
   check(
-    'описание есть в карточке — подсказка его не повторяет, а говорит, что делать',
-    (await page.locator('#hint').innerText()).startsWith('Нажмите на свободную плиту'),
-    await page.locator('#hint').innerText(),
+    'при выборе стража в магазине подсказка предлагает поставить его',
+    (await page.locator('#hint').innerText()) === 'Нажмите на свободную плиту',
   )
   await hoverCell(4, 9)
   check('со стражем в руке над свободной плитой — рука', (await boardCursor()) === 'pointer')
@@ -478,6 +474,13 @@ async function desktop(page, url) {
   check('Escape снял выбор в магазине', (await archerCard.getAttribute('aria-pressed')) === 'false')
   await clickCell(page, 4, 9)
   check('панель башни', (await page.locator('.tower-info b').textContent()) === 'Лучник I')
+  check(
+    'по нажатию на построенного Лучника видно, как броня влияет на его урон',
+    await page
+      .locator('.tower-info')
+      .getByText('Часто стреляет. Броня снижает урон стрел.', { exact: true })
+      .isVisible(),
+  )
   const statLines = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
     ' | ',
   )
@@ -1635,7 +1638,7 @@ async function desktop(page, url) {
   check('«Готово» вернуло в меню', await playButton.isVisible())
   await page.evaluate(() => localStorage.removeItem('throne-best'))
 
-  // Раскладка: магазин из шести карточек влезает и на высоком экране, и на ноутбуке
+  // Все девять карточек помещаются и на высоком экране, и на ноутбуке.
   await page.getByRole('button', { name: 'Играть' }).click()
   await waitForFrames(page)
   await checkShopCardsVisible(page)
@@ -1726,7 +1729,7 @@ async function phone(page, url) {
     page.evaluate(() => document.querySelector('.panel').getBoundingClientRect().height)
   const idlePanelHeight = await panelHeight()
 
-  // Вместо девяти карточек — кнопка; карточки с описанием и характеристиками — в меню
+  // Кнопка открывает список стражей с короткими подписями.
   const shopToggle = page.getByRole('button', { name: 'Выбрать стража' })
   check(
     'на телефоне вместо карточек кнопка «Выбрать стража»',
@@ -1735,6 +1738,13 @@ async function phone(page, url) {
   await shopToggle.tap()
   const drawer = page.getByRole('dialog', { name: 'Выбор стража' })
   check('кнопка открыла меню стражей', await drawer.isVisible())
+  check(
+    '390×844: все девять карточек в меню видны без прокрутки',
+    (await drawer.locator('.drawer-card').count()) === 9 &&
+      (await drawer
+        .locator('.shop-drawer-list')
+        .evaluate((list) => list.scrollHeight <= list.clientHeight + 1)),
+  )
   // Меню модальное: Tab ходит по кругу внутри него и не уходит на кнопки под ним
   let isFocusInside = true
   for (let i = 0; i < 14; i++) {
@@ -1746,18 +1756,12 @@ async function phone(page, url) {
   check('Tab не выводит фокус из меню стражей', isFocusInside)
   const drawerText = await drawer.innerText()
   check(
-    'в меню до покупки есть описание и характеристики',
-    drawerText.includes('Поджигает цель и врагов рядом с ней.') && /урон \d/.test(drawerText),
+    'в меню выбора видны короткие роли Огневика и Колдуна',
+    drawerText.includes('Поджигает врагов') &&
+      drawerText.includes('Ослабляет врагов') &&
+      !drawerText.includes('Поджигает цель') &&
+      !drawerText.includes('получаемое лечение −20%'),
     drawerText.slice(0, 200),
-  )
-  const warlockCard = drawer.getByRole('button', { name: /^Колдун/ })
-  check(
-    'карточка Колдуна показывает ослабление лечения без подробностей проклятия',
-    (await warlockCard.locator('.drawer-card-stats').innerText()).includes(
-      'получаемое лечение −20%',
-    ) &&
-      !(await warlockCard.innerText()).includes('Проклятие ослабляет лечение') &&
-      !(await warlockCard.getAttribute('aria-description')).includes('Проклятие ослабляет лечение'),
   )
   await page.keyboard.press('Escape')
   await waitForFrames(page)
@@ -1770,9 +1774,8 @@ async function phone(page, url) {
   await drawer.getByRole('button', { name: /Огневик/ }).tap()
   check('выбор в меню закрыл его', (await page.getByRole('dialog').count()) === 0)
   check(
-    'на телефоне подсказка показывает описание стража в руке',
-    (await page.locator('#hint').innerText()).startsWith('Огневик:'),
-    await page.locator('#hint').innerText(),
+    'после выбора стража подсказка предлагает нажать на плиту',
+    (await page.locator('#hint').innerText()) === 'Нажмите на свободную плиту',
   )
   check(
     'кнопка показывает стража в руке (значок и подпись для скринридера)',
@@ -1822,9 +1825,9 @@ async function phone(page, url) {
   )
   const towerMenuText = await towerMenu.innerText()
   check(
-    'в меню башни есть характеристики и кнопки, лишнего нет',
-    !towerMenuText.includes('Поджигает') &&
-      !towerMenuText.includes('Выбрать стража') &&
+    'в меню построенного Огневика видны механика, характеристики и действия',
+    towerMenuText.includes('Поджигает цель и врагов рядом с ней.') &&
+      towerMenuText.includes('Сначала стреляет по негорящим.') &&
       /горение \d/.test(towerMenuText) &&
       !/урон \d/.test(towerMenuText) &&
       towerMenuText.includes('Улучшить') &&

@@ -24,16 +24,7 @@ onUnmounted(() => sidePanelQuery.removeEventListener('change', selection.syncMen
     <h2 class="panel-title">
       {{ selection.selected.towerId !== null ? 'Выбранный страж' : 'Строительство' }}
     </h2>
-    <!-- Описание башни «в руке» и «что делать дальше»: какое из двух видно, решают стили —
-         с описаниями в карточках описание здесь не повторяем (responsive.css) -->
-    <p id="hint">
-      <span :class="{ 'hint-armed-description': selection.isArmedTowerHint }">{{
-        selection.hint
-      }}</span>
-      <span v-if="selection.isArmedTowerHint" class="hint-armed-action">
-        Нажмите на свободную плиту, чтобы поставить стража
-      </span>
-    </p>
+    <p id="hint">{{ selection.hint }}</p>
     <TowerInfo />
     <ShopPanel />
     <ControlsBar />

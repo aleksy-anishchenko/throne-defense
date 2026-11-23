@@ -1,17 +1,14 @@
 <script setup lang="ts">
 import type { TowerDef } from '@throne/game'
-import { computed } from 'vue'
-import { describeNewTowerStats } from '@/utils/towerStats'
 import TowerIcon from './TowerIcon.vue'
 
-const props = defineProps<{
+defineProps<{
   def: TowerDef
   /** Выбран в магазине */
   isArmed: boolean
   /** Не хватает золота */
   isUnaffordable: boolean
 }>()
-const stats = computed(() => describeNewTowerStats(props.def))
 const emit = defineEmits<{ pick: [] }>()
 </script>
 
@@ -22,7 +19,7 @@ const emit = defineEmits<{ pick: [] }>()
     :class="{ poor: isUnaffordable }"
     :aria-pressed="isArmed"
     :aria-label="`${def.name}, цена ${def.cost}`"
-    :aria-description="`${def.description} ${stats}.`"
+    :aria-description="def.shortDescription"
     @click="emit('pick')"
   >
     <TowerIcon :tower-id="def.id" />
@@ -33,7 +30,6 @@ const emit = defineEmits<{ pick: [] }>()
       </svg>
       <span class="visually-hidden">цена</span>{{ def.cost }}
     </span>
-    <span class="card-description">{{ def.description }}</span>
-    <span class="card-stats">{{ stats }}</span>
+    <span class="card-description">{{ def.shortDescription }}</span>
   </button>
 </template>

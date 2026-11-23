@@ -1,4 +1,4 @@
-// Как показывать характеристики башни: и в панели выбранной башни, и в меню выбора стража.
+// Как показывать характеристики выбранной башни.
 
 import type { RewardStats, StatKey, TowerDef, TowerStats } from '@throne/game'
 import { displayStatValue } from '@throne/game'
@@ -58,13 +58,6 @@ export function formatStatLine(
   return nextText === null || nextText === currentText
     ? `${label} ${currentText}`
     : `${label} ${currentText} → ${nextText}`
-}
-
-/** Характеристики новой башни (ступень I) для карточки в меню: «урон 7 · дальность 2,4» */
-export function describeNewTowerStats(def: TowerDef): string {
-  return def.displayStats
-    .map((statKey) => formatStatLine(statKey, def.tiers[0], undefined))
-    .join(' · ')
 }
 
 export function towerInteractionHint(

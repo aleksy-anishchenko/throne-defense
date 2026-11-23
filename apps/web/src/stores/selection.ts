@@ -365,10 +365,7 @@ export const useSelectionStore = defineStore('selection', () => {
     if (cursorCell.value) tapCell(cursorCell.value.col, cursorCell.value.row, keepArmed)
   }
 
-  // ---------------------------------------------------------------- Подсказка над магазином
-
-  const describeTower = (towerId: string) =>
-    `${TOWERS[towerId].name}: ${TOWERS[towerId].description}`
+  // ---------------------------------------------------------------- Подсказка у магазина
 
   /** Какие враги придут в волне waveNumber: «5 бунтовщиков, 2 разведчика» */
   function describeWave(waveNumber: number): string {
@@ -383,11 +380,10 @@ export const useSelectionStore = defineStore('selection', () => {
     return banner ? `${roster}. Знамя даёт бойцам рядом +${banner.armor} брони.` : roster
   }
 
-  // Порядок проверок — это приоритет подсказок. Выбранная башня и страж «в руке» выше паузы:
-  // иначе на паузе (когда как раз строят) не видно, что страж взят и плита что-то построит
+  // При выборе башни подробности выводит её панель. Страж «в руке» важнее подсказки о паузе.
   const hint = computed(() => {
     const hud = gameStore.hud
-    if (selected.towerId) return describeTower(selected.towerId)
+    if (selected.towerId) return ''
     if (armedTowerId.value && receivingBellPlacement.isActive) {
       const sources = receivingBellPlacement.sources > 1 ? 'Звонарей' : 'Звонаря'
       return `${TOWERS[armedTowerId.value].name}: получит +${Math.round(receivingBellPlacement.bonus * 100)}% к скорострельности от ${sources}`
@@ -401,7 +397,7 @@ export const useSelectionStore = defineStore('selection', () => {
         return `Звонарь ускорит ${count} ${targets}. Итоговый бонус показан над стражами.`
       return `Звонарь: ускорит ${count} ${targets} на ${Math.round(bellPlacement.bonus * 100)}%`
     }
-    if (armedTowerId.value) return describeTower(armedTowerId.value)
+    if (armedTowerId.value) return 'Нажмите на свободную плиту'
     if (hud.isPaused) return 'Пауза. Стражу можно ставить и улучшать'
     if (hud.phase === 'wave') return `Врагов осталось: ${hud.enemiesLeft}`
     if (hud.phase === 'lost' || hud.phase === 'won') return ''
@@ -410,18 +406,6 @@ export const useSelectionStore = defineStore('selection', () => {
     }
     return `Дальше: ${describeWave(hud.wave)}`
   })
-
-  /**
-   * Подсказка сейчас — описание стража «в руке». Там, где карточки магазина сами показывают
-   * описания, оно повторялось бы дважды — SidePanel показывает вместо него, что делать дальше
-   */
-  const isArmedTowerHint = computed(
-    () =>
-      !selected.towerId &&
-      armedTowerId.value !== null &&
-      !receivingBellPlacement.isActive &&
-      !(armedTowerId.value === 'bell' && bellPlacement.isActive),
-  )
 
   return {
     armedTowerId,
@@ -435,7 +419,6 @@ export const useSelectionStore = defineStore('selection', () => {
     selected,
     isBoardClickable,
     hint,
-    isArmedTowerHint,
     sync,
     boardView,
     clearSelection,

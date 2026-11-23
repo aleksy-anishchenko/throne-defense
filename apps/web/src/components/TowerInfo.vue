@@ -17,6 +17,7 @@ const selectedTowerInfo = useSelectedTowerInfo()
   <div v-if="selectedTowerInfo" class="tower-info">
     <div class="tower-stats">
       <b>{{ selectedTowerInfo.title }}</b>
+      <p class="tower-description">{{ selectedTowerInfo.description }}</p>
       <span v-for="line in selectedTowerInfo.lines" :key="line">{{ line }}</span>
       <p v-if="selectedTowerInfo.interactionHint" class="tower-interaction">
         {{ selectedTowerInfo.interactionHint }}

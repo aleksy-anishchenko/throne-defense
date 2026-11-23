@@ -74,13 +74,6 @@
     display: block;
     grid-row: 1;
   }
-  /* Карточки здесь с описаниями — в подсказке не повторяем, а говорим, что делать дальше */
-  .hint-armed-description {
-    display: none;
-  }
-  .hint-armed-action {
-    display: inline;
-  }
   #hint {
     grid-row: 3;
     height: auto;
@@ -118,14 +111,14 @@
     padding: 5px;
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-gutter: stable;
   }
   .shop-toggle,
   .shop-drawer:not(.reward-drawer) {
     display: none;
   }
-  /* Панель выбранной башни встаёт на место магазина */
-  .panel.has-selected-tower .shop {
+  /* Подробности выбранной башни занимают место магазина и подсказки */
+  .panel.has-selected-tower .shop,
+  .panel.has-selected-tower #hint {
     display: none;
   }
   .card {
@@ -133,8 +126,7 @@
     grid-template-columns: 48px minmax(0, 1fr) auto;
     grid-template-areas:
       'ico nm cost'
-      'ico ds ds'
-      'ico st st';
+      'ico ds ds';
     column-gap: 10px;
     row-gap: 2px;
     align-items: center;
@@ -158,11 +150,6 @@
     grid-area: ds;
     font-size: 0.9rem;
     line-height: 1.25;
-  }
-  .card .card-stats {
-    grid-area: st;
-    font-size: 0.82rem;
-    line-height: 1.2;
     color: var(--parch-dim);
   }
   .controls {
@@ -178,9 +165,7 @@
     color: var(--parch-dim);
   }
 }
-/* Обычный экран компьютера с боковой панелью: девять карточек в один столбец влезают только
-   в очень высокий экран, иначе панель пришлось бы прокручивать. Ставим их в два столбца —
-   с описанием и характеристиками под значком, именем и ценой */
+/* На экране средней высоты карточки идут в два столбца, подпись под значком и ценой. */
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 1150px),
   (min-width: 940px) and (min-aspect-ratio: 9/10) and (max-height: 1150px) {
   .shop {
@@ -192,8 +177,7 @@
     grid-template-areas:
       'ico nm'
       'ico cost'
-      'ds ds'
-      'st st';
+      'ds ds';
     align-content: start;
     column-gap: 8px;
     row-gap: 1px;
@@ -209,15 +193,33 @@
     line-height: 1.2;
   }
 }
-/* На невысоком экране меньше значки и отступы. Список можно прокручивать. */
+/* На невысоком экране меньше значки и отступы. */
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 760px) {
+  .shop {
+    gap: 6px;
+  }
   .card {
     grid-template-columns: 30px minmax(0, 1fr);
-    padding: 3px 8px 3px 5px;
+    padding: 2px 8px 2px 5px;
   }
   .card canvas {
     width: 30px;
     height: 30px;
+  }
+  .card .card-name {
+    font-size: 1rem;
+  }
+  .card .card-description {
+    margin-top: 2px;
+  }
+}
+/* На низком экране в боковой панели оставляем значок, название и цену. */
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 640px) {
+  .card {
+    grid-template-areas: 'ico nm' 'ico cost';
+  }
+  .card .card-description {
+    display: none;
   }
 }
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 430px) {
@@ -265,18 +267,6 @@
   }
   .controls {
     grid-row: 4;
-  }
-  .panel.has-selected-tower #hint {
-    display: block;
-  }
-  .panel.has-selected-tower .shop {
-    display: none;
-  }
-  .tower-info {
-    grid-row: 2;
-  }
-  .shop {
-    gap: 6px;
   }
   .keys {
     display: none;
