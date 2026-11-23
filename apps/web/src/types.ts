@@ -10,8 +10,10 @@ export interface BoardView {
   armedTowerId: string | null
   /** Клетка выбранной поставленной башни */
   selectedTowerCell: Cell | null
-  /** Клетка под мышью */
-  hoverCell: Cell | null
+  /** Плита для предпросмотра: под мышью, клавиатурным курсором или выбранная касанием. */
+  placementCell: Cell | null
+  /** После касания показываем стража с выделением до подтверждения покупки. */
+  isTouchPlacement: boolean
   /** Клавиатурный курсор (стрелки) */
   cursorCell: Cell | null
 }

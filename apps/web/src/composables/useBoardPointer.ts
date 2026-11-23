@@ -30,7 +30,10 @@ export function useBoardPointer(boardCanvas: Readonly<ShallowRef<HTMLCanvasEleme
     selection.cursorCell = null
     const { col, row } = cellFromPointer(event)
     // Shift — оставить стража «в руке» и ставить подряд
-    selection.tapCell(col, row, event.shiftKey)
+    selection.tapCell(col, row, {
+      keepArmed: event.shiftKey,
+      previewOnly: event.pointerType !== 'mouse' || selection.touchPlacement !== null,
+    })
   }
 
   function onPointerMove(event: PointerEvent) {

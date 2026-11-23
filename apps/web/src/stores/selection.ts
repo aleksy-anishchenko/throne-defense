@@ -5,8 +5,8 @@
 // Зависимость идёт в одну сторону: выбор знает про игру, игра про выбор — нет.
 // Поэтому сброс выбора при новой партии и при начале волны сделан через watch (внизу файла).
 //
-// Постройка — один сценарий: выбрал стража в магазине → нажал на свободную плиту.
-// После постройки страж из «руки» убирается: нажатие на плиту «просто посмотреть» ничего не строит.
+// Мышью стража можно примерить наведением. На телефоне место выбирают касанием,
+// а золото тратят отдельной кнопкой.
 
 import {
   ENEMIES,
@@ -29,7 +29,7 @@ import { defineStore } from 'pinia'
 import { computed, reactive, ref, watch } from 'vue'
 import type { BoardView, Cell } from '@/types'
 import { SIDE_PANEL_QUERY } from '@/utils/layout'
-import { plural } from '@/utils/format'
+import { formatPercent, plural } from '@/utils/format'
 import { bellPlacementPreview, towerPlacementBellPreview } from '@/utils/bellSupport'
 import { useGameStore } from './game'
 
@@ -55,6 +55,19 @@ export const useSelectionStore = defineStore('selection', () => {
   const cursorCell = ref<Cell | null>(null)
   /** Клетка под мышью */
   const hoverCell = ref<Cell | null>(null)
+  /** В этом режиме касания только выбирают место. До первого касания cell пуста. */
+  const touchPlacement = ref<{ cell: Cell | null } | null>(null)
+  const placementTower = computed(() =>
+    touchPlacement.value && armedTowerId.value ? TOWERS[armedTowerId.value] : null,
+  )
+  const pendingPlacement = computed(() => {
+    const cell = touchPlacement.value?.cell
+    const tower = placementTower.value
+    return cell && tower ? { cell, tower } : null
+  })
+  const placementCell = computed(() =>
+    touchPlacement.value ? touchPlacement.value.cell : (hoverCell.value ?? cursorCell.value),
+  )
   /**
    * Какое меню открыто поверх игры в мобильной раскладке.
    */
@@ -92,6 +105,7 @@ export const useSelectionStore = defineStore('selection', () => {
     fireRateSources: 0,
     bellCoveredTowers: 0,
     bellBoostedTowers: 0,
+    bellTargetNames: '',
     treasuryNeighbors: 0,
     treasuryBonus: 0,
     treasuryIncome: 0,
@@ -102,8 +116,43 @@ export const useSelectionStore = defineStore('selection', () => {
   })
 
   /** Снимок предпросмотра: игра не реактивна, как и снимок выбранной башни выше. */
-  const bellPlacement = reactive({ isActive: false, covered: 0, improved: 0, bonus: 0 })
-  const receivingBellPlacement = reactive({ isActive: false, bonus: 0, sources: 0 })
+  const placementEffect = ref('')
+
+  function describePlacement(cell: Cell | null, secondBellShare: number): string {
+    const towerId = armedTowerId.value
+    if (!towerId || !cell || !game.isCellFree(cell.col, cell.row)) return ''
+    const towers = game.state.towers
+    const { col, row } = cell
+    if (towerId === 'bell') {
+      const { covered, improved } = bellPlacementPreview(towers, col, row, secondBellShare)
+      if (!covered.length) return 'В зоне нет стражей, которых можно ускорить.'
+      if (!improved.length) return 'Все цели уже получают не меньший бонус.'
+      if (improved.length === 1) {
+        const { tower, bonus } = improved[0]
+        return `${tower.def.name} будет стрелять на ${formatPercent(bonus)} чаще.`
+      }
+      const targets = improved.map(
+        ({ tower, bonus }) => `${tower.def.name} +${formatPercent(bonus)}`,
+      )
+      return `Скорость стрельбы · ${targets.join(', ')}`
+    }
+    const def = TOWERS[towerId]
+    if (towerId === 'treasury') {
+      const bonus = treasuryBonusOf(towers, { def, col, row })
+      return bonus
+        ? `Соседние Казны дадут +${formatPercent(bonus)} к доходу этой Казны.`
+        : `Рядом нет другой Казны. Доход за волну — ${def.tiers[0].goldPerWave} золота.`
+    }
+    const receiver = towerPlacementBellPreview(towers, towerId, col, row, secondBellShare)
+    if (!receiver) {
+      if (!touchPlacement.value || !towers.some((tower) => tower.def.id === 'bell')) return ''
+      return def.takesFireRateBonus
+        ? 'Эта плита вне зоны ускорения Звонаря.'
+        : 'Звонарь не ускоряет этого стража.'
+    }
+    const sources = receiver.sources.length > 1 ? 'Звонарей' : 'Звонаря'
+    return `${def.name} получит +${formatPercent(receiver.bonus)} к скорострельности от ${sources}.`
+  }
 
   const selectedTower = (): Tower | undefined =>
     selectedTowerCell.value
@@ -133,11 +182,13 @@ export const useSelectionStore = defineStore('selection', () => {
     selected.fireRateSources = bellSupport.length
     const bellTargets = tower?.def.id === 'bell' ? bellCoverage(game.state.towers, tower) : []
     selected.bellCoveredTowers = bellTargets.length
-    selected.bellBoostedTowers = bellTargets.filter((target) =>
+    const boosted = bellTargets.filter((target) =>
       fireRateContributionsOf(game.state.towers, target, secondBellShare).some(
         ({ source }) => source === tower,
       ),
-    ).length
+    )
+    selected.bellBoostedTowers = boosted.length
+    selected.bellTargetNames = [...new Set(boosted.map((target) => target.def.name))].join(', ')
     selected.treasuryNeighbors = tower ? treasuryNeighbors(game.state.towers, tower).length : 0
     selected.treasuryBonus = tower ? treasuryBonusOf(game.state.towers, tower) : 0
     selected.treasuryIncome = tower ? treasuryIncomeOf(game.state.towers, tower) : 0
@@ -148,35 +199,11 @@ export const useSelectionStore = defineStore('selection', () => {
     selected.hunterMaxStacks = aspect?.hunterMark?.maxStacks ?? 0
 
     const hover = hoverCell.value
-    const placementCell = hover ?? cursorCell.value
-    bellPlacement.isActive =
-      armedTowerId.value === 'bell' &&
-      placementCell !== null &&
-      game.isCellFree(placementCell.col, placementCell.row)
-    if (bellPlacement.isActive && placementCell) {
-      const preview = bellPlacementPreview(
-        game.state.towers,
-        placementCell.col,
-        placementCell.row,
-        secondBellShare,
-      )
-      bellPlacement.covered = preview.covered.length
-      bellPlacement.improved = preview.improved.length
-      bellPlacement.bonus = preview.bonus
+    const pending = touchPlacement.value?.cell
+    if (pending && !game.isCellFree(pending.col, pending.row)) {
+      touchPlacement.value = { cell: null }
     }
-    const receiverPreview =
-      armedTowerId.value && placementCell && game.isCellFree(placementCell.col, placementCell.row)
-        ? towerPlacementBellPreview(
-            game.state.towers,
-            armedTowerId.value,
-            placementCell.col,
-            placementCell.row,
-            secondBellShare,
-          )
-        : null
-    receivingBellPlacement.isActive = receiverPreview !== null
-    receivingBellPlacement.bonus = receiverPreview?.bonus ?? 0
-    receivingBellPlacement.sources = receiverPreview?.sources.length ?? 0
+    placementEffect.value = describePlacement(placementCell.value, secondBellShare)
     isBoardClickable.value =
       hover !== null &&
       gameStore.isPlaying() &&
@@ -189,12 +216,19 @@ export const useSelectionStore = defineStore('selection', () => {
   const boardView = (): BoardView => ({
     armedTowerId: armedTowerId.value,
     selectedTowerCell: selectedTowerCell.value,
-    hoverCell: hoverCell.value,
+    placementCell: armedTowerId.value ? placementCell.value : null,
+    isTouchPlacement: touchPlacement.value !== null,
     cursorCell: cursorCell.value,
   })
 
-  function clearSelection() {
+  function disarmTower() {
     armedTowerId.value = null
+    touchPlacement.value = null
+    placementEffect.value = ''
+  }
+
+  function clearSelection() {
+    disarmTower()
     selectedTowerCell.value = null
     openMenu.value = null
   }
@@ -213,7 +247,7 @@ export const useSelectionStore = defineStore('selection', () => {
   watch(
     () => gameStore.hud.phase,
     (phase) => {
-      if (phase === 'wave') armedTowerId.value = null
+      if (phase === 'wave') disarmTower()
     },
     { flush: 'sync' },
   )
@@ -257,6 +291,7 @@ export const useSelectionStore = defineStore('selection', () => {
   function syncMenuWithLayout() {
     if (!isPhoneLayout()) openMenu.value = null
     else if (selectedTowerCell.value && openMenu.value === null) openTowerMenu()
+    else if (armedTowerId.value && !touchPlacement.value) touchPlacement.value = { cell: null }
   }
 
   /**
@@ -266,9 +301,7 @@ export const useSelectionStore = defineStore('selection', () => {
   function chooseShopTower(towerId: string) {
     if (!gameStore.isPlaying()) return
     if (armedTowerId.value === towerId) {
-      armedTowerId.value = null
-      selectedTowerCell.value = null
-      openMenu.value = null
+      clearSelection()
       return
     }
     const towerDef = TOWERS[towerId]
@@ -277,28 +310,53 @@ export const useSelectionStore = defineStore('selection', () => {
       return
     }
     armedTowerId.value = towerId
+    const useTouch =
+      isPhoneLayout() ||
+      (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches)
+    touchPlacement.value = useTouch ? { cell: null } : null
+    placementEffect.value = ''
     selectedTowerCell.value = null
     // Выбрал в меню — меню закрывается, остаётся нажать на плиту
     openMenu.value = null
   }
 
   /**
-   * Нажали на клетку поля. Башня — выбрать (или снять выбор); свободная плита при стороже
-   * «в руке» — построить. keepArmed (Shift) — оставить стража «в руке», чтобы ставить подряд
+   * Нажали на башню — открыть её сведения. Свободная плита — место для стража в руке.
+   * Касание закрепляет предпросмотр, мышь и Enter подтверждают уже видимую позицию.
    */
-  function tapCell(col: number, row: number, keepArmed = false) {
-    if (!gameStore.isPlaying() || !game.isInsideField(col, row)) return
+  function tapCell(col: number, row: number, { keepArmed = false, previewOnly = false } = {}) {
+    if (
+      !gameStore.isPlaying() ||
+      gameStore.screen ||
+      openMenu.value ||
+      !game.isInsideField(col, row)
+    )
+      return
     if (game.towerAt(col, row)) {
       selectedTowerCell.value = isSameCell(selectedTowerCell.value, col, row) ? null : { col, row }
-      armedTowerId.value = null
+      disarmTower()
       openTowerMenu()
       return
     }
     selectedTowerCell.value = null
-    const towerId = armedTowerId.value
-    if (!towerId || !game.isCellFree(col, row)) return
-    // Не хватило золота — страж остаётся «в руке»: накопил и нажал ещё раз
-    if (gameStore.tryBuild(towerId, col, row) && !keepArmed) armedTowerId.value = null
+    if (!armedTowerId.value) return
+    if (previewOnly) {
+      touchPlacement.value = { cell: game.isCellFree(col, row) ? { col, row } : null }
+      sync()
+      return
+    }
+    if (game.isCellFree(col, row)) buildArmedTower(col, row, keepArmed)
+  }
+
+  function buildArmedTower(col: number, row: number, keepArmed = false) {
+    const id = armedTowerId.value
+    if (id && gameStore.tryBuild(id, col, row) && !keepArmed) disarmTower()
+  }
+
+  function confirmPlacement() {
+    const cell = touchPlacement.value?.cell
+    if (!cell || !gameStore.isPlaying() || gameStore.screen || openMenu.value) return
+    if (game.isCellFree(cell.col, cell.row)) buildArmedTower(cell.col, cell.row)
   }
 
   // Проверка «партия идёт» — как в chooseShopTower и tapCell: кнопки под экраном итогов
@@ -354,15 +412,22 @@ export const useSelectionStore = defineStore('selection', () => {
 
   function moveCursor(deltaCol: number, deltaRow: number) {
     const { cols, rows } = game.level.def
-    const current = cursorCell.value ?? { col: Math.floor(cols / 2), row: Math.floor(rows / 2) }
-    cursorCell.value = {
+    const current = cursorCell.value ??
+      touchPlacement.value?.cell ?? { col: Math.floor(cols / 2), row: Math.floor(rows / 2) }
+    hoverCell.value = null
+    const cell = {
       col: Math.max(0, Math.min(cols - 1, current.col + deltaCol)),
       row: Math.max(0, Math.min(rows - 1, current.row + deltaRow)),
+    }
+    cursorCell.value = cell
+    if (touchPlacement.value) {
+      touchPlacement.value.cell = game.isCellFree(cell.col, cell.row) ? cell : null
+      sync()
     }
   }
 
   function confirmCursor(keepArmed = false) {
-    if (cursorCell.value) tapCell(cursorCell.value.col, cursorCell.value.row, keepArmed)
+    if (cursorCell.value) tapCell(cursorCell.value.col, cursorCell.value.row, { keepArmed })
   }
 
   // ---------------------------------------------------------------- Подсказка у магазина
@@ -384,20 +449,12 @@ export const useSelectionStore = defineStore('selection', () => {
   const hint = computed(() => {
     const hud = gameStore.hud
     if (selected.towerId) return ''
-    if (armedTowerId.value && receivingBellPlacement.isActive) {
-      const sources = receivingBellPlacement.sources > 1 ? 'Звонарей' : 'Звонаря'
-      return `${TOWERS[armedTowerId.value].name}: получит +${Math.round(receivingBellPlacement.bonus * 100)}% к скорострельности от ${sources}`
+    if (armedTowerId.value) {
+      if (placementEffect.value) return placementEffect.value
+      if (touchPlacement.value?.cell) return 'Можно выбрать другую плиту.'
+      if (touchPlacement.value) return 'Выберите свободную плиту.'
+      return 'Нажмите на свободную плиту'
     }
-    if (armedTowerId.value === 'bell' && bellPlacement.isActive) {
-      if (bellPlacement.covered === 0) return 'Звонарь: нет подходящих башен в зоне'
-      if (bellPlacement.improved === 0) return 'Звонарь: все цели уже получают не меньший бонус'
-      const count = bellPlacement.improved
-      const targets = plural(count, ['башню', 'башни', 'башен'])
-      if (gameStore.blessingEffects.secondBellShare > 0)
-        return `Звонарь ускорит ${count} ${targets}. Итоговый бонус показан над стражами.`
-      return `Звонарь: ускорит ${count} ${targets} на ${Math.round(bellPlacement.bonus * 100)}%`
-    }
-    if (armedTowerId.value) return 'Нажмите на свободную плиту'
     if (hud.isPaused) return 'Пауза. Стражу можно ставить и улучшать'
     if (hud.phase === 'wave') return `Врагов осталось: ${hud.enemiesLeft}`
     if (hud.phase === 'lost' || hud.phase === 'won') return ''
@@ -409,6 +466,9 @@ export const useSelectionStore = defineStore('selection', () => {
 
   return {
     armedTowerId,
+    placementTower,
+    pendingPlacement,
+    touchPlacement,
     selectedTowerCell,
     cursorCell,
     hoverCell,
@@ -429,6 +489,7 @@ export const useSelectionStore = defineStore('selection', () => {
     syncMenuWithLayout,
     chooseShopTower,
     tapCell,
+    confirmPlacement,
     upgradeSelected,
     specializeSelected,
     undoSpecializationSelected,

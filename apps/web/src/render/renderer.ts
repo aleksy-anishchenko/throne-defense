@@ -8,7 +8,6 @@ import {
   type Game,
   type Tower,
   type TowerDef,
-  type TowerStats,
 } from '@throne/game'
 import type { BoardView, Cell } from '@/types'
 import { createEffects } from './effects'
@@ -239,18 +238,30 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     ctx.restore()
   }
 
-  /** Дальность башни: у Звонаря — клетками, у остальных — кругом */
+  /** Одна подсветка для поставленного стража и его предпросмотра, включая будущие улучшения. */
   function drawReach(
-    stats: TowerStats,
-    x: number,
-    y: number,
-    range: number,
+    def: TowerDef,
+    tier: number,
+    cell: Cell,
     isAllowed: boolean,
-    maxRange = range,
     boosted: readonly Tower[] = [],
   ) {
-    if (isAuraTower(stats)) drawAuraCells(x, y, range, isAllowed, maxRange, boosted)
-    else drawRange(x, y, range, isAllowed, maxRange)
+    if (def.id === 'treasury') {
+      drawTreasuryCells(cell.col, cell.row, isAllowed)
+      return
+    }
+    const stats = def.tiers[tier]
+    const x = cell.col + CELL_CENTER
+    const y = cell.row + CELL_CENTER
+    if (isAuraTower(stats)) drawAuraCells(x, y, stats.range, isAllowed, maxTierRange(def), boosted)
+    else drawRange(x, y, stats.range, isAllowed, maxTierRange(def))
+  }
+
+  function drawSelectionRing() {
+    ctx.strokeStyle = GOLD
+    ctx.lineWidth = 0.045
+    circle(ctx, 0, 0, 0.41)
+    ctx.stroke()
   }
 
   /** Точки на свободных плитах, когда выбираем, куда ставить */
@@ -281,12 +292,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         ctx.scale(1 + popTimeLeft * POP_SCALE, 1 + popTimeLeft * POP_SCALE)
       }
       // Кольцо выбора лежит под фигуркой, оставляя свободными углы клетки.
-      if (tower === selectedTower) {
-        ctx.strokeStyle = GOLD
-        ctx.lineWidth = 0.045
-        circle(ctx, 0, 0, 0.41)
-        ctx.stroke()
-      }
+      if (tower === selectedTower) drawSelectionRing()
       const isReady = tower.cooldownLeft < towerStats(tower).cooldown * READY_COOLDOWN_SHARE
       drawTower(
         ctx,
@@ -343,49 +349,40 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     }
   }
 
-  /** Полупрозрачная башня под курсором — «вот так встанет» */
+  function placementPreview(view: BoardView, secondBellShare: number) {
+    const cell = view.placementCell
+    if (!view.armedTowerId || !cell || !game.isCellFree(cell.col, cell.row)) return null
+    const def = TOWERS[view.armedTowerId]
+    const { col, row } = cell
+    const towers = game.state.towers
+    return {
+      def,
+      cell,
+      canAfford: game.state.gold >= def.cost,
+      bellPreview:
+        def.id === 'bell' ? bellPlacementPreview(towers, col, row, secondBellShare) : null,
+      receivingBellPreview: towerPlacementBellPreview(towers, def.id, col, row, secondBellShare),
+      treasuryPreview: def.id === 'treasury' ? treasuryPlacementPreview(towers, col, row) : null,
+    }
+  }
+
   function drawGhostTower(
-    armedTowerId: string,
-    ghostCell: Cell,
+    preview: NonNullable<ReturnType<typeof placementPreview>>,
     time: number,
-    secondBellShare: number,
+    isTouchPlacement: boolean,
   ) {
-    const def = TOWERS[armedTowerId]
-    const canAfford = game.state.gold >= def.cost
-    const receivingBellPreview = towerPlacementBellPreview(
-      game.state.towers,
-      armedTowerId,
-      ghostCell.col,
-      ghostCell.row,
-      secondBellShare,
-    )
-    const bellPreview =
-      def.id === 'bell'
-        ? bellPlacementPreview(game.state.towers, ghostCell.col, ghostCell.row, secondBellShare)
-        : null
-    const treasuryPreview =
-      def.id === 'treasury'
-        ? treasuryPlacementPreview(game.state.towers, ghostCell.col, ghostCell.row)
-        : null
-    const position = { x: ghostCell.col + CELL_CENTER, y: ghostCell.row + CELL_CENTER }
+    const { def, cell, canAfford, bellPreview, receivingBellPreview, treasuryPreview } = preview
+    const position = { x: cell.col + CELL_CENTER, y: cell.row + CELL_CENTER }
     if (treasuryPreview) {
-      drawTreasuryCells(ghostCell.col, ghostCell.row, canAfford)
       drawTreasuryPreviewLinks(ctx, position, treasuryPreview.neighbors, canAfford)
-    } else
-      drawReach(
-        def.tiers[0],
-        ghostCell.col + CELL_CENTER,
-        ghostCell.row + CELL_CENTER,
-        def.tiers[0].range,
-        canAfford,
-        maxTierRange(def),
-        bellPreview?.improved.map(({ tower }) => tower),
-      )
+    }
     ctx.save()
-    ctx.translate(ghostCell.col + CELL_CENTER, ghostCell.row + CELL_CENTER)
-    ctx.globalAlpha = canAfford ? 0.7 : 0.35
+    ctx.translate(position.x, position.y)
+    if (!canAfford) ctx.globalAlpha = 0.35
+    else if (!isTouchPlacement) ctx.globalAlpha = 0.7
     if (receivingBellPreview && canAfford) drawBuffRing(ctx, time)
-    drawTower(ctx, armedTowerId, 0, TOWER_IDLE_AIM_ANGLE, time, true)
+    if (isTouchPlacement) drawSelectionRing()
+    drawTower(ctx, def.id, 0, TOWER_IDLE_AIM_ANGLE, time, true)
     ctx.restore()
     if (treasuryPreview) {
       drawTreasuryBonus(ctx, position, treasuryPreview.bonus, cellCssPx, true, canAfford)
@@ -482,29 +479,31 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
 
       const isPlaying = game.isPlaying()
 
-      if (isPlaying && boardView.armedTowerId) drawFreeCellDots()
+      const { secondBellShare } = rewardStats(state)
+      const preview = isPlaying ? placementPreview(boardView, secondBellShare) : null
+      if (isPlaying && boardView.armedTowerId && !(preview && boardView.isTouchPlacement))
+        drawFreeCellDots()
       const selectedTower =
         boardView.selectedTowerCell &&
         game.towerAt(boardView.selectedTowerCell.col, boardView.selectedTowerCell.row)
-      const { secondBellShare } = rewardStats(state)
       const bellSupport = bellBuffs(state.towers, secondBellShare)
       const focusedSupport = focusedBellBuffs(bellSupport, selectedTower)
       if (selectedTower) {
-        // Выбранная башня: подсветка всегда обычная (не красная). И бледно — дальность на высшей
-        // ступени: видно, что даст улучшение (на высшей ступени совпадает и не рисуется)
-        const stats = towerStats(selectedTower)
-        if (selectedTower.def.id === 'treasury')
-          drawTreasuryCells(selectedTower.col, selectedTower.row, true)
-        else
-          drawReach(
-            stats,
-            selectedTower.x,
-            selectedTower.y,
-            stats.range,
-            true,
-            maxTierRange(selectedTower.def),
-            focusedSupport.map(({ tower }) => tower),
-          )
+        drawReach(
+          selectedTower.def,
+          selectedTower.tier,
+          selectedTower,
+          true,
+          focusedSupport.map(({ tower }) => tower),
+        )
+      } else if (preview) {
+        drawReach(
+          preview.def,
+          0,
+          preview.cell,
+          preview.canAfford,
+          preview.bellPreview?.improved.map(({ tower }) => tower),
+        )
       }
 
       drawThrone(ctx, game.level, time, hurtIntensity())
@@ -520,11 +519,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       effects.draw(ctx)
       drawHealthBars()
 
-      const ghostCell =
-        isPlaying && boardView.armedTowerId ? (boardView.hoverCell ?? boardView.cursorCell) : null
-      if (ghostCell && boardView.armedTowerId && game.isCellFree(ghostCell.col, ghostCell.row)) {
-        drawGhostTower(boardView.armedTowerId, ghostCell, time, secondBellShare)
-      }
+      if (preview) drawGhostTower(preview, time, boardView.isTouchPlacement)
       // Плашки поверх предпросмотра клеток — подсветка не приглушает действующий процент.
       drawTreasuryBonuses(ctx, treasuries.bonuses, selectedTower, cellCssPx)
       drawBellIndicators(ctx, bellSupport, selectedTower, cellCssPx)

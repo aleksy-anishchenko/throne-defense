@@ -484,7 +484,11 @@ async function desktop(page, url) {
   const statLines = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
     ' | ',
   )
-  check('характеристики в панели', statLines === 'урон 7 → 12 | дальность 1,9 → 2,1', statLines)
+  check(
+    'характеристики в панели',
+    statLines === 'урон 7 → 12 | радиус 1,9 клетки → 2,1 клетки',
+    statLines,
+  )
 
   check('у лучника выбора цели нет', (await page.locator('.tower-info .target-mode').count()) === 0)
 
@@ -539,7 +543,7 @@ async function desktop(page, url) {
   await hoverCell(5, 9)
   check(
     'превью Звонаря: реальное усиление +20% и число получателей',
-    (await page.locator('#hint').innerText()).includes('ускорит 1 башню на 20%') &&
+    (await page.locator('#hint').innerText()).includes('Лучник будет стрелять на 20% чаще') &&
       (await page.evaluate(() => window.__bellLabels.includes('→ +20%'))),
   )
   await clickCell(page, 5, 9)
@@ -1462,7 +1466,11 @@ async function desktop(page, url) {
   const ballista = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
     ' | ',
   )
-  check('баллиста: характеристики', ballista === 'урон 75 → 125 | дальность 2,7 → 2,9', ballista)
+  check(
+    'баллиста: характеристики',
+    ballista === 'урон 75 → 125 | радиус 2,7 клетки → 2,9 клетки',
+    ballista,
+  )
 
   // Выбор цели — умение баллисты: кнопкой в панели и клавишей T
   const targetButton = page.locator('.tower-info .target-mode')
@@ -1725,9 +1733,26 @@ async function phone(page, url) {
   watchErrors(page, 'телефон')
   await page.goto(url)
   await page.getByRole('button', { name: 'Играть' }).tap()
+  await page.evaluate(() => document.fonts.ready)
+  await waitForFrames(page)
+  const layout = () =>
+    page
+      .locator('.hud, #board, .panel, #hint, .controls')
+      .evaluateAll((items) =>
+        JSON.stringify(items.map((item) => item.getBoundingClientRect().toJSON())),
+      )
+  const idleLayout = await layout()
   const panelHeight = () =>
     page.evaluate(() => document.querySelector('.panel').getBoundingClientRect().height)
   const idlePanelHeight = await panelHeight()
+  const tapTile = async (col, row) => {
+    const bounds = await page.locator('#board').boundingBox()
+    await page.touchscreen.tap(
+      bounds.x + ((col + 0.5) / COLS) * bounds.width,
+      bounds.y + ((row + 0.5) / ROWS) * bounds.height,
+    )
+    await waitForFrames(page)
+  }
 
   // Кнопка открывает список стражей с короткими подписями.
   const shopToggle = page.getByRole('button', { name: 'Выбрать стража' })
@@ -1763,6 +1788,13 @@ async function phone(page, url) {
       !drawerText.includes('получаемое лечение −20%'),
     drawerText.slice(0, 200),
   )
+  check(
+    'в карточках видны короткие описания стражей без радиуса',
+    !/радиус/i.test(drawerText) &&
+      (await drawer.getByText('Часто стреляет', { exact: true }).isVisible()) &&
+      (await drawer.getByText('Ускоряет стрельбу на 20%', { exact: true }).isVisible()) &&
+      (await drawer.getByText('Казны рядом повышают доход', { exact: true }).isVisible()),
+  )
   await page.keyboard.press('Escape')
   await waitForFrames(page)
   check('Escape закрыл меню', (await page.getByRole('dialog').count()) === 0)
@@ -1770,41 +1802,109 @@ async function phone(page, url) {
   await page.locator('.shop-drawer-backdrop').tap({ position: { x: 10, y: 10 } })
   check('нажатие мимо меню закрыло его', (await page.getByRole('dialog').count()) === 0)
 
+  // Фиксируем пламя канделябра до выбора стража, чтобы сравнить окружности на поле.
+  await page.getByRole('button', { name: 'Пауза', exact: true }).tap()
+  await waitForFrames(page)
   await shopToggle.tap()
   await drawer.getByRole('button', { name: /Огневик/ }).tap()
   check('выбор в меню закрыл его', (await page.getByRole('dialog').count()) === 0)
+  const hint = page.locator('#hint [role="status"]')
+  const place = page.getByRole('button', { name: 'Да', exact: true })
+  const cancel = page.getByRole('button', { name: 'Нет', exact: true })
+  const placementDetails = page.locator('#placement-details')
+  const panelButtons = () => page.locator('.panel').getByRole('button').allInnerTexts()
+  const tilePrompt = 'Огневик · Поджигает врагов Выберите свободную плиту.'
   check(
-    'после выбора стража подсказка предлагает нажать на плиту',
-    (await page.locator('#hint').innerText()) === 'Нажмите на свободную плиту',
+    'до выбора плиты видны только имя, короткое описание и подсказка, поле на месте',
+    (await hint.innerText()).replace(/\s+/g, ' ').trim() === tilePrompt &&
+      (await page.locator('.controls').isHidden()) &&
+      (await panelButtons()).length === 0 &&
+      (await layout()) === idleLayout,
+  )
+  const beforePlacement = await readGameSnapshot(page)
+  // Выборка вдоль текущего и максимального радиусов Огневика, верхние полуокружности внутри поля.
+  const rangeEdges = () =>
+    page.locator('#board').evaluate((canvas, cols) => {
+      const cell = canvas.width / cols
+      const ctx = canvas.getContext('2d')
+      const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+      return [1.5, 1.9].map((radius) =>
+        Array.from({ length: 96 }, (_, i) => {
+          const angle = Math.PI + (Math.PI * i) / 95
+          const x = Math.floor((4.5 + Math.cos(angle) * radius) * cell)
+          const y = Math.floor((9.5 + Math.sin(angle) * radius) * cell)
+          return pixels[(y * canvas.width + x) * 4]
+        }),
+      )
+    }, COLS)
+  const emptyEdges = await rangeEdges()
+  await tapTile(5, 9)
+  await tapTile(3, 9)
+  check(
+    'касание ковра возвращает к выбору плиты',
+    (await hint.innerText()).replace(/\s+/g, ' ').trim() === tilePrompt &&
+      (await panelButtons()).length === 0,
+  )
+  await tapTile(4, 9)
+  await tapTile(4, 9)
+  const preview = await readGameSnapshot(page)
+  const previewEdges = await rangeEdges()
+  const detailsBox = await placementDetails.boundingBox()
+  const yesBox = await place.boundingBox()
+  const noBox = await cancel.boundingBox()
+  check(
+    'в подтверждении видны только имя, вопрос и кнопки «Да» и «Нет»',
+    (await page.locator('#placement-question').innerText()).split(/\s+/).join(' ') ===
+      'Огневик Поставить стража?' &&
+      (await panelButtons()).join(' ') === 'Да Нет' &&
+      yesBox !== null &&
+      noBox !== null &&
+      Math.abs(yesBox.width - noBox.width) < 1 &&
+      detailsBox?.width === 1 &&
+      detailsBox.height === 1 &&
+      (await placementDetails.textContent()).includes('Цена 90 золота'),
   )
   check(
-    'кнопка показывает стража в руке (значок и подпись для скринридера)',
-    (await page.locator('.shop-toggle.armed').getAttribute('aria-label')).includes('Огневик'),
-  )
-  const bounds = await page.locator('#board').boundingBox()
-  await page.touchscreen.tap(
-    bounds.x + (4.5 / COLS) * bounds.width,
-    bounds.y + (9.5 / ROWS) * bounds.height,
+    'после отпускания пальца видны текущий и максимальный радиусы',
+    previewEdges.every((ring, i) => ring.some((pixel, j) => pixel - emptyEdges[i][j] > 12)),
   )
   check(
-    'постройка касанием',
-    await page
-      .waitForFunction(() => window.__throne.game.state.towers.length === 1, null, {
-        timeout: 2000,
-      })
-      .then(() => true)
-      .catch(() => false),
+    'повторное касание сохраняет предпросмотр без траты золота',
+    (await place.isEnabled()) &&
+      preview.towers.length === 0 &&
+      preview.gold === beforePlacement.gold &&
+      (await hint.innerText()).includes('Поставить стража?') &&
+      (await cancel.isVisible()) &&
+      (await layout()) === idleLayout &&
+      (await hint.textContent()).includes('Столбец 5, ряд 10'),
+  )
+  await place.tap()
+  await waitForFrames(page)
+  const built = await readGameSnapshot(page)
+  check(
+    'подтверждение ставит одного Огневика на последнюю выбранную плиту за 90',
+    built.towers.join() === 'mage0@4,9' &&
+      built.gold === beforePlacement.gold - 90 &&
+      (await layout()) === idleLayout,
   )
   check(
     'после постройки страж убран из руки, кнопка снова «Выбрать стража»',
-    await shopToggle.isVisible(),
+    (await shopToggle.isVisible()) &&
+      (await page.locator('.controls').getByRole('button').count()) === 5,
   )
   // Выбранная башня: панели башни внизу нет (она в меню), высота панели та же, поле не прыгает
-  await page.touchscreen.tap(
-    bounds.x + (4.5 / COLS) * bounds.width,
-    bounds.y + (9.5 / ROWS) * bounds.height,
-  )
+  await tapTile(4, 9)
   await waitForFrames(page)
+  const builtEdges = await rangeEdges()
+  check(
+    'у построенного Огневика обе окружности совпадают с предпросмотром',
+    builtEdges.every((ring, i) => ring.every((pixel, j) => pixel === previewEdges[i][j])),
+    JSON.stringify(
+      builtEdges.map((ring, i) =>
+        ring.flatMap((v, j) => (v === previewEdges[i][j] ? [] : [[j, previewEdges[i][j], v]])),
+      ),
+    ),
+  )
   check('панель башни на телефоне внизу скрыта', await page.locator('.tower-info').isHidden())
   check(
     'выбор башни не меняет высоту панели',
@@ -1828,6 +1928,7 @@ async function phone(page, url) {
     'в меню построенного Огневика видны механика, характеристики и действия',
     towerMenuText.includes('Поджигает цель и врагов рядом с ней.') &&
       towerMenuText.includes('Сначала стреляет по негорящим.') &&
+      towerMenuText.includes('радиус 1,5 клетки → 1,7 клетки') &&
       /горение \d/.test(towerMenuText) &&
       !/урон \d/.test(towerMenuText) &&
       towerMenuText.includes('Улучшить') &&
@@ -1848,13 +1949,10 @@ async function phone(page, url) {
     (await page.getByRole('dialog').count()) === 0 &&
       (await page.evaluate(() => window.__throne.selection.selectedTowerCell)) === null,
   )
+  await page.getByRole('button', { name: 'Продолжить', exact: true }).tap()
   // Снова нажали на башню — меню снова открыто; нажали мимо меню — закрыто и без выбора.
   // Башня внизу поля, поэтому меню наверху, а левый нижний угол экрана — мимо него
-  const tapTower = () =>
-    page.touchscreen.tap(
-      bounds.x + (4.5 / COLS) * bounds.width,
-      bounds.y + (9.5 / ROWS) * bounds.height,
-    )
+  const tapTower = () => tapTile(4, 9)
   await tapTower()
   await waitForFrames(page)
   check('повторное нажатие на башню снова открыло меню', await towerMenu.isVisible())
@@ -1915,19 +2013,109 @@ async function phone(page, url) {
     const gold = game.state.gold
     game.state.gold += 500
     game.build('archer', 4, 9)
-    game.build('bell', 5, 9)
     return gold
   })
-  await clickCell(page, 5, 9)
+  await shopToggle.tap()
+  await drawer.getByRole('button', { name: /Звонарь/ }).tap()
+  await page.setViewportSize({ width: 667, height: 375 })
+  await waitForFrames(page)
+  check(
+    'при выборе плиты на повёрнутом телефоне остаётся только подсказка со стражем',
+    (await hint.innerText()).replace(/\s+/g, ' ').trim() ===
+      'Звонарь · Ускоряет стрельбу Выберите свободную плиту.' &&
+      (await panelButtons()).length === 0 &&
+      (await page.locator('.shop').isHidden()) &&
+      (await page.locator('.controls').isHidden()),
+  )
+  await page.setViewportSize({ width: 320, height: 568 })
+  await waitForFrames(page)
+  await tapTile(0, 1)
+  check(
+    'описание Звонаря для экранного диктора сообщает о пустой зоне',
+    (await placementDetails.textContent()).includes('нет стражей'),
+  )
+  await tapTile(5, 9)
+  check(
+    'перенос к Лучнику показывает получателя и реальное усиление',
+    (await placementDetails.textContent()).includes('Лучник будет стрелять на 20% чаще') &&
+      (await readGameSnapshot(page)).towers.length === 1,
+  )
+  await checkControlsFit(page)
+  await page.setViewportSize({ width: 667, height: 375 })
+  await waitForFrames(page)
+  await checkControlsFit(page)
+  check(
+    'после поворота телефона выбранная плита и усиление сохраняются',
+    (await place.isEnabled()) &&
+      (await panelButtons()).join(' ') === 'Да Нет' &&
+      (await placementDetails.textContent()).includes('Лучник будет стрелять на 20% чаще'),
+  )
+  await page.setViewportSize({ width: 320, height: 568 })
+  await waitForFrames(page)
+  await place.tap()
+  await tapTile(5, 9)
   const bellMenu = page.getByRole('dialog', { name: 'Башня: Звонарь I', exact: true })
   check(
     '320×568: меню Звонаря показывает получателей и правило без сложения',
-    (await bellMenu.innerText()).includes('Ускоряет 1 башню') &&
+    (await bellMenu.innerText()).includes('Ускоряет 1 башню · Лучник') &&
       (await bellMenu.innerText()).includes('Бонусы не складываются'),
   )
   await page.keyboard.press('Escape')
+  const beforeCancel = await readGameSnapshot(page)
+  const narrowLayout = await layout()
+  await shopToggle.tap()
+  await drawer.getByRole('button', { name: /Лучник/ }).tap()
+  await tapTile(4, 8)
+  check(
+    '320×568: имя и вопрос «Поставить стража?» помещаются над кнопками',
+    await page
+      .locator('#hint')
+      .evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight + 1),
+  )
+  check(
+    'будущий получатель видит ускорение от построенного Звонаря',
+    (await placementDetails.textContent()).includes('получит +20% к скорострельности') &&
+      (await layout()) === narrowLayout,
+  )
+  await tapTile(0, 1)
+  check(
+    'за пределами ауры исчезает обещание ускорения',
+    (await placementDetails.textContent()).includes('вне зоны ускорения'),
+  )
+  await cancel.tap()
+  const afterCancel = await readGameSnapshot(page)
+  check(
+    'отмена убирает предпросмотр и сохраняет золото и стражей',
+    (await place.isHidden()) &&
+      (await shopToggle.isVisible()) &&
+      (await page.locator('.controls').getByRole('button').count()) === 5 &&
+      (await layout()) === narrowLayout &&
+      afterCancel.gold === beforeCancel.gold &&
+      afterCancel.towers.join() === beforeCancel.towers.join(),
+  )
+  await page.evaluate(() => window.__throne.game.build('treasury', 0, 0))
+  await shopToggle.press('Enter')
+  await drawer.getByRole('button', { name: /Казна/ }).press('Enter')
+  check(
+    'после выбора с клавиатуры фокус на поле',
+    await page.locator('#board').evaluate((board) => document.activeElement === board),
+  )
+  await tapTile(2, 1)
+  await page.keyboard.press('ArrowLeft')
+  check(
+    'стрелка переносит Казну в предпросмотре по диагонали от соседа',
+    (await placementDetails.textContent()).includes('+10% к доходу этой Казны') &&
+      !(await readGameSnapshot(page)).towers.includes('treasury0@1,1'),
+  )
+  await page.keyboard.press('Enter')
+  check(
+    'Enter строит на проверенной с клавиатуры плите',
+    (await readGameSnapshot(page)).towers.includes('treasury0@1,1'),
+  )
   await page.evaluate((gold) => {
     const { game } = window.__throne
+    game.sell(0, 0)
+    game.sell(1, 1)
     game.sell(4, 9)
     game.sell(5, 9)
     game.state.gold = gold

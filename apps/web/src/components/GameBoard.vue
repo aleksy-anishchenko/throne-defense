@@ -27,6 +27,7 @@ const { onPointerDown, onPointerMove, onPointerLeave } = useBoardPointer(boardCa
         :class="{ clickable: selection.isBoardClickable }"
         tabindex="0"
         aria-label="Тронный зал: игровое поле"
+        aria-describedby="hint"
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
         @pointerleave="onPointerLeave"

@@ -126,6 +126,10 @@
   /* Ширину строки спрашивают container-запросы кнопки слева (ниже) */
   container: controls / inline-size;
 }
+/* Пока игрок выбирает плиту, строка сохраняет высоту, чтобы поле оставалось на месте. */
+.controls[inert] {
+  visibility: hidden;
+}
 .btn {
   min-height: 46px;
   padding: 0 14px;
@@ -148,6 +152,14 @@
 }
 .btn.grow {
   flex: 1 1 auto;
+}
+.controls.placement-actions .btn {
+  flex: 1 1 0;
+  min-height: 46px;
+  font-size: 1rem;
+}
+.placement-actions .keys {
+  visibility: hidden;
 }
 .btn.icon {
   flex: none;
@@ -184,8 +196,7 @@
   display: none;
 }
 
-/* Кнопка «Стражи» слева в нижней строке (телефон, ShopToggle.vue).
-   Размер не зависит от значка (страж «в руке» или общий) — строка не прыгает */
+/* Кнопка «Стражи» слева в нижней строке (телефон, ShopToggle.vue). */
 .shop-toggle {
   flex: none;
   display: flex;
@@ -201,15 +212,15 @@
   font-weight: 800;
   cursor: pointer;
 }
-.shop-toggle.armed {
-  border-color: var(--gold);
-  background: var(--slab-hi);
-}
 .shop-toggle-icon {
   width: 28px;
   height: 28px;
   flex: none;
   color: var(--parch-dim);
+}
+.shop-toggle.armed {
+  border-color: var(--gold);
+  background: var(--slab-hi);
 }
 /* Телефон уже 480 px: в строку должны влезть кнопка слева (она крупная), «Начать волну» и три
    кнопки-значка. Поэтому «Начать волну» и значки поменьше */
@@ -217,7 +228,7 @@
   .controls .btn.icon {
     width: 40px;
   }
-  .controls .btn.primary {
+  .controls .btn.grow {
     padding: 0 6px;
     font-size: 0.9rem;
   }
@@ -267,6 +278,9 @@
 }
 .shop-drawer-body:focus {
   outline: none;
+}
+.shop-picker-body {
+  max-height: 100%;
 }
 @keyframes drawer-up {
   from {

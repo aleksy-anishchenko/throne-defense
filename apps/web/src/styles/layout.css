@@ -136,13 +136,27 @@
 #hint {
   grid-row: 1;
   margin: 0;
-  height: 1.3em;
+  /* Одинаковое место для инструкции, ответа об усилении и вопроса о покупке. */
+  height: 2.6em;
   font-size: 0.95rem;
   line-height: 1.3;
   color: var(--parch-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+#hint.placement-hint {
+  text-align: center;
+  white-space: normal;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.placement-question {
+  display: grid;
+}
+.placement-heading strong,
+.placement-question strong {
+  color: var(--parch);
 }
 /* Телефон: подсказка и одна строка кнопок. Выбор стража и действия с башней — в меню
    (кнопка слева в строке), поэтому высота панели всегда одна и поле не прыгает */

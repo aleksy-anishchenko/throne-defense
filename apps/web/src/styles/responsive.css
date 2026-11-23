@@ -116,6 +116,15 @@
   .shop-drawer:not(.reward-drawer) {
     display: none;
   }
+  .panel.placing-tower {
+    grid-template-rows: minmax(0, 1fr) auto auto;
+  }
+  .panel.placing-tower #hint {
+    grid-row: 2;
+  }
+  .panel.placing-tower .controls {
+    grid-row: 3;
+  }
   /* Подробности выбранной башни занимают место магазина и подсказки */
   .panel.has-selected-tower .shop,
   .panel.has-selected-tower #hint {
@@ -284,9 +293,11 @@
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 400px) {
   .panel {
     grid-template-rows: auto minmax(0, 1fr) 0 auto;
+    gap: 3px;
   }
   .shop {
-    gap: 4px;
+    gap: 2px;
+    padding-block: 2px;
   }
   .card {
     grid-template-columns: 26px minmax(0, 1fr);
@@ -323,6 +334,11 @@
   }
   .tower-info .tower-stats span {
     font-size: 0.85rem;
+  }
+}
+@media (pointer: coarse) {
+  #hint {
+    height: 2.6em;
   }
 }
 @media (prefers-reduced-motion: reduce) {

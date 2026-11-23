@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // Меню выбора стража на телефоне.
-// Нажал на стража — меню закрылось, он «в руке», осталось нажать на свободную плиту.
+// После выбора карточки можно примерить стража на свободных плитах.
 // С боковой панелью (компьютер, телефон набок) меню скрыто стилями, там работает ShopPanel
 import { TOWER_LIST } from '@throne/game'
-import { useTemplateRef } from 'vue'
+import { nextTick, useTemplateRef } from 'vue'
 import { useMenuFocus } from '@/composables/useMenuFocus'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
+import { shopPlacementDescription } from '@/utils/towerStats'
 import TowerIcon from './TowerIcon.vue'
 
 const store = useGameStore()
@@ -14,6 +15,15 @@ const selection = useSelectionStore()
 const drawerElement = useTemplateRef('drawerElement')
 
 useMenuFocus(() => selection.isShopOpen, drawerElement)
+
+async function chooseTower(towerId: string, event: MouseEvent) {
+  selection.chooseShopTower(towerId)
+  if (event.detail === 0 && selection.placementTower && !selection.isShopOpen) {
+    // После выбора карточки стрелками можно сразу примерить стража на поле.
+    await nextTick()
+    document.getElementById('board')?.focus()
+  }
+}
 </script>
 
 <template>
@@ -21,7 +31,7 @@ useMenuFocus(() => selection.isShopOpen, drawerElement)
     <div class="shop-drawer-backdrop" @click="selection.closeMenu"></div>
     <div
       ref="drawerElement"
-      class="shop-drawer-body"
+      class="shop-drawer-body shop-picker-body"
       role="dialog"
       aria-modal="true"
       aria-label="Выбор стража"
@@ -46,8 +56,8 @@ useMenuFocus(() => selection.isShopOpen, drawerElement)
             :class="{ poor: store.hud.gold < towerDef.cost }"
             :aria-pressed="selection.armedTowerId === towerDef.id"
             :aria-label="`${towerDef.name}, цена ${towerDef.cost}`"
-            :aria-description="towerDef.shortDescription"
-            @click="selection.chooseShopTower(towerDef.id)"
+            :aria-describedby="`shop-description-${towerDef.id}`"
+            @click="chooseTower(towerDef.id, $event)"
           >
             <TowerIcon :tower-id="towerDef.id" class="drawer-card-icon" />
             <span class="drawer-card-name">{{ towerDef.name }}</span>
@@ -57,7 +67,9 @@ useMenuFocus(() => selection.isShopOpen, drawerElement)
               </svg>
               <span class="visually-hidden">цена</span>{{ towerDef.cost }}
             </span>
-            <span class="drawer-card-description">{{ towerDef.shortDescription }}</span>
+            <span :id="`shop-description-${towerDef.id}`" class="drawer-card-description">{{
+              shopPlacementDescription(towerDef)
+            }}</span>
             <span v-if="store.hud.gold < towerDef.cost" class="drawer-card-poor">
               не хватает {{ towerDef.cost - store.hud.gold }}
             </span>

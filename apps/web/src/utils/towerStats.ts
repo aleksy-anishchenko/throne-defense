@@ -2,12 +2,17 @@
 
 import type { RewardStats, StatKey, TowerDef, TowerStats } from '@throne/game'
 import { displayStatValue } from '@throne/game'
-import { formatDecimal, formatPercent } from './format'
+import { formatDecimal, formatPercent, plural } from './format'
+
+function distanceInCells(range: number): string {
+  const unit = Number.isInteger(range) ? plural(range, ['клетка', 'клетки', 'клеток']) : 'клетки'
+  return `${formatDecimal(range)} ${unit}`
+}
 
 /** Как подписывать и показывать каждую характеристику */
 export const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: number) => string }> = {
   damage: { label: 'урон', format: String },
-  range: { label: 'дальность', format: formatDecimal },
+  range: { label: 'радиус', format: distanceInCells },
   cooldown: { label: 'перезарядка', format: (value) => `${formatDecimal(value)} с` },
   slowAmount: { label: 'замедление', format: formatPercent },
   splashRadius: { label: 'взрыв', format: formatDecimal },
@@ -40,6 +45,20 @@ export function cellsInReach(range: number): number {
     }
   }
   return count
+}
+
+/** Зона действия до покупки, в тех же единицах, что и подсветка на поле. */
+export function placementReach(def: TowerDef): string {
+  const stats = def.tiers[0]
+  if (def.id === 'treasury') return 'По стороне и диагонали'
+  if (isAuraTower(stats)) return `До ${cellsInReach(stats.range)} соседних клеток`
+  return `Радиус ${distanceInCells(stats.range)}`
+}
+
+export function shopPlacementDescription(def: TowerDef): string {
+  if (def.id === 'treasury') return 'Казны рядом повышают доход'
+  const bonus = def.tiers[0].fireRateBonus
+  return bonus ? `Ускоряет стрельбу на ${formatPercent(bonus)}` : def.shortDescription
 }
 
 /** Дальность ауры — числом клеток */

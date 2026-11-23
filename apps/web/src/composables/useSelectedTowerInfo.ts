@@ -45,7 +45,10 @@ export function useSelectedTowerInfo() {
     if (towerId === 'bell') {
       const count = selection.selected.bellBoostedTowers
       const covered = selection.selected.bellCoveredTowers
-      lines.push(`Ускоряет ${count} ${plural(count, ['башню', 'башни', 'башен'])}`)
+      const names = selection.selected.bellTargetNames
+      lines.push(
+        `Ускоряет ${count} ${plural(count, ['башню', 'башни', 'башен'])}${names ? ` · ${names}` : ''}`,
+      )
       if (covered === 0) lines.push('Нет подходящих башен в радиусе')
       else if (covered > count)
         lines.push(`Другой Звонарь даёт не меньший бонус: ${covered - count}`)
