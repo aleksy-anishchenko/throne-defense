@@ -13,9 +13,11 @@
 /* Верхняя строка */
 .hud {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 8px 12px 6px;
+  container: hud / inline-size;
 }
 .hud-stats {
   display: flex;
@@ -57,10 +59,12 @@
   }
 }
 .wave {
-  margin-left: auto;
+  flex: 1 1 0;
+  min-width: 0;
   font-weight: 700;
   font-size: 1.05rem;
   text-align: right;
+  white-space: nowrap;
 }
 .hud-level {
   display: block;
@@ -68,6 +72,21 @@
   font-weight: 500;
   font-size: 0.8rem;
   line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* При крупном шрифте волна и зал получают свою строку сразу, пока счётчики ещё короткие. */
+@container hud (width < 18rem) {
+  .hud-stats,
+  .wave {
+    flex-basis: 100%;
+  }
+  .wave {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
 }
 /* Поле */
 .stage {
@@ -123,8 +142,11 @@
 
 /* Панель */
 .panel {
+  /* Высота строки задаётся при открытии игры и учитывает две строки крупного текста. */
+  --controls-height: max(46px, 2.5rem);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: var(--controls-height);
   gap: 6px;
   padding: 4px 10px 10px;
 }
@@ -134,34 +156,16 @@
   grid-column: 1;
 }
 #hint {
-  grid-row: 1;
+  display: none;
   margin: 0;
-  /* Одинаковое место для инструкции, ответа об усилении и вопроса о покупке. */
-  height: 2.6em;
-  font-size: 0.95rem;
   line-height: 1.3;
   color: var(--parch-dim);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-#hint.placement-hint {
-  text-align: center;
-  white-space: normal;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.placement-question {
-  display: grid;
-}
-.placement-heading strong,
-.placement-question strong {
-  color: var(--parch);
-}
-/* Телефон: подсказка и одна строка кнопок. Выбор стража и действия с башней — в меню
-   (кнопка слева в строке), поэтому высота панели всегда одна и поле не прыгает */
+/* На телефоне кнопки, инструкция и подтверждение занимают одну и ту же строку. */
 .controls {
-  grid-row: 2;
+  grid-row: 1;
 }
 /* «Строительство» над магазином — только с боковой панелью (responsive.css) */
 .panel-title {

@@ -12,7 +12,13 @@ export function plural(count: number, forms: readonly [string, string, string]):
 export const formatNumber = (value: number): string => value.toLocaleString('ru-RU')
 
 /** 2.5 → «2,5» */
-export const formatDecimal = (value: number): string => String(value).replace('.', ',')
+const decimalFormat = new Intl.NumberFormat('ru-RU', {
+  maximumFractionDigits: 2,
+  useGrouping: false,
+})
+// После применения бонусов 2,875 может получиться как 2,8749999999999996.
+export const formatDecimal = (value: number): string =>
+  decimalFormat.format(Number(value.toPrecision(15)))
 
 /** 0.35 → «35%» */
 export const formatPercent = (fraction: number): string => Math.round(fraction * 100) + '%'

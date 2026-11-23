@@ -21,9 +21,20 @@ export const towerStats = (tower: Pick<Tower, 'def' | 'tier'>): TowerStats =>
 export const towerAspect = (tower: Tower) =>
   tower.def.aspects?.find((aspect) => aspect.id === tower.aspectId) ?? null
 
-/** Снижение лечения — второе действие той же силы проклятия, отдельного числа в балансе нет. */
-export const displayStatValue = (stats: TowerStats, key: StatKey): number | undefined =>
-  key === 'healingReduction' ? stats.curseAmount : stats[key]
+export function displayStatValue(stats: TowerStats, key: StatKey): number | undefined {
+  if (key === 'attackRate') return stats.cooldown > 0 ? 1 / stats.cooldown : undefined
+  if (key === 'healingReduction') return stats.curseAmount
+  return stats[key]
+}
+
+/** На сколько секунд продвигается перезарядка с учётом Звонарей и благословений. */
+export function reloadProgress(
+  seconds: number,
+  bellBonus: number,
+  fireRateMultiplier: number,
+): number {
+  return seconds * (1 + bellBonus) * fireRateMultiplier
+}
 
 /** Все способы выбрать цель, в том порядке, в каком их перебирает кнопка в панели башни */
 export const TARGET_MODES: readonly TargetMode[] = ['first', 'strongest']
@@ -229,7 +240,7 @@ export function updateTowers(world: World, dt: number): void {
     if (!fire) continue
 
     const bonus = fireRateBonusFor(tower, bells, rewards.secondBellShare)
-    tower.cooldownLeft -= dt * (1 + bonus) * rewards.fireRateMultiplier
+    tower.cooldownLeft -= reloadProgress(dt, bonus, rewards.fireRateMultiplier)
     if (tower.cooldownLeft > 0) continue
 
     const stats = effectiveTowerStats(world.state, tower, towerStats(tower))

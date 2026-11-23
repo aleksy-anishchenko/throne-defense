@@ -29,6 +29,7 @@ export function useGameLoop(
   let animationFrameId = 0
   let lastTimestamp = 0
   let fittedLevel = store.game.level
+  let needsBoardFit = true
 
   function runFrame(timestamp: number) {
     // Следующий кадр просим первым делом: если в этом кадре случится ошибка,
@@ -38,7 +39,8 @@ export function useGameLoop(
     // `|| 0` — страховка: если получилось «не число» (NaN), считаем, что времени не прошло
     const realDt = Math.min(MAX_FRAME_DT, (timestamp - lastTimestamp) / MS_PER_SECOND || 0)
     lastTimestamp = timestamp
-    if (fittedLevel !== store.game.level) {
+    if (needsBoardFit || fittedLevel !== store.game.level) {
+      needsBoardFit = false
       fittedLevel = store.game.level
       fitBoard()
     }
@@ -87,13 +89,16 @@ export function useGameLoop(
   }
 
   function onPixelRatioChange() {
-    fitBoard()
+    needsBoardFit = true
     watchPixelRatio()
   }
 
   onMounted(() => {
     renderer = createRenderer(boardCanvas.value!, store.game)
-    resizeObserver = new ResizeObserver(fitBoard)
+    // Подгонка меняет отступы самой области. Обновляем их перед отрисовкой следующего кадра.
+    resizeObserver = new ResizeObserver(() => {
+      needsBoardFit = true
+    })
     resizeObserver.observe(stageElement.value!)
     watchPixelRatio()
     animationFrameId = requestAnimationFrame(runFrame)

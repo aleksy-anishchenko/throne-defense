@@ -24,10 +24,13 @@ export function treasuryBonusOf(
 }
 
 /** Фактический доход за волну, округлённый вниз до целой монеты. */
+export function treasuryIncomeWithNeighbors(base: number, neighbors: number): number {
+  return Math.floor((base * (10 + Math.min(3, neighbors))) / 10)
+}
+
 export function treasuryIncomeOf(towers: readonly Tower[], tower: Tower): number {
   const base = tower.def.tiers[tower.tier].goldPerWave ?? 0
-  const count = Math.min(3, treasuryNeighbors(towers, tower).length)
-  return Math.floor((base * (10 + count)) / 10)
+  return treasuryIncomeWithNeighbors(base, treasuryNeighbors(towers, tower).length)
 }
 
 /** Казна: выплата каждой башни учитывает её собственных соседей. */

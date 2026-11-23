@@ -15,9 +15,7 @@ import {
   fireRateContributionsOf,
   bellCoverage,
   treasuryBonusOf,
-  treasuryIncomeOf,
   treasuryNeighbors,
-  towerAspect,
   paidAspectCost,
   isFullRefund,
   refundFor,
@@ -108,11 +106,9 @@ export const useSelectionStore = defineStore('selection', () => {
     bellTargetNames: '',
     treasuryNeighbors: 0,
     treasuryBonus: 0,
-    treasuryIncome: 0,
     upgradeCost: null as number | null,
     upgradeCostMultiplier: 1,
     hunterStacks: 0,
-    hunterMaxStacks: 0,
   })
 
   /** Снимок предпросмотра: игра не реактивна, как и снимок выбранной башни выше. */
@@ -191,12 +187,9 @@ export const useSelectionStore = defineStore('selection', () => {
     selected.bellTargetNames = [...new Set(boosted.map((target) => target.def.name))].join(', ')
     selected.treasuryNeighbors = tower ? treasuryNeighbors(game.state.towers, tower).length : 0
     selected.treasuryBonus = tower ? treasuryBonusOf(game.state.towers, tower) : 0
-    selected.treasuryIncome = tower ? treasuryIncomeOf(game.state.towers, tower) : 0
     selected.upgradeCostMultiplier = upgradeCostMultiplier
     selected.upgradeCost = tower ? upgradeCost(tower, selected.upgradeCostMultiplier) : null
-    const aspect = tower ? towerAspect(tower) : null
     selected.hunterStacks = tower?.hunterStacks ?? 0
-    selected.hunterMaxStacks = aspect?.hunterMark?.maxStacks ?? 0
 
     const hover = hoverCell.value
     const pending = touchPlacement.value?.cell
@@ -383,11 +376,7 @@ export const useSelectionStore = defineStore('selection', () => {
     const tower = selectedTower()
     if (!tower || !gameStore.isPlaying()) return
     if (!game.specialize(tower.col, tower.row, aspectId)) {
-      gameStore.rejectAction(
-        game.state.phase === 'build'
-          ? 'Не удалось выбрать специализацию: проверьте уровень и золото'
-          : 'Специализацию выбирают между волнами',
-      )
+      gameStore.rejectAction('Для покупки аспекта нужны III ступень и достаточно золота')
     }
     gameStore.syncHud()
     sync()

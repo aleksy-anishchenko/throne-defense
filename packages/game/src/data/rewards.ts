@@ -128,7 +128,7 @@ export const REWARD_LIST: readonly RewardDef[] = [
   {
     id: 'military-engineer',
     name: 'Военный инженер',
-    description: 'Скидка 30% на улучшения и специализации стражей',
+    description: 'Скидка 30% на улучшения и аспекты стражей',
     rarity: 'legendary',
     setId: 'supplies',
     effect: { kind: 'upgradeDiscount', amount: 0.3 },

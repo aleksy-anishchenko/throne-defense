@@ -46,6 +46,8 @@ export interface TowerStats {
 /** Какие характеристики можно показать в панели башни */
 export type StatKey =
   | 'damage'
+  /** Число атак за секунду игрового времени. */
+  | 'attackRate'
   | 'range'
   | 'cooldown'
   | 'slowAmount'
@@ -106,7 +108,7 @@ export interface TowerDef {
   upgradeCosts: readonly number[]
   /** Характеристики по ступеням. Ступеней на одну больше, чем улучшений */
   tiers: readonly TowerStats[]
-  /** Один аспект на конкретную башню; покупается между волнами после последней ступени. */
+  /** После последней обычной ступени башня может получить один из этих аспектов. */
   aspects?: readonly TowerAspectDef[]
   /** Какие характеристики показывать в панели башни */
   displayStats: readonly StatKey[]
@@ -361,7 +363,7 @@ export interface Tower {
   tier: number
   /** Выбранная специализация; числовые характеристики остаются от последней обычной ступени. */
   aspectId: string | null
-  /** Аспект уже участвовал в бою — отменить покупку больше нельзя. */
+  /** Выбор закрепляется при старте волны или покупке во время волны. */
   aspectLocked: boolean
   /** Сколько секунд осталось до следующего выстрела */
   cooldownLeft: number

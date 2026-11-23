@@ -55,7 +55,7 @@ const archer: TowerDef = {
   id: 'archer',
   name: 'Лучник',
   shortDescription: 'Часто стреляет',
-  description: 'Часто стреляет. Броня снижает урон стрел.',
+  description: 'Высокая скорость атаки. Низкий урон по броне.',
   cost: 60,
   upgradeCosts: [50, 80],
   aspects: [
@@ -80,7 +80,7 @@ const archer: TowerDef = {
     { damage: 12, cooldown: 0.36, range: 2.1 },
     { damage: 19, cooldown: 0.3, range: 2.3 },
   ],
-  displayStats: ['damage', 'range'],
+  displayStats: ['damage', 'attackRate', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: true,
@@ -139,10 +139,7 @@ const mage: TowerDef = {
   id: 'mage',
   name: 'Огневик',
   shortDescription: 'Поджигает врагов',
-  description:
-    'Поджигает цель и врагов рядом с ней. Горение наносит урон постепенно и игнорирует броню.',
-  interactionHint:
-    'Сначала стреляет по негорящим. Горение длится 5 секунд и не складывается; слабый огонь не продлевает сильный. Холод тушит огонь, огонь снимает холод и сжигает сети.',
+  description: 'Поджигает цель и врагов рядом с ней. Горение игнорирует броню.',
   cost: 90,
   upgradeCosts: [80, 130],
   tiers: [
@@ -155,7 +152,7 @@ const mage: TowerDef = {
     burnDamage: MAGE_BURN.damageByTier[tier],
     burnDuration: MAGE_BURN.duration,
   })),
-  displayStats: ['burnDamage', 'range'],
+  displayStats: ['burnDamage', 'attackRate', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   preferUnburning: true,
@@ -176,9 +173,8 @@ const frost: TowerDef = {
   id: 'frost',
   name: 'Морозко',
   shortDescription: 'Замедляет врагов',
-  description: 'Волна холода замедляет врагов вокруг.',
-  interactionHint:
-    'Холод тушит огонь без урона. Ставьте Морозко и Огневика на разных участках дороги.',
+  description: 'Замедляет врагов вокруг себя волной холода.',
+  interactionHint: 'Холод тушит огонь Огневика.',
   cost: 70,
   upgradeCosts: [60, 100],
   tiers: [
@@ -187,7 +183,7 @@ const frost: TowerDef = {
     { damage: 0, cooldown: 1.05, range: 1.9, slowAmount: 0.55, slowDuration: 2 },
     { damage: 0, cooldown: 1, range: 2.2, slowAmount: 0.65, slowDuration: 2.4 },
   ],
-  displayStats: ['slowAmount', 'range'],
+  displayStats: ['slowAmount', 'attackRate', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: false,
@@ -198,7 +194,7 @@ const ballista: TowerDef = {
   id: 'ballista',
   name: 'Баллиста',
   shortDescription: 'Пробивает броню',
-  description: 'Болт пробивает до двух врагов и игнорирует половину брони каждого.',
+  description: 'Болт пробивает до двух врагов и игнорирует половину брони. Долгая перезарядка.',
   cost: 160,
   upgradeCosts: [140, 210],
   aspects: [
@@ -226,7 +222,7 @@ const ballista: TowerDef = {
     { damage: 125, cooldown: 3, range: 2.9, pierceCount: 2 },
     { damage: 195, cooldown: 2.8, range: 3.1, pierceCount: 2 },
   ],
-  displayStats: ['damage', 'range'],
+  displayStats: ['damage', 'attackRate', 'range'],
   // Умение баллисты: игрок переключает «первый» ↔ «сильный». «Сильный» бьёт самого крупного
   // в радиусе. По умолчанию «первый»: боты с «сильным» с самого
   // начала падали на 1–2 волны раньше — на смешанных волнах латники проходили мимо
@@ -253,8 +249,8 @@ const cannon: TowerDef = {
   id: 'cannon',
   name: 'Пушкарь',
   shortDescription: 'Бьёт по площади',
-  description: 'Ядро взрывается. Враги ближе к центру получают больше урона.',
-  interactionHint: 'Ядро летит в точку выстрела: быстрые враги могут уйти из зоны взрыва.',
+  description:
+    'Бьёт ядрами по площади. В центре взрыва урон выше. Быстрые враги могут уйти из-под удара.',
   cost: 340,
   upgradeCosts: [160, 220],
   tiers: [
@@ -266,7 +262,7 @@ const cannon: TowerDef = {
     { damage: 160, cooldown: 4.6, range: 3.2, splashRadius: 1.15 },
     { damage: 240, cooldown: 4.4, range: 3.4, splashRadius: 1.3 },
   ],
-  displayStats: ['damage', 'splashRadius', 'range'],
+  displayStats: ['damage', 'attackRate', 'splashRadius', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: true,
@@ -286,9 +282,7 @@ const trapper: TowerDef = {
   id: 'trapper',
   name: 'Ловчий',
   shortDescription: 'Ловит в сеть',
-  description: 'Бросает сеть и ненадолго останавливает врагов, которых она накрыла.',
-  interactionHint:
-    'На горящих врагах сеть держится в пять раз меньше. Используйте Ловчего рядом с Лучниками, Баллистами и Пушкарями.',
+  description: 'Останавливает группу врагов сетью. На горящих врагах сеть быстро сгорает.',
   cost: 80,
   upgradeCosts: [70, 100],
   tiers: [
@@ -299,7 +293,7 @@ const trapper: TowerDef = {
     { damage: 0, cooldown: 5, range: 2.6, splashRadius: 0.7, rootDuration: 2.3 },
     { damage: 0, cooldown: 4.8, range: 2.8, splashRadius: 0.9, rootDuration: 2.8 },
   ],
-  displayStats: ['rootDuration', 'cooldown', 'range'],
+  displayStats: ['rootDuration', 'attackRate', 'cooldown', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: true,
@@ -318,9 +312,7 @@ const warlock: TowerDef = {
   id: 'warlock',
   name: 'Колдун',
   shortDescription: 'Ослабляет врагов',
-  description: 'Проклинает врагов рядом. Они получают больше урона и меньше лечения.',
-  interactionHint:
-    'Проклятие ослабляет лечение самого проклятого врага. Несколько Колдунов не складываются — действует сильнейшее проклятие.',
+  description: 'Проклинает врагов вокруг. Проклятые получают больше урона и меньше лечения.',
   cost: 100,
   upgradeCosts: [80, 120],
   tiers: [
@@ -328,7 +320,7 @@ const warlock: TowerDef = {
     { damage: 0, cooldown: 1.5, range: 2.4, curseAmount: 0.3, curseDuration: 2.5 },
     { damage: 0, cooldown: 1.5, range: 2.6, curseAmount: 0.4, curseDuration: 3 },
   ],
-  displayStats: ['curseAmount', 'healingReduction', 'range'],
+  displayStats: ['curseAmount', 'healingReduction', 'attackRate', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   // Как у Морозко: проклятие держится дольше паузы между волнами проклятия — ускорять нечего
@@ -340,9 +332,8 @@ const bell: TowerDef = {
   id: 'bell',
   name: 'Звонарь',
   shortDescription: 'Ускоряет стрельбу',
-  description: 'Сокращает паузу между выстрелами у стражей поблизости.',
-  interactionHint:
-    'Не ускоряет Морозко, Колдуна, Казну и других Звонарей. Бонусы не складываются — действует сильнейший. При равной силе связь показана с одним источником.',
+  description: 'Ускоряет стрельбу стражей поблизости.',
+  interactionHint: 'Если рядом несколько Звонарей, действует сильнейший бонус.',
   cost: 100,
   upgradeCosts: [80, 120],
   tiers: [
@@ -363,9 +354,8 @@ const treasury: TowerDef = {
   id: 'treasury',
   name: 'Казна',
   shortDescription: 'Приносит золото',
-  description: 'Приносит золото после каждой отбитой волны. Соседние Казны увеличивают доход.',
-  interactionHint:
-    'Соседние Казны, включая диагонали, дают по +10% дохода, максимум +30%. Через клетку бонуса нет. Монетка отмечает активную синергию; проценты и связи видны при выборе Казны.',
+  description:
+    'Приносит золото после каждой отбитой волны. Каждая соседняя Казна даёт +10% к доходу, максимум +30%. Диагонали тоже считаются.',
   cost: 80,
   upgradeCosts: [70, 100],
   tiers: [

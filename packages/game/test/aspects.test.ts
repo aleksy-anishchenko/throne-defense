@@ -87,7 +87,7 @@ describe('покупка специализации', () => {
     expect(game.specialize(ballista.col, ballista.row, 'giant-slayer')).toBe(true)
   })
 
-  it.each<Phase>(['idle', 'wave', 'lost', 'won'])(
+  it.each<Phase>(['idle', 'reward', 'lost', 'won'])(
     'фаза %s: покупка и отмена запрещены, в том числе на паузе',
     (phase) => {
       const { game, tower } = setUp()
@@ -317,13 +317,18 @@ describe('Сокрушитель', () => {
     expect(boss.maxHp - boss.hp).toBeCloseTo(310)
   })
 
-  it('уже выпущенный обычный болт не получает купленный позже аспект', () => {
+  it('купленный в бою аспект действует с первого выстрела после покупки', () => {
     const { game, tower } = setUp()
+    game.startWave()
     const boss = targetAt(game, tower, 'boss')
     shoot(game, tower, boss)
-    game.specialize(tower.col, tower.row, 'giant-slayer')
+    expect(game.specialize(tower.col, tower.row, 'giant-slayer')).toBe(true)
     updateShots(worldOf(game), 0.2)
     expect(boss.maxHp - boss.hp).toBeCloseTo(193)
+    const hp = boss.hp
+    shoot(game, tower, boss)
+    updateShots(worldOf(game), 0.2)
+    expect(hp - boss.hp).toBeCloseTo(310)
   })
 })
 

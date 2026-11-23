@@ -1,28 +1,34 @@
 // Как показывать характеристики выбранной башни.
 
 import type { RewardStats, StatKey, TowerDef, TowerStats } from '@throne/game'
-import { displayStatValue } from '@throne/game'
+import { displayStatValue, MAGE_BURN } from '@throne/game'
 import { formatDecimal, formatPercent, plural } from './format'
 
-function distanceInCells(range: number): string {
-  const unit = Number.isInteger(range) ? plural(range, ['клетка', 'клетки', 'клеток']) : 'клетки'
-  return `${formatDecimal(range)} ${unit}`
+function cellUnit(range: number): string {
+  return Number.isInteger(range) ? plural(range, ['клетка', 'клетки', 'клеток']) : 'клетки'
+}
+
+interface StatDisplay {
+  label: string
+  format: (value: number) => string | number
+  unit?: (value: number) => string
 }
 
 /** Как подписывать и показывать каждую характеристику */
-export const STAT_DISPLAY: Record<StatKey, { label: string; format: (value: number) => string }> = {
-  damage: { label: 'урон', format: String },
-  range: { label: 'радиус', format: distanceInCells },
-  cooldown: { label: 'перезарядка', format: (value) => `${formatDecimal(value)} с` },
-  slowAmount: { label: 'замедление', format: formatPercent },
-  splashRadius: { label: 'взрыв', format: formatDecimal },
-  pierceCount: { label: 'пронзает', format: String },
-  burnDamage: { label: 'горение', format: String },
-  fireRateBonus: { label: 'ускоряет соседей на', format: formatPercent },
-  goldPerWave: { label: 'базовый доход за волну', format: String },
-  rootDuration: { label: 'держит в сети', format: (value) => `${formatDecimal(value)} с` },
-  curseAmount: { label: 'урон по проклятым', format: (value) => `+${formatPercent(value)}` },
-  healingReduction: { label: 'получаемое лечение', format: (value) => `−${formatPercent(value)}` },
+export const STAT_DISPLAY: Record<StatKey, StatDisplay> = {
+  damage: { label: 'Урон', format: formatDecimal },
+  attackRate: { label: 'Скорость атаки', format: formatDecimal, unit: () => 'атак/с' },
+  range: { label: 'Дальность атаки', format: formatDecimal, unit: cellUnit },
+  cooldown: { label: 'Перезарядка', format: formatDecimal, unit: () => 'с' },
+  slowAmount: { label: 'Замедление', format: formatPercent },
+  splashRadius: { label: 'Радиус взрыва', format: formatDecimal, unit: cellUnit },
+  pierceCount: { label: 'Целей за выстрел', format: String },
+  burnDamage: { label: `Урон от горения за ${MAGE_BURN.duration} с`, format: formatDecimal },
+  fireRateBonus: { label: 'Бонус к скорости атаки', format: formatPercent },
+  goldPerWave: { label: 'Доход за волну', format: String },
+  rootDuration: { label: 'Время в сети', format: formatDecimal, unit: () => 'с' },
+  curseAmount: { label: 'Урон по проклятым', format: (value) => `+${formatPercent(value)}` },
+  healingReduction: { label: 'Получаемое лечение', format: (value) => `−${formatPercent(value)}` },
 }
 
 /**
@@ -52,7 +58,7 @@ export function placementReach(def: TowerDef): string {
   const stats = def.tiers[0]
   if (def.id === 'treasury') return 'По стороне и диагонали'
   if (isAuraTower(stats)) return `До ${cellsInReach(stats.range)} соседних клеток`
-  return `Радиус ${distanceInCells(stats.range)}`
+  return `Радиус ${formatDecimal(stats.range)} ${cellUnit(stats.range)}`
 }
 
 export function shopPlacementDescription(def: TowerDef): string {
@@ -62,35 +68,40 @@ export function shopPlacementDescription(def: TowerDef): string {
 }
 
 /** Дальность ауры — числом клеток */
-const AURA_RANGE_DISPLAY = { label: 'соседних клеток', format: cellsInReach }
+const AURA_RANGE_DISPLAY: StatDisplay = { label: 'Соседних клеток', format: cellsInReach }
 
-/** «урон 9 → 15»: текущее значение и (если есть) значение после улучшения */
+function statDisplay(key: StatKey, stats: TowerStats): StatDisplay {
+  return key === 'range' && isAuraTower(stats) ? AURA_RANGE_DISPLAY : STAT_DISPLAY[key]
+}
+
+export function formatStatValue(key: StatKey, stats: TowerStats): string {
+  const { format, unit } = statDisplay(key, stats)
+  const value = displayStatValue(stats, key) ?? 0
+  return `${format(value)}${unit ? ` ${unit(value)}` : ''}`
+}
+
+/** Текущее и следующее значения делят одну подпись и единицу измерения. */
 export function formatStatLine(
   statKey: StatKey,
   currentStats: TowerStats,
   nextStats: TowerStats | undefined,
 ): string {
-  const { label, format } =
-    statKey === 'range' && isAuraTower(currentStats) ? AURA_RANGE_DISPLAY : STAT_DISPLAY[statKey]
+  const { label, format } = statDisplay(statKey, currentStats)
   const currentText = format(displayStatValue(currentStats, statKey) ?? 0)
-  const nextText = nextStats ? format(displayStatValue(nextStats, statKey) ?? 0) : null
-  return nextText === null || nextText === currentText
-    ? `${label} ${currentText}`
-    : `${label} ${currentText} → ${nextText}`
+  const last = nextStats ?? currentStats
+  const changed = currentText !== format(displayStatValue(last, statKey) ?? 0)
+  return `${label} — ${changed ? `${currentText} → ` : ''}${formatStatValue(statKey, last)}`
 }
 
-export function towerInteractionHint(
+export function towerDescription(
   def: TowerDef,
   effects: Pick<RewardStats, 'secondBellShare' | 'iceAndFire'>,
-): string | undefined {
+): string {
+  let hint = def.interactionHint
   if (def.id === 'bell' && effects.secondBellShare > 0) {
-    return `«Два колокола» дают стражу полный бонус сильнейшего Звонаря и ${formatPercent(effects.secondBellShare)} бонуса второго в зоне.`
+    hint = `«Два колокола» добавляют ${formatPercent(effects.secondBellShare)} бонуса второго по силе Звонаря.`
+  } else if (effects.iceAndFire && (def.id === 'mage' || def.id === 'frost')) {
+    hint = 'С благословением «Лёд и пламя» горение и замедление действуют одновременно.'
   }
-  if (effects.iceAndFire && def.id === 'mage') {
-    return 'Сначала стреляет по негорящим. «Лёд и пламя» позволяет поджигать замедленных врагов. Горящие враги быстрее сжигают сети.'
-  }
-  if (effects.iceAndFire && def.id === 'frost') {
-    return 'С благословением «Лёд и пламя» Морозко замедляет и горящих врагов. Ставьте его и Огневика рядом.'
-  }
-  return def.interactionHint
+  return hint ? `${def.description} ${hint}` : def.description
 }

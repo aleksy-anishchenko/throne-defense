@@ -12,6 +12,7 @@ import { useMenuFocus } from '@/composables/useMenuFocus'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
 import TowerAspects from './TowerAspects.vue'
+import TowerStat from './TowerStat.vue'
 
 const store = useGameStore()
 const selection = useSelectionStore()
@@ -66,9 +67,10 @@ function onBackdropClick() {
         </button>
       </header>
       <p class="tower-description">{{ info.description }}</p>
+      <p v-if="info.showUpgradeCaption" class="tower-stat-caption">Сейчас → после улучшения</p>
       <ul class="tower-sheet-stats">
+        <TowerStat v-for="stat in info.stats" :key="stat.key" :stat="stat" as="li" />
         <li v-for="line in info.lines" :key="line">{{ line }}</li>
-        <li v-if="info.interactionHint">{{ info.interactionHint }}</li>
         <li v-if="info.targetMode">
           <button
             class="target-mode"

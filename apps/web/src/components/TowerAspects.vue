@@ -24,18 +24,14 @@ const selection = useSelectionStore()
         {{
           info.canUndoSpecialization
             ? 'Можно отменить до начала следующей волны.'
-            : 'Специализация закреплена после первого боя.'
+            : 'Аспект закреплён.'
         }}
       </p>
     </template>
     <template v-else>
       <h3>IV ступень — выберите аспект</h3>
       <p class="aspect-hint">
-        {{
-          info.canSpecialize
-            ? 'Один аспект на башню. До начала волны покупку можно отменить.'
-            : 'Выбор доступен между волнами.'
-        }}
+        До начала волны покупку можно отменить. В бою выбор закрепляется сразу.
       </p>
       <button
         v-for="aspect in info.aspects"

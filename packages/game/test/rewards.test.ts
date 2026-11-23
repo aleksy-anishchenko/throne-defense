@@ -465,6 +465,37 @@ describe('благословения после волн', () => {
     expect(towerInvestedGold(tower)).toBe(beforeAspect)
   })
 
+  it.each([false, true])(
+    'скидка инженера в бою действует на ступени и аспект (пауза %s)',
+    (paused) => {
+      const game = newGame()
+      choose(game, 'military-engineer')
+      const tower = game.build('archer', 5, 11)!
+      expect(game.startWave()).toBe(true)
+      game.setPaused(paused)
+      game.state.gold = 35 + 56 + 83
+      expect(game.upgrade(tower.col, tower.row)).toBe(true)
+      expect(game.state.gold).toBe(56 + 83)
+      expect(game.upgrade(tower.col, tower.row)).toBe(true)
+      expect(game.state.gold).toBe(83)
+      expect(game.specialize(tower.col, tower.row, 'ricochet')).toBe(false)
+      game.state.gold += 1
+      expect(game.specialize(tower.col, tower.row, 'ricochet')).toBe(true)
+      expect(game.state.gold).toBe(0)
+      expect(tower.aspectGoldPaid).toBe(84)
+      expect(tower.aspectLocked).toBe(true)
+      expect(tower.goldSinceLastWave).toBe(0)
+      expect(game.undoSpecialization(tower.col, tower.row)).toBe(false)
+
+      game.setPaused(false)
+      game.state.spawnQueue = []
+      game.step(SIMULATION_STEP)
+      expect(game.state.phase).toBe('build')
+      expect(game.undoSpecialization(tower.col, tower.row)).toBe(false)
+      expect(game.sell(tower.col, tower.row)).toBe(Math.floor((60 + 35 + 56 + 84) * REFUND_RATE))
+    },
+  )
+
   it('новые награды меняют нужные характеристики башен и врагов', () => {
     const wildfire = newGame()
     choose(wildfire, 'wildfire')
@@ -811,7 +842,7 @@ describe('благословения после волн', () => {
       {
         rewardId: 'military-engineer',
         name: 'Военный инженер',
-        description: '−51% к цене улучшений и специализаций',
+        description: '−51% к цене улучшений и аспектов',
         count: 2,
       },
       {

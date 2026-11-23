@@ -8,6 +8,7 @@ import {
 } from '@/composables/useSelectedTowerInfo'
 import { useSelectionStore } from '@/stores/selection'
 import TowerAspects from './TowerAspects.vue'
+import TowerStat from './TowerStat.vue'
 
 const selection = useSelectionStore()
 const selectedTowerInfo = useSelectedTowerInfo()
@@ -18,10 +19,11 @@ const selectedTowerInfo = useSelectedTowerInfo()
     <div class="tower-stats">
       <b>{{ selectedTowerInfo.title }}</b>
       <p class="tower-description">{{ selectedTowerInfo.description }}</p>
-      <span v-for="line in selectedTowerInfo.lines" :key="line">{{ line }}</span>
-      <p v-if="selectedTowerInfo.interactionHint" class="tower-interaction">
-        {{ selectedTowerInfo.interactionHint }}
+      <p v-if="selectedTowerInfo.showUpgradeCaption" class="tower-stat-caption">
+        Сейчас → после улучшения
       </p>
+      <TowerStat v-for="stat in selectedTowerInfo.stats" :key="stat.key" :stat="stat" as="span" />
+      <span v-for="line in selectedTowerInfo.lines" :key="line">{{ line }}</span>
       <button
         v-if="selectedTowerInfo.targetMode"
         class="target-mode"

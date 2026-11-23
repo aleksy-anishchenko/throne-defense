@@ -276,7 +276,14 @@ export function rewardStats(state: Pick<GameState, 'selectedRewards'>): RewardSt
 
 /** Характеристики башни с учётом её положения и наград конкретных стражей. */
 export function effectiveTowerStats(state: GameState, tower: Tower, base: TowerStats): TowerStats {
-  const rewards = rewardStats(state)
+  return applyTowerRewards(base, tower, rewardStats(state))
+}
+
+export function applyTowerRewards(
+  base: TowerStats,
+  tower: Pick<Tower, 'def' | 'row'>,
+  rewards: RewardStats,
+): TowerStats {
   const lastStand = tower.row < rewards.lastStandRows ? rewards.lastStandDamageMultiplier : 1
   const burnDamage =
     (base.burnDamage ?? 0) * (tower.def.id === 'mage' ? rewards.mageBurnMultiplier : 1)
@@ -330,7 +337,7 @@ export function summarizeRewards(rewards: readonly RewardPick[]): RewardSummary[
         description = `+${Math.round(reward.effect.amount * count * 100)}% золота за отбитую волну`
         break
       case 'upgradeDiscount':
-        description = `−${Math.round((1 - (1 - reward.effect.amount) ** count) * 100)}% к цене улучшений и специализаций`
+        description = `−${Math.round((1 - (1 - reward.effect.amount) ** count) * 100)}% к цене улучшений и аспектов`
         break
       case 'mageBurn':
         description = `+${Math.round(reward.effect.amount * count * 100)}% к горению Огневика`

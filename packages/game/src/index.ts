@@ -7,6 +7,7 @@ export type { Path } from './core/path.ts'
 
 export {
   BALANCE_VERSION,
+  MAGE_BURN,
   REFUND_RATE,
   SCORE,
   MAX_SPEED,
@@ -25,6 +26,8 @@ export {
   REWARD_SETS,
   REWARD_SET_SIZE,
   REWARD_WAVES,
+  doubleShotDescription,
+  ICE_NEEDLES,
   rewardSegmentForWave,
   type RewardDef,
   type RewardRarity,
@@ -47,9 +50,15 @@ export {
   paidAspectCost,
   discountedUpgradePrice,
   displayStatValue,
+  reloadProgress,
   upgradeCost,
 } from './systems/towers.ts'
-export { treasuryNeighbors, treasuryBonusOf, treasuryIncomeOf } from './systems/treasury.ts'
+export {
+  treasuryNeighbors,
+  treasuryBonusOf,
+  treasuryIncomeOf,
+  treasuryIncomeWithNeighbors,
+} from './systems/treasury.ts'
 // Для сервера: проверка правдоподобия присланного счёта
 export { maxPossibleScore } from './systems/waves.ts'
 export {
@@ -62,6 +71,7 @@ export {
   rollRewardOptions,
   summarizeRewards,
   effectiveTowerStats,
+  applyTowerRewards,
   type RewardSummary,
 } from './systems/rewards.ts'
 // Для замеров баланса (tools/balance): выпустить врага в обход волн

@@ -3,6 +3,7 @@ import { TOWER_LIST } from '@throne/game'
 import { MAX_HOTKEY_DIGIT } from '@/composables/useKeyboard'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
+import { placementReach } from '@/utils/towerStats'
 import ShopToggle from './ShopToggle.vue'
 
 const store = useGameStore()
@@ -14,10 +15,30 @@ const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
   <div
     class="controls"
     :class="{ 'placement-actions': selection.pendingPlacement }"
-    :inert="!!selection.placementTower && !selection.pendingPlacement"
     role="group"
-    :aria-labelledby="selection.pendingPlacement ? 'placement-question' : undefined"
+    :aria-labelledby="selection.pendingPlacement ? 'placement-prompt' : undefined"
   >
+    <div
+      id="placement-status"
+      role="status"
+      aria-atomic="true"
+      :class="{ 'visually-hidden': !selection.placementTower }"
+    >
+      <template v-if="selection.placementTower">
+        <span id="placement-prompt">{{
+          selection.pendingPlacement ? 'Поставить стража?' : selection.hint
+        }}</span>
+        <span id="placement-details" class="visually-hidden">
+          {{ selection.placementTower.name }}.
+          <template v-if="selection.pendingPlacement">
+            {{ placementReach(selection.placementTower) }}. Столбец
+            {{ selection.pendingPlacement.cell.col + 1 }}, ряд
+            {{ selection.pendingPlacement.cell.row + 1 }}. Цена
+            {{ selection.placementTower.cost }} золота. {{ selection.hint }}
+          </template>
+        </span>
+      </template>
+    </div>
     <template v-if="selection.pendingPlacement">
       <button
         class="btn primary"
@@ -30,7 +51,7 @@ const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
       </button>
       <button class="btn" type="button" @click="selection.clearSelection">Нет</button>
     </template>
-    <template v-else>
+    <template v-else-if="!selection.placementTower">
       <ShopToggle />
       <button
         class="btn primary grow"
@@ -67,11 +88,11 @@ const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
           <path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
         </svg>
       </button>
+      <p class="keys">
+        Клавиши: 1–{{ lastHotkeyDigit }} выбирают стража, пробел начинает волну и ставит паузу,
+        стрелки и Enter ставят стража без мыши, Shift оставляет стража «в руке» — можно ставить
+        подряд, T меняет цель выбранного стража.
+      </p>
     </template>
-    <p class="keys">
-      Клавиши: 1–{{ lastHotkeyDigit }} выбирают стража, пробел начинает волну и ставит паузу,
-      стрелки и Enter ставят стража без мыши, Shift оставляет стража «в руке» — можно ставить
-      подряд, T меняет цель выбранного стража.
-    </p>
   </div>
 </template>

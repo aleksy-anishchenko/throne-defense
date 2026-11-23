@@ -51,9 +51,9 @@ export interface Game {
   build(towerId: string, col: number, row: number): Tower | null
   /** Улучшить башню на клетке. false — если нельзя (нет башни, не хватает золота, последняя ступень) */
   upgrade(col: number, row: number): boolean
-  /** Купить аспект между волнами: нужна последняя обычная ступень и отсутствие другого аспекта. */
+  /** Купить один аспект после последней обычной ступени. Покупка в бою сразу закрепляет выбор. */
   specialize(col: number, row: number, aspectId: string): boolean
-  /** Отменить покупку аспекта с полным возвратом, пока он ещё не участвовал в бою. */
+  /** Отменить купленный при подготовке аспект с полным возвратом до начала волны. */
   undoSpecialization(col: number, row: number): boolean
   /** Продать башню. Возвращает, сколько золота вернули, или null */
   sell(col: number, row: number): number | null
@@ -253,7 +253,7 @@ export function createGame(levelDef: LevelDef): Game {
       const tower = towerAt(col, row)
       if (
         !tower ||
-        state.phase !== 'build' ||
+        !isPlaying() ||
         tower.tier !== tower.def.tiers.length - 1 ||
         tower.aspectId !== null
       ) {
@@ -264,9 +264,9 @@ export function createGame(levelDef: LevelDef): Game {
       const cost = discountedUpgradePrice(aspect.cost, rewardStats(state).upgradeCostMultiplier)
       if (state.gold < cost) return false
       state.gold -= cost
-      tower.goldSinceLastWave += cost
+      if (state.phase === 'build') tower.goldSinceLastWave += cost
       tower.aspectId = aspect.id
-      tower.aspectLocked = false
+      tower.aspectLocked = state.phase === 'wave'
       tower.aspectGoldPaid = cost
       tower.hunterTargetId = null
       tower.hunterStacks = 0

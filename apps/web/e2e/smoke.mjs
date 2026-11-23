@@ -272,10 +272,47 @@ async function checkControlsFit(page) {
       .filter((element) => getComputedStyle(element).display !== 'none')
       .every((element) => {
         const bounds = element.getBoundingClientRect()
-        return bounds.left >= controls.left - 0.5 && bounds.right <= controls.right + 0.5
+        return (
+          bounds.left >= controls.left - 0.5 &&
+          bounds.right <= controls.right + 0.5 &&
+          bounds.top >= controls.top - 0.5 &&
+          bounds.bottom <= controls.bottom + 0.5
+        )
       })
   })
   check(`${width}: кнопки управления помещаются в строку`, fits)
+}
+
+/** Сравнивает каждый кадр с раскладкой начального меню при одном размере экрана. */
+async function watchPhoneLayout(page) {
+  const stop = await page.evaluateHandle(() => {
+    const elements = ['.panel', '.controls', '#board'].map((selector) =>
+      document.querySelector(selector),
+    )
+    const layouts = new Set()
+    let frame
+    function measure() {
+      layouts.add(
+        elements
+          .map((el) => {
+            const { x, y, width, height } = el.getBoundingClientRect()
+            return [x, y, width, height].join(',')
+          })
+          .join(' | '),
+      )
+      frame = requestAnimationFrame(measure)
+    }
+    measure()
+    return () => {
+      cancelAnimationFrame(frame)
+      return [...layouts]
+    }
+  })
+  return async (label) => {
+    const layouts = await stop.evaluate((finish) => finish())
+    await stop.dispose()
+    check(label, layouts.length === 1, layouts.join(' → '))
+  }
 }
 
 /** Все девять карточек видны без прокрутки боковой панели. */
@@ -420,8 +457,8 @@ async function desktop(page, url) {
     'в карточке Пушкаря цена 340 и короткая подпись о роли',
     cannonCardText.includes('340') &&
       cannonCardText.includes('Бьёт по площади') &&
-      !cannonCardText.includes('Ядро взрывается') &&
-      !cannonCardText.includes('урон 100') &&
+      !cannonCardText.includes('В центре взрыва урон выше.') &&
+      !cannonCardText.includes('Урон — 100') &&
       (await cannonCard.getAttribute('aria-description')) === 'Бьёт по площади',
   )
   await archerCard.click()
@@ -478,7 +515,7 @@ async function desktop(page, url) {
     'по нажатию на построенного Лучника видно, как броня влияет на его урон',
     await page
       .locator('.tower-info')
-      .getByText('Часто стреляет. Броня снижает урон стрел.', { exact: true })
+      .getByText('Высокая скорость атаки. Низкий урон по броне.', { exact: true })
       .isVisible(),
   )
   const statLines = (await page.locator('.tower-info .tower-stats span').allTextContents()).join(
@@ -486,7 +523,8 @@ async function desktop(page, url) {
   )
   check(
     'характеристики в панели',
-    statLines === 'урон 7 → 12 | радиус 1,9 клетки → 2,1 клетки',
+    statLines ===
+      'Урон — 7 → 12 | Скорость атаки — 2,5 → 2,78 атак/с | Дальность атаки — 1,9 → 2,1 клетки',
     statLines,
   )
 
@@ -555,8 +593,14 @@ async function desktop(page, url) {
   )
   await clickCell(page, 4, 9)
   await waitForFrames(page)
-  const bellLine = (await page.locator('.tower-info .tower-stats span').allTextContents()).at(-1)
-  check('панель: лучник ускорен Звонарём', bellLine === 'Звонарь: стреляет на 20% чаще', bellLine)
+  const attackRate = page.locator('.tower-info [data-stat="attackRate"]')
+  const bellLine = await attackRate.innerText()
+  check(
+    'панель: лучник ускорен Звонарём',
+    bellLine.includes('Скорость атаки — 3 → 3,33 атак/с') &&
+      bellLine.includes('Без усилений — 2,5 атак/с · Звонарь +20%'),
+    bellLine,
+  )
   check(
     'выбор получателя показывает его фактический процент на поле',
     await page.evaluate(() => window.__bellLabels.join(',') === '+20%'),
@@ -584,7 +628,7 @@ async function desktop(page, url) {
   await clickCell(page, 4, 9)
   check(
     'две ауры не складываются: на поле и в панели +40%, а не +60%',
-    (await page.locator('.tower-info').innerText()).includes('стреляет на 40% чаще') &&
+    (await attackRate.innerText()).includes('Звонарь +40%') &&
       (await page.evaluate(() => window.__bellLabels.join(',') === '+40%')),
   )
   await page.keyboard.press('Escape')
@@ -629,7 +673,7 @@ async function desktop(page, url) {
   await clickCell(page, 4, 9)
   check(
     'после продажи сильного Звонаря возвращается +20% от оставшегося',
-    (await page.locator('.tower-info').innerText()).includes('стреляет на 20% чаще') &&
+    (await attackRate.innerText()).includes('Звонарь +20%') &&
       (await page.evaluate(() => window.__bellLabels.join(',') === '+20%')),
   )
   await page.keyboard.press('Escape')
@@ -668,23 +712,23 @@ async function desktop(page, url) {
   })
   await clickCell(page, 5, 9)
   check(
-    'выбранный Колдун I показывает ослабление лечения и детали проклятия',
-    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −20% → −30%') &&
-      (await page.locator('.tower-interaction').innerText()).includes(
-        'Проклятие ослабляет лечение самого проклятого врага.',
+    'выбранный Колдун I показывает действие проклятия и ослабление лечения',
+    (await page.locator('.tower-info').innerText()).includes('Получаемое лечение — −20% → −30%') &&
+      (await page.locator('.tower-info .tower-description').innerText()).includes(
+        'Проклятые получают больше урона и меньше лечения.',
       ),
   )
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
   check(
     'Колдун II: показано ослабление лечения 30% → 40%',
-    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −30% → −40%'),
+    (await page.locator('.tower-info').innerText()).includes('Получаемое лечение — −30% → −40%'),
   )
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
   check(
     'Колдун III: показано ослабление лечения 40%',
-    (await page.locator('.tower-info').innerText()).includes('получаемое лечение −40%'),
+    (await page.locator('.tower-info').innerText()).includes('Получаемое лечение — −40%'),
   )
   await page.evaluate((gold) => {
     const { game } = window.__throne
@@ -768,7 +812,8 @@ async function desktop(page, url) {
   check(
     'Казна показывает диагонального соседа и округлённый доход',
     treasuryInfo.includes('Соседние Казны: 1, бонус +10%') &&
-      treasuryInfo.includes('Итого за волну: 13'),
+      treasuryInfo.includes('Доход за волну — 13 → 25') &&
+      treasuryInfo.includes('Без усилений — 12'),
     treasuryInfo,
   )
   check(
@@ -786,7 +831,8 @@ async function desktop(page, url) {
   check(
     'после продажи соседа Казна показывает доход без бонуса',
     treasuryAfterSale.includes('Соседние Казны: 0, бонус +0%') &&
-      treasuryAfterSale.includes('Итого за волну: 12'),
+      treasuryAfterSale.includes('Доход за волну — 12 → 23') &&
+      !treasuryAfterSale.includes('Без усилений'),
     treasuryAfterSale,
   )
   check(
@@ -1468,7 +1514,8 @@ async function desktop(page, url) {
   )
   check(
     'баллиста: характеристики',
-    ballista === 'урон 75 → 125 | радиус 2,7 клетки → 2,9 клетки',
+    ballista ===
+      'Урон — 75 → 125 | Скорость атаки — 0,31 → 0,33 атак/с | Дальность атаки — 2,7 → 2,9 клетки',
     ballista,
   )
 
@@ -1524,14 +1571,6 @@ async function desktop(page, url) {
     (await page.locator('.tower-info b').textContent()) === 'Баллиста III' &&
       (await readGameSnapshot(page)).gold === 180,
   )
-  await aspects.getByRole('button', { name: 'Раскол лат за 180 золота', exact: true }).click()
-  await waitForFrames(page)
-  check(
-    'выбран Раскол лат, показано действие на 4 с',
-    (await aspects.innerText()).includes('на 4 с') &&
-      (await page.evaluate(() => window.__throne.game.towerAt(4, 9).aspectId)) === 'armor-breaker',
-  )
-
   // Зажатый пробел не должен ставить паузу (повторы клавиши игнорируются)
   await page.keyboard.press('Escape')
   await waitForFrames(page)
@@ -1552,12 +1591,18 @@ async function desktop(page, url) {
     snapshot.phase === 'wave' && !snapshot.paused,
     JSON.stringify(snapshot),
   )
+  await clickCell(page, 4, 9)
+  await aspects.getByRole('button', { name: 'Раскол лат за 180 золота', exact: true }).click()
+  await waitForFrames(page)
   check(
-    'после начала боя аспект закреплён и не отменяется',
-    await page.evaluate(() => {
-      const { game } = window.__throne
-      return game.towerAt(4, 9).aspectLocked && !game.undoSpecialization(4, 9)
-    }),
+    'во время волны можно купить «Раскол лат», он сразу закрепляется за Баллистой IV',
+    (await page.locator('.tower-info b').textContent()) === 'Баллиста IV' &&
+      (await aspects.innerText()).includes('на 4 с') &&
+      (await aspects.getByRole('button', { name: /Отменить аспект/ }).count()) === 0 &&
+      (await page.evaluate(() => {
+        const tower = window.__throne.game.towerAt(4, 9)
+        return tower.aspectId === 'armor-breaker' && tower.aspectLocked
+      })),
   )
 
   // Стрелки снимают выбор с плиты: цифра ставит стража под курсор, а не на старую плиту
@@ -1737,14 +1782,27 @@ async function phone(page, url) {
   await waitForFrames(page)
   const layout = () =>
     page
-      .locator('.hud, #board, .panel, #hint, .controls')
+      .locator('.hud, #board, .panel, .controls')
       .evaluateAll((items) =>
         JSON.stringify(items.map((item) => item.getBoundingClientRect().toJSON())),
       )
-  const idleLayout = await layout()
   const panelHeight = () =>
     page.evaluate(() => document.querySelector('.panel').getBoundingClientRect().height)
-  const idlePanelHeight = await panelHeight()
+  const controls = page.locator('.controls')
+  const panelButtons = () => page.locator('.panel').getByRole('button').allInnerTexts()
+  const prompt = controls.locator('#placement-prompt')
+  const promptFitsRow = () =>
+    prompt.evaluate((el) => {
+      const row = el.closest('.controls')
+      const bounds = row.getBoundingClientRect()
+      const text = el.getBoundingClientRect()
+      const button = row.querySelector('button')
+      return (
+        el.getClientRects().length === 1 &&
+        Math.abs(text.top + text.height / 2 - (bounds.top + bounds.height / 2)) <= 2 &&
+        (!button || text.right <= button.getBoundingClientRect().left)
+      )
+    })
   const tapTile = async (col, row) => {
     const bounds = await page.locator('#board').boundingBox()
     await page.touchscreen.tap(
@@ -1785,7 +1843,7 @@ async function phone(page, url) {
     drawerText.includes('Поджигает врагов') &&
       drawerText.includes('Ослабляет врагов') &&
       !drawerText.includes('Поджигает цель') &&
-      !drawerText.includes('получаемое лечение −20%'),
+      !drawerText.includes('Получаемое лечение — −20%'),
     drawerText.slice(0, 200),
   )
   check(
@@ -1802,22 +1860,35 @@ async function phone(page, url) {
   await page.locator('.shop-drawer-backdrop').tap({ position: { x: 10, y: 10 } })
   check('нажатие мимо меню закрыло его', (await page.getByRole('dialog').count()) === 0)
 
+  // Высота игровой области iPhone 12 при открытых панелях браузера.
+  await page.setViewportSize({ width: 390, height: 664 })
+  await waitForFrames(page)
+  const idleLayout = await layout()
+  const idlePanelHeight = await panelHeight()
+  const finishLayoutCheck = await watchPhoneLayout(page)
+  const waveButton = await page.getByRole('button', { name: 'Начать волну' }).boundingBox()
+  check(
+    '390×664: под полем одна строка обычных кнопок',
+    (await panelButtons()).length === 5 &&
+      (await page.locator('#hint').isHidden()) &&
+      waveButton?.height >= 44 &&
+      idlePanelHeight - waveButton.height <= 16,
+  )
+
   // Фиксируем пламя канделябра до выбора стража, чтобы сравнить окружности на поле.
   await page.getByRole('button', { name: 'Пауза', exact: true }).tap()
   await waitForFrames(page)
   await shopToggle.tap()
   await drawer.getByRole('button', { name: /Огневик/ }).tap()
   check('выбор в меню закрыл его', (await page.getByRole('dialog').count()) === 0)
-  const hint = page.locator('#hint [role="status"]')
   const place = page.getByRole('button', { name: 'Да', exact: true })
   const cancel = page.getByRole('button', { name: 'Нет', exact: true })
   const placementDetails = page.locator('#placement-details')
-  const panelButtons = () => page.locator('.panel').getByRole('button').allInnerTexts()
-  const tilePrompt = 'Огневик · Поджигает врагов Выберите свободную плиту.'
+  const tilePrompt = 'Выберите свободную плиту.'
   check(
-    'до выбора плиты видны только имя, короткое описание и подсказка, поле на месте',
-    (await hint.innerText()).replace(/\s+/g, ' ').trim() === tilePrompt &&
-      (await page.locator('.controls').isHidden()) &&
+    'после выбора стража инструкция занимает место кнопок, поле на месте',
+    (await prompt.innerText()) === tilePrompt &&
+      (await promptFitsRow()) &&
       (await panelButtons()).length === 0 &&
       (await layout()) === idleLayout,
   )
@@ -1842,8 +1913,7 @@ async function phone(page, url) {
   await tapTile(3, 9)
   check(
     'касание ковра возвращает к выбору плиты',
-    (await hint.innerText()).replace(/\s+/g, ' ').trim() === tilePrompt &&
-      (await panelButtons()).length === 0,
+    (await prompt.innerText()) === tilePrompt && (await panelButtons()).length === 0,
   )
   await tapTile(4, 9)
   await tapTile(4, 9)
@@ -1853,15 +1923,16 @@ async function phone(page, url) {
   const yesBox = await place.boundingBox()
   const noBox = await cancel.boundingBox()
   check(
-    'в подтверждении видны только имя, вопрос и кнопки «Да» и «Нет»',
-    (await page.locator('#placement-question').innerText()).split(/\s+/).join(' ') ===
-      'Огневик Поставить стража?' &&
+    'вопрос о покупке и кнопки «Да» и «Нет» помещаются в ту же строку',
+    (await prompt.innerText()) === 'Поставить стража?' &&
+      (await promptFitsRow()) &&
       (await panelButtons()).join(' ') === 'Да Нет' &&
       yesBox !== null &&
       noBox !== null &&
       Math.abs(yesBox.width - noBox.width) < 1 &&
       detailsBox?.width === 1 &&
       detailsBox.height === 1 &&
+      (await placementDetails.textContent()).includes('Огневик') &&
       (await placementDetails.textContent()).includes('Цена 90 золота'),
   )
   check(
@@ -1873,10 +1944,9 @@ async function phone(page, url) {
     (await place.isEnabled()) &&
       preview.towers.length === 0 &&
       preview.gold === beforePlacement.gold &&
-      (await hint.innerText()).includes('Поставить стража?') &&
       (await cancel.isVisible()) &&
       (await layout()) === idleLayout &&
-      (await hint.textContent()).includes('Столбец 5, ряд 10'),
+      (await placementDetails.textContent()).includes('Столбец 5, ряд 10'),
   )
   await place.tap()
   await waitForFrames(page)
@@ -1924,13 +1994,13 @@ async function phone(page, url) {
       (await page.locator('.shop-toggle .shop-toggle-label').innerText()) === 'Стражи',
   )
   const towerMenuText = await towerMenu.innerText()
+  const mageStats = await towerMenu.locator('.tower-sheet-stats li').allTextContents()
   check(
-    'в меню построенного Огневика видны механика, характеристики и действия',
-    towerMenuText.includes('Поджигает цель и врагов рядом с ней.') &&
-      towerMenuText.includes('Сначала стреляет по негорящим.') &&
-      towerMenuText.includes('радиус 1,5 клетки → 1,7 клетки') &&
-      /горение \d/.test(towerMenuText) &&
-      !/урон \d/.test(towerMenuText) &&
+    'карточка Огневика показывает описание, урон за 5 с, скорость и дальность атаки',
+    (await towerMenu.locator('.tower-description').innerText()) ===
+      'Поджигает цель и врагов рядом с ней. Горение игнорирует броню.' &&
+      mageStats.join(' | ') ===
+        'Урон от горения за 5 с — 15,3 → 37,4 | Скорость атаки — 0,83 → 0,91 атак/с | Дальность атаки — 1,5 → 1,7 клетки' &&
       towerMenuText.includes('Улучшить') &&
       towerMenuText.includes('Вернуть'),
     towerMenuText,
@@ -1978,6 +2048,9 @@ async function phone(page, url) {
   await checkStartButtonVisible(page)
   await checkControlsFit(page)
   await checkShopCardsVisible(page)
+  await finishLayoutCheck(
+    '390×664: магазин, покупка и меню башни сохраняют размеры и положение панели и поля в каждом кадре',
+  )
   await page.setViewportSize({ width: 320, height: 568 }) // самый узкий телефон
   await waitForFrames(page)
   await checkStartButtonVisible(page)
@@ -2020,12 +2093,11 @@ async function phone(page, url) {
   await page.setViewportSize({ width: 667, height: 375 })
   await waitForFrames(page)
   check(
-    'при выборе плиты на повёрнутом телефоне остаётся только подсказка со стражем',
-    (await hint.innerText()).replace(/\s+/g, ' ').trim() ===
-      'Звонарь · Ускоряет стрельбу Выберите свободную плиту.' &&
+    'на повёрнутом телефоне инструкция тоже занимает строку кнопок',
+    (await prompt.innerText()) === tilePrompt &&
+      (await promptFitsRow()) &&
       (await panelButtons()).length === 0 &&
-      (await page.locator('.shop').isHidden()) &&
-      (await page.locator('.controls').isHidden()),
+      (await page.locator('.shop').isHidden()),
   )
   await page.setViewportSize({ width: 320, height: 568 })
   await waitForFrames(page)
@@ -2056,9 +2128,11 @@ async function phone(page, url) {
   await tapTile(5, 9)
   const bellMenu = page.getByRole('dialog', { name: 'Башня: Звонарь I', exact: true })
   check(
-    '320×568: меню Звонаря показывает получателей и правило без сложения',
+    '320×568: меню Звонаря показывает получателей и правило сильнейшего бонуса',
     (await bellMenu.innerText()).includes('Ускоряет 1 башню · Лучник') &&
-      (await bellMenu.innerText()).includes('Бонусы не складываются'),
+      (await bellMenu.locator('.tower-description').innerText()).includes(
+        'действует сильнейший бонус',
+      ),
   )
   await page.keyboard.press('Escape')
   const beforeCancel = await readGameSnapshot(page)
@@ -2067,10 +2141,8 @@ async function phone(page, url) {
   await drawer.getByRole('button', { name: /Лучник/ }).tap()
   await tapTile(4, 8)
   check(
-    '320×568: имя и вопрос «Поставить стража?» помещаются над кнопками',
-    await page
-      .locator('#hint')
-      .evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight + 1),
+    '320×568: вопрос и обе кнопки помещаются в одну строку',
+    (await promptFitsRow()) && (await panelButtons()).join(' ') === 'Да Нет',
   )
   check(
     'будущий получатель видит ускорение от построенного Звонаря',
@@ -2125,9 +2197,7 @@ async function phone(page, url) {
   const phoneBlessings = page.locator('.hud-reward-toggle')
   const phoneRewardSheet = page.getByRole('dialog', { name: 'Благословения', exact: true })
   const phoneBoard = page.locator('#board')
-  const phoneBoardBeforeRewards = JSON.stringify(await phoneBoard.boundingBox())
-  const samePhoneBoard = async () =>
-    JSON.stringify(await phoneBoard.boundingBox()) === phoneBoardBeforeRewards
+  const samePhoneLayout = async () => (await layout()) === narrowLayout
   check('320×568: до первой награды счётчик скрыт', !(await phoneBlessings.isVisible()))
 
   // На узком экране три карточки выбора идут столбиком и не выходят по ширине.
@@ -2184,7 +2254,7 @@ async function phone(page, url) {
       counterBounds.x + counterBounds.width <= 320 &&
       (await phoneBlessings.getAttribute('aria-label')) === 'Благословения, получено 1' &&
       (await page.locator('.reward-inventory').isHidden()) &&
-      (await samePhoneBoard()),
+      (await samePhoneLayout()),
   )
   await phoneBlessings.tap()
   check(
@@ -2195,7 +2265,7 @@ async function phone(page, url) {
       (await phoneRewardSheet.locator('.reward-set-title').innerText()) === 'Дар короны' &&
       (await phoneRewardSheet.locator('.reward-set-count').innerText()) === '1/2' &&
       (await page.locator('.stage').evaluate((stage) => stage.inert)) &&
-      (await samePhoneBoard()),
+      (await samePhoneLayout()),
   )
   await phoneRewardSheet.getByRole('button', { name: 'Закрыть' }).tap()
   check('320×568: крестик закрывает панель благословений', !(await phoneRewardSheet.isVisible()))
@@ -2243,11 +2313,11 @@ async function phone(page, url) {
   const beforeGift = await readGameSnapshot(page)
   const engineer = phoneRewardCards.filter({ hasText: 'Военный инженер' })
   check(
-    '320×568: «Военный инженер» показывает скидку на специализации и собирает набор',
+    '320×568: «Военный инженер» показывает скидку на улучшения и аспекты и собирает набор',
     (await warChest.count()) === 0 &&
       (await engineer.getAttribute('data-rarity')) === 'legendary' &&
       (await engineer.locator('.reward-description').innerText()).includes(
-        '30% на улучшения и специализации',
+        '30% на улучшения и аспекты',
       ) &&
       (await engineer.locator('.reward-set-ready').isVisible()) &&
       (await engineer.locator('img').evaluate((icon) => icon.complete && icon.naturalWidth > 0)),
@@ -2306,7 +2376,7 @@ async function phone(page, url) {
       (await phoneRewardSheet.locator('.reward-drawer-entry').count()) === 3 &&
       (await chestEntry.locator('.reward-description').innerText()) === 'Получено 200 золота' &&
       (await engineerEntry.locator('.reward-description').innerText()) ===
-        '−30% к цене улучшений и специализаций' &&
+        '−30% к цене улучшений и аспектов' &&
       (await crownSet.locator('.reward-set-count').innerText()) === '2/2',
   )
   await phoneRewardSheet.getByRole('button', { name: 'Закрыть' }).tap()
@@ -2328,15 +2398,17 @@ async function phone(page, url) {
 
   await page.evaluate(() => {
     const { game, store } = window.__throne
-    if (!game.build('archer', 4, 9) || !game.upgrade(4, 9) || !game.upgrade(4, 9)) {
-      throw new Error('Не удалось подготовить Лучника III для проверки скидки')
+    if (!game.build('archer', 4, 9) || !game.upgrade(4, 9)) {
+      throw new Error('Не удалось подготовить Лучника II для проверки скидки')
     }
-    game.state.gold = 84
+    game.state.gold = 140
     store.syncHud()
   })
-  await page.touchscreen.tap(
-    boundsWithTreasury.x + (4.5 / COLS) * boundsWithTreasury.width,
-    boundsWithTreasury.y + (9.5 / ROWS) * boundsWithTreasury.height,
+  await tapTile(4, 9)
+  await page.getByRole('button', { name: 'Улучшить за 56', exact: true }).tap()
+  check(
+    '320×568: с «Военным инженером» улучшение Лучника до III стоит 56',
+    (await readGameSnapshot(page)).gold === 84,
   )
   const discountedArcher = page.getByRole('dialog', { name: 'Башня: Лучник III', exact: true })
   await discountedArcher.waitFor({ timeout: 5000 })
@@ -2373,6 +2445,21 @@ async function phone(page, url) {
     game.chooseReward('rapid-orders')
   })
   await waitForFrames(page)
+  await tapTile(4, 9)
+  const blessedDamage = await discountedArcher.locator('[data-stat="damage"]').innerText()
+  const blessedRate = await discountedArcher.locator('[data-stat="attackRate"]').innerText()
+  check(
+    '320×568: карточка Лучника III показывает силу набора и скорость от благословения, поле на месте',
+    blessedDamage.includes('Урон — 24,32') &&
+      blessedDamage.includes('Без усилений — 19') &&
+      blessedDamage.includes('Заточенные клинки +18%') &&
+      blessedDamage.includes('Гнев стражи +10%') &&
+      blessedRate.includes('Быстрые приказы +15%') &&
+      !(await discountedArcher.locator('.tower-stat-caption').count()) &&
+      (await samePhoneLayout()),
+    blessedDamage + ' / ' + blessedRate,
+  )
+  await discountedArcher.getByRole('button', { name: 'Закрыть' }).tap()
   await phoneBlessings.tap()
   check(
     '320×568: все семь наград в прокручиваемой панели, размер и место поля сохраняются',
@@ -2382,7 +2469,7 @@ async function phone(page, url) {
         list.scrollTop = list.scrollHeight
         return list.scrollTop > 0
       })) &&
-      (await samePhoneBoard()),
+      (await samePhoneLayout()),
   )
   await phoneRewardSheet.getByRole('button', { name: 'Закрыть' }).tap()
   await checkStartButtonVisible(page)
@@ -2420,6 +2507,46 @@ async function phone(page, url) {
     '768×1024: нижняя панель, кнопка «Выбрать стража»',
     await page.locator('.shop-toggle').isVisible(),
   )
+
+  for (const [width, height, fontPercent] of [
+    [320, 568, 200],
+    [390, 664, 150],
+  ]) {
+    await page.setViewportSize({ width, height })
+    await page.goto(url)
+    await page.addStyleTag({
+      content: `html { font-size: ${fontPercent}% } body { font-size: 1rem }`,
+    })
+    await page.getByRole('button', { name: 'Играть', exact: true }).tap()
+    await page.evaluate(() => document.fonts.ready)
+    await waitForFrames(page)
+    const finishLargeTextCheck = await watchPhoneLayout(page)
+    await checkControlsFit(page)
+    await shopToggle.tap()
+    await drawer.getByRole('button', { name: /Лучник/ }).tap()
+    await tapTile(4, 9)
+    await checkControlsFit(page)
+    await cancel.tap()
+    await page.getByRole('button', { name: 'Начать волну' }).tap()
+    await page.getByRole('button', { name: /Скорость игры/ }).tap()
+    await page.getByRole('button', { name: 'Пауза', exact: true }).tap()
+    await page.getByRole('button', { name: 'Меню', exact: true }).tap()
+    await page.getByRole('button', { name: 'Настройки', exact: true }).tap()
+    await page.getByRole('button', { name: 'Готово', exact: true }).tap()
+    await page
+      .getByRole('dialog', { name: 'Пауза' })
+      .getByRole('button', { name: 'Продолжить' })
+      .tap()
+    await page.evaluate(() => {
+      const { game, store } = window.__throne
+      Object.assign(game.state, { wave: 30, gold: 18750 })
+      store.syncHud()
+    })
+    await waitForFrames(page)
+    await finishLargeTextCheck(
+      `${width}×${height}, шрифт ${fontPercent}%: размещение, бой, пауза и настройки сохраняют исходную раскладку`,
+    )
+  }
 }
 
 const scenarios = [

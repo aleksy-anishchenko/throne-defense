@@ -17,7 +17,7 @@
   font-weight: 800;
   font-size: 1.12rem;
 }
-.tower-info .tower-stats span {
+.tower-info .tower-stats > span {
   display: block;
   font-size: 0.9rem;
   color: var(--parch-dim);
@@ -27,11 +27,21 @@
   font-size: 0.95rem;
   line-height: 1.3;
 }
-.tower-interaction {
-  margin: 6px 0;
+.tower-stat-caption {
+  margin: 0 0 4px;
+  font-size: 0.85rem;
   color: var(--parch-dim);
-  font-size: 0.9rem;
+}
+.tower-stat-bonus {
+  display: block;
+  color: var(--gold);
+  font-size: 0.85rem;
   line-height: 1.3;
+}
+.tower-stat-bonus > span {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 /* «цель: первый» — кнопка-строчка среди характеристик: нажатие меняет, кого бьёт башня */
 .tower-info .target-mode {
@@ -122,13 +132,21 @@
 
 .controls {
   display: flex;
+  min-height: var(--controls-height);
   gap: 6px;
   /* Ширину строки спрашивают container-запросы кнопки слева (ниже) */
   container: controls / inline-size;
 }
-/* Пока игрок выбирает плиту, строка сохраняет высоту, чтобы поле оставалось на месте. */
-.controls[inert] {
-  visibility: hidden;
+#placement-status {
+  flex: 1;
+  align-self: center;
+  text-align: center;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.controls.placement-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(44px, 1fr));
 }
 .btn {
   min-height: 46px;
@@ -152,14 +170,9 @@
 }
 .btn.grow {
   flex: 1 1 auto;
-}
-.controls.placement-actions .btn {
-  flex: 1 1 0;
-  min-height: 46px;
-  font-size: 1rem;
-}
-.placement-actions .keys {
-  visibility: hidden;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.1;
 }
 .btn.icon {
   flex: none;
@@ -204,7 +217,7 @@
   justify-content: center;
   gap: 4px;
   width: 118px;
-  height: 46px;
+  height: var(--controls-height);
   padding: 0 8px;
   background: var(--slab);
   border: 2px solid var(--edge);
@@ -235,7 +248,7 @@
 }
 /* Совсем узкий ряд (меряется ширина самой строки, а не экрана): подпись кнопки слева уже не
    помещается — остаётся один значок, у обеих кнопок тоже одного размера (aria-label есть) */
-@container controls (max-width: 359px) {
+@container controls (width < 22.5rem) {
   .shop-toggle {
     width: 48px;
     padding: 0;
