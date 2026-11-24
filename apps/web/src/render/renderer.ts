@@ -39,6 +39,7 @@ import {
   focusedBellBuffs,
   towerPlacementBellPreview,
 } from '@/utils/bellSupport'
+import { bellReachCells, treasuryReachCells } from '@/utils/supportReach'
 import {
   drawTreasuryBonus,
   drawTreasuryBonuses,
@@ -47,7 +48,6 @@ import {
   treasuryPlacementPreview,
   treasurySynergy,
 } from './treasury'
-import { isAuraTower } from '@/utils/towerStats'
 
 /** Больше стольких настоящих пикселей на один CSS-пиксель не рисуем (иначе тяжело) */
 const MAX_PIXEL_RATIO = 3
@@ -147,93 +147,75 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     ctx.setLineDash([])
   }
 
-  /** Отступ подсветки клетки ауры от краёв плиты, клеток */
-  const AURA_CELL_INSET = 0.07
+  /** Отступ подсветки зоны поддержки от краёв плиты, в клетках. */
+  const SUPPORT_CELL_INSET = 0.07
 
-  /**
-   * Дальность Звонаря — не круг, а клетки: он ускоряет башни, а башни стоят в центрах клеток,
-   * и круг обманывал («пунктир заходит на башню, а она не ускорена»). Подсвечены плиты пола
-   * (не ковёр), до центра которых он достаёт; бледной рамкой — те, что добавятся на высшей ступени.
-   * x, y — центр Звонаря; isAllowed и maxRange — как у drawRange
-   */
-  function drawAuraCells(
-    x: number,
-    y: number,
-    range: number,
-    isAllowed: boolean,
-    maxRange: number,
-    boosted: readonly Tower[],
+  function drawSupportCell(
+    cell: Cell,
+    {
+      fill,
+      line,
+      dashed = false,
+      width = 0.03,
+    }: {
+      fill: string
+      line: string
+      dashed?: boolean
+      width?: number
+    },
   ) {
+    const left = cell.col + SUPPORT_CELL_INSET
+    const top = cell.row + SUPPORT_CELL_INSET
+    const size = 1 - SUPPORT_CELL_INSET * 2
+    ctx.fillStyle = fill
+    ctx.fillRect(left, top, size, size)
+    ctx.strokeStyle = line
+    ctx.lineWidth = width
+    ctx.setLineDash(dashed ? [0.1, 0.08] : [])
+    ctx.strokeRect(left, top, size, size)
+  }
+
+  /** Сплошная рамка — текущая зона, пунктир — только клетки следующей ступени. */
+  function drawBellCells(
+    origin: Cell,
+    tier: number,
+    isAllowed: boolean,
+    boosted: ReadonlySet<Tower> | undefined,
+    isPreview: boolean,
+  ) {
+    const { current, afterUpgrade } = bellReachCells(game, origin, tier)
+    const receivesBonus = (tower: Tower | undefined) => tower && boosted?.has(tower)
     ctx.save()
-    const ownCol = Math.floor(x)
-    const ownRow = Math.floor(y)
-    const size = 1 - AURA_CELL_INSET * 2
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const distanceSquared = (col - ownCol) ** 2 + (row - ownRow) ** 2
-        if (distanceSquared === 0 || distanceSquared > maxRange ** 2) continue
-        const tower = game.towerAt(col, row)
-        // Не подсвечиваем Морозко, Колдуна, Казну, Звонарей, ковёр и препятствия.
-        if (tower ? !tower.def.takesFireRateBonus : !game.isCellFree(col, row)) continue
-        const left = col + AURA_CELL_INSET
-        const top = row + AURA_CELL_INSET
-        if (distanceSquared <= range ** 2) {
-          const receives = tower && boosted.includes(tower)
-          ctx.fillStyle = !isAllowed
-            ? 'rgba(240,90,70,.1)'
-            : receives
-              ? `rgba(${BUFF_RGB},.18)`
-              : `rgba(${BUFF_RGB},.04)`
-          ctx.fillRect(left, top, size, size)
-          ctx.strokeStyle = !isAllowed
-            ? 'rgba(240,110,80,.75)'
-            : receives
-              ? `rgba(${BUFF_RGB},.9)`
-              : 'rgba(192,204,218,.45)'
-          ctx.lineWidth = receives ? 0.035 : 0.022
-          ctx.setLineDash(receives ? [] : [0.06, 0.08])
-          ctx.strokeRect(left, top, size, size)
-        } else {
-          ctx.fillStyle = isAllowed ? `rgba(${BUFF_RGB},.04)` : 'rgba(240,90,70,.05)'
-          ctx.fillRect(left, top, size, size)
-          ctx.strokeStyle = isAllowed ? `rgba(${BUFF_RGB},.4)` : 'rgba(240,110,80,.5)'
-          ctx.lineWidth = 0.025
-          ctx.setLineDash([0.06, 0.08])
-          ctx.strokeRect(left, top, size, size)
-          ctx.setLineDash([])
-        }
-      }
+    for (const cell of afterUpgrade) {
+      if (!isPreview && receivesBonus(cell.tower)) continue
+      drawSupportCell(cell, {
+        fill: isAllowed ? `rgba(${BUFF_RGB},.03)` : 'rgba(240,90,70,.05)',
+        line: isAllowed ? 'rgba(192,204,218,.65)' : 'rgba(240,110,80,.5)',
+        dashed: true,
+      })
+    }
+    for (const cell of current) {
+      const receives = receivesBonus(cell.tower)
+      if (!isPreview && receives) continue
+      drawSupportCell(cell, {
+        fill: isAllowed ? `rgba(${BUFF_RGB},${receives ? 0.2 : 0.09})` : 'rgba(240,90,70,.1)',
+        line: isAllowed ? `rgba(${BUFF_RGB},${receives ? 0.95 : 0.65})` : 'rgba(240,110,80,.75)',
+        width: receives ? 0.05 : 0.03,
+      })
     }
     ctx.restore()
   }
 
   /** Пунктир — свободное место для соседа, яркая рамка — существующая соседняя Казна. */
-  function drawTreasuryCells(col: number, row: number, isAllowed: boolean) {
+  function drawTreasuryCells(origin: Cell, isAllowed: boolean, isPreview: boolean) {
     ctx.save()
-    ctx.setLineDash([0.06, 0.08])
-    for (let neighborRow = row - 1; neighborRow <= row + 1; neighborRow++) {
-      for (let neighborCol = col - 1; neighborCol <= col + 1; neighborCol++) {
-        if (
-          (neighborCol === col && neighborRow === row) ||
-          !game.isCellFree(neighborCol, neighborRow)
-        ) {
-          continue
-        }
-        ctx.fillStyle = isAllowed ? 'rgba(243,233,210,.05)' : 'rgba(240,110,80,.05)'
-        ctx.fillRect(neighborCol + 0.07, neighborRow + 0.07, 0.86, 0.86)
-        ctx.strokeStyle = isAllowed ? 'rgba(243,233,210,.5)' : 'rgba(240,110,80,.5)'
-        ctx.lineWidth = 0.022
-        ctx.strokeRect(neighborCol + 0.07, neighborRow + 0.07, 0.86, 0.86)
-      }
-    }
-    ctx.setLineDash([])
-    for (const tower of treasuryPlacementPreview(game.state.towers, col, row).neighbors) {
-      if (tower.col === col && tower.row === row) continue
-      ctx.fillStyle = 'rgba(255,215,117,.2)'
-      ctx.fillRect(tower.col + 0.07, tower.row + 0.07, 0.86, 0.86)
-      ctx.strokeStyle = isAllowed ? '#ffe297' : '#f0866a'
-      ctx.lineWidth = 0.055
-      ctx.strokeRect(tower.col + 0.07, tower.row + 0.07, 0.86, 0.86)
+    for (const cell of treasuryReachCells(game, origin)) {
+      drawSupportCell(cell, {
+        fill: isAllowed ? `rgba(255,215,117,${cell.tower ? 0.2 : 0.06})` : 'rgba(240,110,80,.05)',
+        line: isAllowed ? (cell.tower ? '#ffe297' : '#ad925e') : '#f0866a',
+        dashed: !cell.tower || isPreview,
+        width: cell.tower ? 0.055 : 0.03,
+      })
     }
     ctx.restore()
   }
@@ -243,18 +225,28 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     def: TowerDef,
     tier: number,
     cell: Cell,
-    isAllowed: boolean,
-    boosted: readonly Tower[] = [],
+    {
+      isAllowed = true,
+      boosted,
+      isPreview = false,
+    }: {
+      isAllowed?: boolean
+      boosted?: ReadonlySet<Tower>
+      isPreview?: boolean
+    },
   ) {
     if (def.id === 'treasury') {
-      drawTreasuryCells(cell.col, cell.row, isAllowed)
+      drawTreasuryCells(cell, isAllowed, isPreview)
+      return
+    }
+    if (def.id === 'bell') {
+      drawBellCells(cell, tier, isAllowed, boosted, isPreview)
       return
     }
     const stats = def.tiers[tier]
     const x = cell.col + CELL_CENTER
     const y = cell.row + CELL_CENTER
-    if (isAuraTower(stats)) drawAuraCells(x, y, stats.range, isAllowed, maxTierRange(def), boosted)
-    else drawRange(x, y, stats.range, isAllowed, maxTierRange(def))
+    drawRange(x, y, stats.range, isAllowed, maxTierRange(def))
   }
 
   function drawSelectionRing() {
@@ -487,23 +479,18 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         boardView.selectedTowerCell &&
         game.towerAt(boardView.selectedTowerCell.col, boardView.selectedTowerCell.row)
       const bellSupport = bellBuffs(state.towers, secondBellShare)
+      const boosted = new Set(bellSupport.map(({ tower }) => tower))
       const focusedSupport = focusedBellBuffs(bellSupport, selectedTower)
       if (selectedTower) {
-        drawReach(
-          selectedTower.def,
-          selectedTower.tier,
-          selectedTower,
-          true,
-          focusedSupport.map(({ tower }) => tower),
-        )
+        drawReach(selectedTower.def, selectedTower.tier, selectedTower, { boosted })
       } else if (preview) {
-        drawReach(
-          preview.def,
-          0,
-          preview.cell,
-          preview.canAfford,
-          preview.bellPreview?.improved.map(({ tower }) => tower),
-        )
+        drawReach(preview.def, 0, preview.cell, {
+          isAllowed: preview.canAfford,
+          boosted: preview.bellPreview
+            ? new Set(preview.bellPreview.improved.map(({ tower }) => tower))
+            : undefined,
+          isPreview: true,
+        })
       }
 
       drawThrone(ctx, game.level, time, hurtIntensity())
@@ -512,7 +499,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       const treasuries = treasurySynergy(state.towers)
       drawTreasuryNetwork(ctx, treasuries.bonuses, treasuries.links, selectedTower)
       drawBellConnections(ctx, focusedSupport)
-      drawTowers(time, selectedTower, new Set(bellSupport.map(({ tower }) => tower)))
+      drawTowers(time, selectedTower, boosted)
       drawEnemies(time)
 
       for (const shot of state.shots) drawShot(ctx, shot)

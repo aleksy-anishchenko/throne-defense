@@ -71,7 +71,7 @@ useMenuFocus(() => selection.isRewardSheetOpen, drawerElement)
               </div>
             </li>
           </ul>
-          <RewardSetStrip :set-id="group.setId" :count="group.count" numeric />
+          <RewardSetStrip :set-id="group.setId" :count="group.count" />
         </div>
       </div>
     </div>

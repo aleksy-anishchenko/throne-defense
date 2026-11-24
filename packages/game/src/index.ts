@@ -53,6 +53,7 @@ export {
   upgradeCost,
 } from './systems/towers.ts'
 export {
+  TREASURY_NEIGHBOR_REACH,
   treasuryNeighbors,
   treasuryBonusOf,
   treasuryIncomeOf,

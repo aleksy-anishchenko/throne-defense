@@ -1,5 +1,6 @@
-import { TOWERS, TOWER_LIST } from '@throne/game'
+import { createGame, PLAYABLE_LEVELS, TOWERS, TOWER_LIST } from '@throne/game'
 import { describe, expect, it } from 'vitest'
+import { bellReachCells } from './supportReach'
 import { cellsInReach, formatTowerStat, towerInteractionHint } from './towerStats'
 
 describe('formatTowerStat', () => {
@@ -55,13 +56,32 @@ describe('Звонарь: дальность — числом клеток', () 
     expect(TOWERS['bell'].tiers.map((stats) => cellsInReach(stats.range))).toEqual([8, 12, 20])
   })
 
-  it('в характеристиках — «соседних клеток», а не радиус', () => {
-    const bell = TOWERS['bell']
-    expect(formatTowerStat(bell, 'range', bell.tiers[0], bell.tiers[1])).toEqual({
-      label: 'Соседних клеток',
-      current: '8',
-      next: '12',
-    })
+  it('для выбранной плиты учитывает ковёр, границы и стражей, которых можно ускорить', () => {
+    const game = createGame(PLAYABLE_LEVELS[0])
+    game.reset()
+    game.state.gold = 1000
+    const bell = game.build('bell', 5, 9)!
+    const archer = game.build('archer', 4, 9)!
+    game.build('frost', 5, 10)
+    const { current, afterUpgrade } = bellReachCells(game, bell, bell.tier)
+    expect(current.map(({ col, row }) => [col, row])).toEqual([
+      [4, 8],
+      [6, 8],
+      [4, 9],
+      [6, 9],
+      [4, 10],
+      [6, 10],
+    ])
+    expect(current.find(({ tower }) => tower === archer)).toMatchObject({ col: 4, row: 9 })
+    expect(afterUpgrade.map(({ col, row }) => [col, row])).toEqual([[5, 7]])
+
+    expect(game.upgrade(5, 9)).toBe(true)
+    const upgraded = bellReachCells(game, bell, bell.tier)
+    expect(upgraded.current).toHaveLength(7)
+    expect(upgraded.afterUpgrade.map(({ col, row }) => [col, row])).toEqual([
+      [4, 7],
+      [6, 7],
+    ])
   })
 })
 

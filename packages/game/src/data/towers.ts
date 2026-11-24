@@ -293,7 +293,7 @@ const trapper: TowerDef = {
     { damage: 0, cooldown: 5, range: 2.6, splashRadius: 0.7, rootDuration: 2.3 },
     { damage: 0, cooldown: 4.8, range: 2.8, splashRadius: 0.9, rootDuration: 2.8 },
   ],
-  displayStats: ['rootDuration', 'attackRate', 'cooldown', 'range'],
+  displayStats: ['rootDuration', 'cooldown', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: true,
@@ -320,7 +320,7 @@ const warlock: TowerDef = {
     { damage: 0, cooldown: 1.5, range: 2.4, curseAmount: 0.3, curseDuration: 2.5 },
     { damage: 0, cooldown: 1.5, range: 2.6, curseAmount: 0.4, curseDuration: 3 },
   ],
-  displayStats: ['curseAmount', 'healingReduction', 'attackRate', 'range'],
+  displayStats: ['curseAmount', 'healingReduction', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   // Как у Морозко: проклятие держится дольше паузы между волнами проклятия — ускорять нечего
@@ -355,7 +355,7 @@ const treasury: TowerDef = {
   name: 'Казна',
   shortDescription: 'Приносит золото',
   description:
-    'Приносит золото после каждой отбитой волны. Каждая соседняя Казна даёт +10% к доходу, максимум +30%. Диагонали тоже считаются.',
+    'Приносит золото после каждой отбитой волны. Каждая соседняя Казна даёт +10% к доходу, максимум +30%.',
   cost: 80,
   upgradeCosts: [70, 100],
   tiers: [

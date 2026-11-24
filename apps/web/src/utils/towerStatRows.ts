@@ -43,6 +43,8 @@ export function statSources(
 interface LocalBonuses {
   fireRateBonus: number
   fireRateSources: number
+  bellCells: number
+  bellNextCells: number
   treasuryNeighbors: number
   treasuryBonus: number
 }
@@ -96,6 +98,16 @@ export function towerStatRows(
   const next = def.tiers[tier + 1]
   const upgraded = next && effective(next)
   return def.displayStats.map((key) => {
+    if (key === 'range' && def.id === 'bell') {
+      const { bellCells, bellNextCells } = local
+      return {
+        key,
+        label: 'Клеток в зоне',
+        current: String(bellCells),
+        next: upgraded && bellNextCells !== bellCells ? String(bellNextCells) : null,
+        details: [],
+      }
+    }
     const stat: TowerStatRow = { key, ...formatTowerStat(def, key, current, upgraded), details: [] }
     if (formatStatValue(key, base) === stat.current) return stat
     // Скорострельность и перезарядка меняются от одних и тех же усилений.

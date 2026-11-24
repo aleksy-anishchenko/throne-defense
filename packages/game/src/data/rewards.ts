@@ -20,23 +20,24 @@ export const REWARD_RARITIES = {
 
 export type RewardRarity = keyof typeof REWARD_RARITIES
 
-export const REWARD_SET_SIZE = 2
+export const REWARD_SET_SIZE = 3
+export const CROWN_GIFT_OPTION_COUNT = 3
 
 export const REWARD_SETS = {
   arsenal: {
     name: 'Гнев стражи',
-    description: '+10% ко всему урону стражей',
-    effect: { kind: 'damage', amount: 0.1 },
+    description: '+15% ко всему урону стражей',
+    effect: { kind: 'damage', amount: 0.15 },
   },
   supplies: {
     name: 'Дар короны',
-    description: 'Ещё одно благословение на выбор из двух обычных',
+    description: `Ещё одно благословение на выбор из ${CROWN_GIFT_OPTION_COUNT} обычных`,
     effect: { kind: 'crown-gift' },
   },
   watch: {
     name: 'Тяжёлый марш',
-    description: 'Все враги идут на 5% медленнее',
-    effect: { kind: 'enemySlow', amount: 0.05 },
+    description: 'Все враги идут на 10% медленнее',
+    effect: { kind: 'enemySlow', amount: 0.1 },
   },
 } satisfies Record<
   string,

@@ -20,32 +20,25 @@
   gap: 14px;
 }
 .reward-heading {
-  display: flow-root;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'title reroll';
+  align-items: start;
+  gap: 6px 10px;
   padding-bottom: 14px;
   border-bottom: 1px solid #c7a4694d;
   text-align: left;
 }
 .sheet .reward-caption {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 0.35em;
+  grid-column: 1 / -1;
   max-width: none;
   color: #dec8a5;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.18;
 }
-.reward-caption::before {
-  width: 7px;
-  height: 7px;
-  flex: none;
-  border: 1px solid #aa7945;
-  background: var(--gold);
-  transform: rotate(45deg);
-  content: '';
-}
 .reward-sheet h1 {
+  grid-area: title;
   font-size: clamp(1.65rem, 4.2vw, 2.75rem);
 }
 .reward-options {
@@ -158,11 +151,9 @@
 }
 .reward-set {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
+  gap: 2px;
   justify-self: stretch;
-  padding: 3px 8px 3px 3px;
+  padding: 4px 8px;
   border: 1px solid #ffffff16;
   border-radius: 6px;
   background: #10131e88;
@@ -175,76 +166,32 @@
 .reward-card-set {
   grid-area: set;
 }
-.reward-set-threshold {
-  display: grid;
-  min-width: 30px;
-  min-height: 24px;
-  padding: 0 5px;
-  place-items: center;
-  border: 1px solid #93764c;
-  border-radius: 4px;
-  background: #604b36;
-  color: #f5ddae;
-  font-size: 0.9rem;
-  font-weight: 800;
-  line-height: 1;
+.reward-set-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 8px;
 }
 .reward-set-title {
-  margin-right: 7px;
   color: var(--parch);
   font-weight: 800;
-  white-space: nowrap;
 }
 .reward-set-status {
   color: var(--parch-dim);
-  font-size: 0.78rem;
   font-weight: 800;
-}
-.reward-set-pips {
-  display: flex;
-  gap: 5px;
-  padding-inline: 2px;
-}
-.reward-set-pips > span {
-  width: 7px;
-  height: 7px;
-  border: 1px solid #695c50;
-  background: #1c1d28;
-  transform: rotate(45deg);
-}
-.reward-set-pips > .is-filled {
-  border-color: #e0ae5f;
-  background: var(--gold);
-}
-.reward-set-pips > .is-preview {
-  border-color: #bf9562;
-  background: #624935;
+  font-variant-numeric: tabular-nums;
 }
 .reward-set-ready {
   border-color: #78b49a88;
   background: #182d2a;
 }
-.reward-set-ready .reward-set-pips > .is-preview {
-  border-color: #aff0cc;
-  background: #386752;
-}
-.reward-set-numeric {
-  grid-template-columns: minmax(0, 1fr) auto;
-  padding: 6px 8px;
-}
-.reward-set-numeric .reward-set-effect {
-  display: block;
-  margin-top: 2px;
-}
-.reward-set-count {
-  color: var(--gold);
-  font-variant-numeric: tabular-nums;
+.reward-set-ready .reward-set-status {
+  color: #aff0cc;
 }
 
 .reward-reroll {
-  float: right;
-  margin-bottom: 3px;
-  margin-inline-start: 10px;
+  grid-area: reroll;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -273,6 +220,17 @@
 .reward-reroll-mark svg {
   width: 18px;
   height: 18px;
+}
+.reward-reroll-copy {
+  display: grid;
+  gap: 1px;
+  justify-items: start;
+}
+.reward-reroll-label {
+  color: var(--parch);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
 }
 .reward-reroll-cost {
   display: inline-flex;
@@ -450,17 +408,6 @@
   margin-bottom: 2px;
   color: var(--parch-dim);
 }
-.reward-tooltip .reward-set {
-  align-items: baseline;
-  gap: 6px;
-}
-.reward-tooltip .reward-set-threshold {
-  min-width: 26px;
-  min-height: 20px;
-  padding-inline: 4px;
-  font-size: 0.82rem;
-}
-
 @media (max-width: 600px), (max-height: 440px) {
   .reward-overlay {
     padding-block: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-bottom));
@@ -479,7 +426,6 @@
     padding-bottom: 10px;
   }
   .sheet .reward-caption {
-    gap: 6px;
     font-size: 0.92rem;
   }
   .reward-options {
@@ -521,6 +467,7 @@
     font-size: clamp(1.65rem, 4.2vw, 2.1rem);
   }
   .reward-heading {
+    row-gap: 3px;
     padding-bottom: 6px;
   }
   .reward-choice {
@@ -545,9 +492,6 @@
   .reward-card-set {
     padding-block: 2px;
   }
-  .reward-set-threshold {
-    min-height: 20px;
-  }
 }
 @media (max-width: 600px) {
   .reward-card {
@@ -569,6 +513,11 @@
     font-size: 1.5rem;
   }
   .reward-heading {
+    grid-template-areas:
+      'title title'
+      '. reroll';
+    align-items: center;
+    column-gap: 8px;
     padding-bottom: 7px;
   }
   .reward-choice,
@@ -592,7 +541,6 @@
     line-height: 1.14;
   }
   .reward-card-set {
-    gap: 6px;
     font-size: 0.8rem;
   }
 }

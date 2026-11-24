@@ -72,15 +72,8 @@ export function shopPlacementDescription(def: TowerDef): string {
   return bonus ? `Ускоряет стрельбу на ${formatPercent(bonus)}` : def.shortDescription
 }
 
-/** Дальность ауры — числом клеток */
-const AURA_RANGE_DISPLAY: StatDisplay = { label: 'Соседних клеток', format: cellsInReach }
-
-function statDisplay(key: StatKey, stats: TowerStats): StatDisplay {
-  return key === 'range' && isAuraTower(stats) ? AURA_RANGE_DISPLAY : STAT_DISPLAY[key]
-}
-
 export function formatStatValue(key: StatKey, stats: TowerStats): string {
-  const { format, unit } = statDisplay(key, stats)
+  const { format, unit } = STAT_DISPLAY[key]
   const value = displayStatValue(stats, key) ?? 0
   return `${format(value)}${unit ? ` ${unit(value)}` : ''}`
 }
@@ -92,8 +85,7 @@ export function formatTowerStat(
   currentStats: TowerStats,
   nextStats?: TowerStats,
 ) {
-  const label =
-    key === 'range' && def.id === 'frost' ? 'Дальность' : statDisplay(key, currentStats).label
+  const label = key === 'range' && def.id === 'frost' ? 'Дальность' : STAT_DISPLAY[key].label
   const current = formatStatValue(key, currentStats)
   const next = nextStats ? formatStatValue(key, nextStats) : null
   return { label, current, next: next === current ? null : next }

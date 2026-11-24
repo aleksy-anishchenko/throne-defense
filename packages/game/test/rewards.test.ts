@@ -359,8 +359,6 @@ describe('благословения после волн', () => {
     expect(refundFor(tower, game.state)).toBe(Math.floor(invested * REFUND_RATE))
 
     choose(game, 'buyback', 10)
-    expect(game.state.pendingReward?.kind).toBe('crown-gift')
-    expect(game.chooseReward(game.state.pendingReward!.options[0])).toBe(true)
     const gold = game.state.gold
     expect(refundFor(tower, game.state)).toBe(invested)
     expect(game.sell(5, 11)).toBe(invested)
@@ -687,34 +685,40 @@ describe('благословения после волн', () => {
     expect(enemy.burnDamageLeft).toBeCloseTo(mageStats.burnDamage!)
   })
 
-  it('второе благословение «Гнева стражи» открывает прибавку к общему урону', () => {
+  it('третье благословение «Гнева стражи» открывает прибавку к общему урону', () => {
     const game = newGame()
     choose(game, 'sharpened-steel')
     expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.18)
     choose(game, 'rapid-orders')
-    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.28)
+    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.18)
     expect(rewardStats(game.state).fireRateMultiplier).toBeCloseTo(1.15)
+    choose(game, 'double-shot')
+    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.33)
     const enemy = placeEnemy(game, 'rebel', 1.5)
     const hp = enemy.hp
     damageEnemy(worldOf(game), enemy, 10, 'magic')
-    expect(hp - enemy.hp).toBeCloseTo(12.8)
+    expect(hp - enemy.hp).toBeCloseTo(13.3)
   })
 
-  it('второе благословение «Тяжёлого марша» замедляет врагов вместе с «Распутицей»', () => {
+  it('третье благословение «Тяжёлого марша» замедляет врагов вместе с «Распутицей»', () => {
     const game = newGame()
     choose(game, 'rasputitsa')
     expect(rewardStats(game.state).enemySpeedMultiplier).toBeCloseTo(0.75)
     choose(game, 'field-medic')
+    expect(rewardStats(game.state).enemySpeedMultiplier).toBeCloseTo(0.75)
+    choose(game, 'empty-vials')
     const enemy = placeEnemy(game, 'rebel')
     game.step(SIMULATION_STEP)
-    expect(enemy.pathDistance).toBeCloseTo(enemy.def.speed * 0.75 * 0.95 * SIMULATION_STEP, 8)
+    expect(enemy.pathDistance).toBeCloseTo(enemy.def.speed * 0.75 * 0.9 * SIMULATION_STEP, 8)
   })
 
-  it('два разных благословения собирают «Дар короны» с выбором новой обычной карты', () => {
+  it('«Дар короны» за три благословения предлагает три новые обычные карты', () => {
     const game = newGame()
     choose(game, 'war-chest')
-    const wave = 10
-    game.state.rewardSeed = 11
+    choose(game, 'royal-tax')
+    expect(game.state.pendingReward).toBeNull()
+    const wave = 15
+    game.state.rewardSeed = 17
     const offers: PendingReward[] = []
     game.on('rewardOffered', (offer) => offers.push(offer))
     finishWave(game, wave)
@@ -722,7 +726,7 @@ describe('благословения после волн', () => {
     const gold = game.state.gold
 
     expect(previous.options).not.toContain('war-chest')
-    expect(game.chooseReward('royal-tax')).toBe(true)
+    expect(game.chooseReward('military-engineer')).toBe(true)
     const gift = game.state.pendingReward!
     expect(gift.kind).toBe('crown-gift')
     expect(gift.wave).toBe(wave)
@@ -731,8 +735,8 @@ describe('благословения после волн', () => {
     expect(game.state.phase).toBe('reward')
     expect(game.state.wave).toBe(wave + 1)
     expect(game.startWave()).toBe(false)
-    expect(gift.options).toHaveLength(2)
-    expect(new Set(gift.options).size).toBe(2)
+    expect(gift.options).toHaveLength(3)
+    expect(new Set(gift.options).size).toBe(3)
     expect(gift.options).not.toContain('war-chest')
     expect(gift.options.every((id) => REWARDS[id].rarity === 'common')).toBe(true)
     expect(gift.options.every((id) => !previous.options.includes(id))).toBe(true)
@@ -743,7 +747,7 @@ describe('благословения после волн', () => {
     const [rewardId, other] = gift.options
     expect(game.chooseReward(rewardId)).toBe(true)
     expect(game.chooseReward(other)).toBe(false)
-    expect(game.state.selectedRewards).toHaveLength(3)
+    expect(game.state.selectedRewards).toHaveLength(4)
     expect(game.state.selectedRewards.at(-1)).toEqual({ wave, rewardId })
     expect(game.state.gold).toBe(gold)
     expect(game.state.pendingReward).toBeNull()
@@ -751,15 +755,9 @@ describe('благословения после волн', () => {
     expect(offers).toHaveLength(2)
   })
 
-  it('«Дар короны» дополняет выбор пропущенной обычной картой, когда новых мало', () => {
+  it('«Дар короны» на последнем рубеже добирает до трёх пропущенными картами', () => {
     const game = newGame()
-    for (const id of [
-      'war-chest',
-      'field-medic',
-      'wildfire',
-      'last-stand',
-      'double-shot',
-    ] as const) {
+    for (const id of ['war-chest', 'bounty', 'field-medic', 'wildfire', 'last-stand'] as const) {
       choose(game, id)
     }
     game.state.phase = 'reward'
@@ -776,31 +774,34 @@ describe('благословения после волн', () => {
       wave: 29,
     })
     const options = game.state.pendingReward!.options
-    expect(options).toHaveLength(2)
-    expect(options[0]).toBe('bounty')
-    expect(['control-master', 'empty-vials']).toContain(options[1])
+    expect(options).toHaveLength(3)
+    expect(options[0]).toBe('double-shot')
+    expect(options.slice(1).sort()).toEqual(['control-master', 'empty-vials'])
   })
 
   it('«Дар короны» даётся один раз за партию, его карточка засчитывается в другой набор', () => {
     const game = newGame()
     game.state.rewardSeed = 1
     choose(game, 'sharpened-steel')
+    choose(game, 'rapid-orders')
     choose(game, 'war-chest')
     choose(game, 'bounty')
+    choose(game, 'royal-tax')
     const attackReward = game.state.pendingReward!.options.find(
       (id) => REWARDS[id].setId === 'arsenal',
     )!
 
     expect(game.chooseReward(attackReward)).toBe(true)
-    expect(rewardSetCounts(game.state.selectedRewards).arsenal).toBe(2)
-    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.28)
-    choose(game, 'two-bells', 20)
-    expect(rewardSetCounts(game.state.selectedRewards).supplies).toBe(3)
+    expect(rewardSetCounts(game.state.selectedRewards).arsenal).toBe(3)
+    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.33)
+    choose(game, 'two-bells', 29)
+    expect(rewardSetCounts(game.state.selectedRewards).supplies).toBe(4)
     expect(game.state.pendingReward).toBeNull()
     game.reset()
     expect(rewardSetCounts(game.state.selectedRewards).supplies).toBe(0)
     choose(game, 'war-chest')
     choose(game, 'bounty')
+    choose(game, 'royal-tax')
     expect(game.state.pendingReward?.kind).toBe('crown-gift')
   })
 

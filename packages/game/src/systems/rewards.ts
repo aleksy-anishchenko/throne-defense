@@ -1,4 +1,5 @@
 import {
+  CROWN_GIFT_OPTION_COUNT,
   REWARD_CHECKPOINTS,
   REWARD_LIST,
   REWARD_RARITIES,
@@ -30,7 +31,6 @@ export interface RewardSummary {
 
 /** Сколько наград предлагать за один рубеж */
 const REWARD_OPTION_COUNT = 3
-const CROWN_GIFT_OPTION_COUNT = 2
 const REROLL_COST_INCREMENT = 20
 const RANDOM_RANGE = 2 ** 32
 const TOTAL_RARITY_WEIGHT = Object.values(REWARD_RARITIES).reduce(

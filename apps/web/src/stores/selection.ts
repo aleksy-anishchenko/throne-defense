@@ -29,6 +29,7 @@ import type { BoardView, Cell } from '@/types'
 import { SIDE_PANEL_QUERY } from '@/utils/layout'
 import { formatPercent, plural } from '@/utils/format'
 import { bellPlacementPreview, towerPlacementBellPreview } from '@/utils/bellSupport'
+import { bellReachCells, treasuryReachCells } from '@/utils/supportReach'
 import { useGameStore } from './game'
 
 const isSameCell = (cell: Cell | null, col: number, row: number) =>
@@ -104,8 +105,11 @@ export const useSelectionStore = defineStore('selection', () => {
     bellCoveredTowers: 0,
     bellBoostedTowers: 0,
     bellTargetNames: '',
+    bellCells: 0,
+    bellNextCells: 0,
     treasuryNeighbors: 0,
     treasuryBonus: 0,
+    treasuryFreeCells: 0,
     upgradeCost: null as number | null,
     upgradeCostMultiplier: 1,
     hunterStacks: 0,
@@ -185,8 +189,15 @@ export const useSelectionStore = defineStore('selection', () => {
     )
     selected.bellBoostedTowers = boosted.length
     selected.bellTargetNames = [...new Set(boosted.map((target) => target.def.name))].join(', ')
+    const bellReach = tower?.def.id === 'bell' ? bellReachCells(game, tower, tower.tier) : null
+    selected.bellCells = bellReach?.current.length ?? 0
+    selected.bellNextCells = selected.bellCells + (bellReach?.afterUpgrade.length ?? 0)
     selected.treasuryNeighbors = tower ? treasuryNeighbors(game.state.towers, tower).length : 0
     selected.treasuryBonus = tower ? treasuryBonusOf(game.state.towers, tower) : 0
+    selected.treasuryFreeCells =
+      tower?.def.id === 'treasury'
+        ? treasuryReachCells(game, tower).filter((cell) => !cell.tower).length
+        : 0
     selected.upgradeCostMultiplier = upgradeCostMultiplier
     selected.upgradeCost = tower ? upgradeCost(tower, selected.upgradeCostMultiplier) : null
     selected.hunterStacks = tower?.hunterStacks ?? 0

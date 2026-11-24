@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PLAYABLE_LEVELS, createGame, treasuryIncomeOf } from '@throne/game'
+import { treasuryReachCells } from '../utils/supportReach'
 import {
   drawTreasuryBonuses,
   drawTreasuryBonus,
@@ -68,6 +69,21 @@ describe('отображение соседства Казён', () => {
     const result = treasurySynergy(game.state.towers)
     expect(result.links).toEqual([])
     expect(result.bonuses.map(({ bonus }) => bonus)).toEqual([0, 0])
+  })
+
+  it('рядом с Казной считает свободный пол и соседнюю Казну с обеих ступеней', () => {
+    const game = newGame()
+    const center = game.build('treasury', 2, 1)!
+    const neighbor = game.build('treasury', 1, 1)!
+    game.build('archer', 2, 2)
+    const cells = treasuryReachCells(game, center)
+    expect(cells).toEqual([
+      { col: 1, row: 0, tower: undefined },
+      { col: 1, row: 1, tower: neighbor },
+      { col: 1, row: 2, tower: undefined },
+    ])
+    expect(game.upgrade(2, 1)).toBe(true)
+    expect(treasuryReachCells(game, center)).toEqual(cells)
   })
 
   it('у каждой Казны свой процент, а максимум в плашке совпадает с правилами игры', () => {

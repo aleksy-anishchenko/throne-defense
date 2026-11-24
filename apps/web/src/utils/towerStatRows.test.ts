@@ -30,6 +30,8 @@ function rows(
     {
       fireRateBonus: bellBonus,
       fireRateSources: bells,
+      bellCells: 0,
+      bellNextCells: 0,
       treasuryNeighbors: neighbors,
       treasuryBonus: Math.min(neighbors, 3) * 0.1,
     },
@@ -39,11 +41,10 @@ function rows(
 }
 
 describe('характеристики выбранного стража', () => {
-  it('показывает скорость стрельбы и скрывает частоту волн Морозко на всех ступенях', () => {
+  it('показывает скорость атаки у стреляющих стражей и время перезарядки у Ловчего', () => {
+    const showsAttackRate = ['archer', 'ballista', 'cannon', 'mage']
     for (const def of TOWER_LIST) {
-      expect(Boolean(rows(def.id)['attackRate']), def.name).toBe(
-        Boolean(def.fire) && def.id !== 'frost',
-      )
+      expect(Boolean(rows(def.id)['attackRate']), def.name).toBe(showsAttackRate.includes(def.id))
     }
     for (const tier of [0, 1, 2]) {
       const frost = rows('frost', { tier, rewards: ['rapid-orders'] })
@@ -56,11 +57,10 @@ describe('характеристики выбранного стража', () =>
       next: '2,78 атак/с',
       details: [],
     })
-    expect(rows('warlock', { rewards: ['rapid-orders'] })['attackRate']).toMatchObject({
-      current: '0,77 атак/с',
-      next: null,
-      details: ['Быстрые приказы +15%'],
-    })
+    expect(rows('warlock', { rewards: ['rapid-orders'] })['attackRate']).toBeUndefined()
+    expect(rows('trapper', { rewards: ['rapid-orders'] })['cooldown'].details).toEqual([
+      'Быстрые приказы +15%',
+    ])
   })
 
   it('Звонарь и благословение ускоряют стрельбу на обеих ступенях', () => {
@@ -88,20 +88,20 @@ describe('характеристики выбранного стража', () =>
   })
 
   it('учитывает собранный набор и положение башни, в том числе на высшей ступени', () => {
-    const rewards: RewardId[] = ['sharpened-steel', 'last-stand']
+    const rewards: RewardId[] = ['sharpened-steel', 'last-stand', 'wildfire']
     expect(rows('archer', { rewards, row: 3 })['damage']).toMatchObject({
-      current: '10,75',
-      next: '18,43',
-      details: ['Заточенные клинки +18%', 'Последний рубеж +20%', 'Гнев стражи +10%'],
+      current: '11,17',
+      next: '19,15',
+      details: ['Заточенные клинки +18%', 'Последний рубеж +20%', 'Гнев стражи +15%'],
     })
     expect(rows('archer', { rewards, row: 4 })['damage']).toMatchObject({
-      current: '8,96',
-      next: '15,36',
-      details: ['Заточенные клинки +18%', 'Гнев стражи +10%'],
+      current: '9,31',
+      next: '15,96',
+      details: ['Заточенные клинки +18%', 'Гнев стражи +15%'],
     })
     const max = rows('archer', { rewards, row: 3, tier: 2 })
-    expect(max['damage']).toMatchObject({ label: 'Урон', current: '29,18', next: null })
-    expect(max['damage'].details).toContain('Гнев стражи +10%')
+    expect(max['damage']).toMatchObject({ label: 'Урон', current: '30,32', next: null })
+    expect(max['damage'].details).toContain('Гнев стражи +15%')
     expect(max['range'].details).toEqual([])
   })
 

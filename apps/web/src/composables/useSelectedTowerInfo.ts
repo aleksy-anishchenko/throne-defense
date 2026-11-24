@@ -44,9 +44,6 @@ export function useSelectedTowerInfo() {
     const upgradeCost = selection.selected.upgradeCost
     const effects = store.blessingEffects
     const stats = towerStatRows(def, tier, cell.row, effects, selection.selected, sources.value)
-    const frostSlow =
-      towerId === 'frost' ? stats.find((stat) => stat.key === 'slowAmount') : undefined
-    const tableStats = frostSlow ? stats.filter((stat) => stat !== frostSlow) : stats
     const lines: string[] = []
     if (towerId === 'bell') {
       const count = selection.selected.bellBoostedTowers
@@ -60,8 +57,11 @@ export function useSelectedTowerInfo() {
         lines.push(`Другой Звонарь даёт не меньший бонус: ${covered - count}`)
     }
     if (towerId === 'treasury') {
-      const { treasuryNeighbors, treasuryBonus } = selection.selected
-      lines.push(`Соседние Казны: ${treasuryNeighbors}, бонус +${Math.round(treasuryBonus * 100)}%`)
+      const { treasuryNeighbors, treasuryBonus, treasuryFreeCells } = selection.selected
+      lines.push(
+        `Соседние Казны: ${treasuryNeighbors}, бонус +${formatPercent(treasuryBonus)}${treasuryNeighbors ? ' · сплошная рамка' : ''}`,
+        `Свободных клеток для Казн ${treasuryFreeCells}${treasuryFreeCells ? ' · пунктир' : ''}`,
+      )
     }
     if (aspect?.hunterMark) {
       const stacks = selection.selected.hunterStacks
@@ -83,9 +83,8 @@ export function useSelectedTowerInfo() {
       characteristics: {
         description: def.description,
         hint: towerInteractionHint(def, effects),
-        frostSlow,
-        stats: tableStats,
-        nextLevel: tableStats.some((stat) => stat.next !== null) ? toRoman(tier + 1) : null,
+        stats,
+        nextLevel: stats.some((stat) => stat.next !== null) ? toRoman(tier + 1) : null,
       },
       lines,
       hasAspects,

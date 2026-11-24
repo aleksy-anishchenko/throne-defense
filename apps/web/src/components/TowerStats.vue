@@ -9,15 +9,10 @@ const props = defineProps<{
   nextLevel: string | null
   description: string
   hint: string
-  frostSlow?: TowerStatRow
 }>()
 const detailsId = useId()
 const expandedKey = ref<TowerStatRow['key'] | null>(null)
-const expandedStat = computed(() =>
-  props.frostSlow?.key === expandedKey.value
-    ? props.frostSlow
-    : props.stats.find((stat) => stat.key === expandedKey.value),
-)
+const expandedStat = computed(() => props.stats.find((stat) => stat.key === expandedKey.value))
 watch(
   () => expandedStat.value?.details.length,
   (count) => {
@@ -32,25 +27,9 @@ function toggle(stat: TowerStatRow) {
 <template>
   <div class="tower-characteristics">
     <p class="tower-description">
-      <template v-if="frostSlow">
-        Волна холода замедляет врагов вокруг на
-        <TowerStatValue
-          :stat="frostSlow"
-          :expanded="expandedKey === frostSlow.key"
-          :details-id="detailsId"
-          @toggle="toggle(frostSlow)"
-        />.<template v-if="frostSlow.next">{{
-          ` После улучшения замедление вырастет до ${frostSlow.next}.`
-        }}</template>
-      </template>
-      <template v-else>{{ description }}</template>
+      {{ description }}
       <template v-if="hint">{{ ' ' + hint }}</template>
     </p>
-    <TowerStatBonuses
-      v-if="frostSlow && expandedKey === frostSlow.key"
-      :id="detailsId"
-      :details="frostSlow.details"
-    />
     <table
       class="tower-stat-table"
       :class="{ 'with-upgrade': nextLevel }"

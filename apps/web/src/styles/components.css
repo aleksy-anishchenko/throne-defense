@@ -30,9 +30,6 @@
 .tower-characteristics {
   min-width: 0;
 }
-.tower-characteristics > .tower-stat-bonus {
-  margin: 0 0 4px;
-}
 .tower-stat-table {
   max-width: 100%;
   border-collapse: collapse;

@@ -98,7 +98,7 @@ const screenContent = computed(() => {
     case 'reward':
       return {
         title: isCrownGift.value ? REWARD_SETS.supplies.name : 'Выберите благословение',
-        text: isCrownGift.value ? 'Выберите одно из двух обычных благословений.' : '',
+        text: isCrownGift.value ? 'Выберите одно обычное благословение.' : '',
         note: '',
         buttons: [],
       }

@@ -1,5 +1,7 @@
 import type { Tower, World } from '../types.ts'
 
+export const TREASURY_NEIGHBOR_REACH = 1
+
 /** Казны на соседних клетках, включая диагонали. */
 export function treasuryNeighbors(
   towers: readonly Tower[],
@@ -10,8 +12,8 @@ export function treasuryNeighbors(
     (other) =>
       other !== tower &&
       other.def.id === 'treasury' &&
-      Math.abs(other.col - tower.col) <= 1 &&
-      Math.abs(other.row - tower.row) <= 1,
+      Math.abs(other.col - tower.col) <= TREASURY_NEIGHBOR_REACH &&
+      Math.abs(other.row - tower.row) <= TREASURY_NEIGHBOR_REACH,
   )
 }
 
