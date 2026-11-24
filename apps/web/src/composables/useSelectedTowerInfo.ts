@@ -2,6 +2,7 @@
 // Общее для панели башни на компьютере (TowerInfo) и меню башни на телефоне (TowerSheet).
 
 import {
+  cellKey,
   doubleShotDescription,
   ICE_NEEDLES,
   TOWERS,
@@ -12,7 +13,7 @@ import { computed } from 'vue'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
 import { formatPercent, plural, toRoman } from '@/utils/format'
-import { towerDescription } from '@/utils/towerStats'
+import { towerInteractionHint } from '@/utils/towerStats'
 import { statSources, towerStatRows } from '@/utils/towerStatRows'
 
 /** Как называть, кого башня выбирает целью */
@@ -43,6 +44,9 @@ export function useSelectedTowerInfo() {
     const upgradeCost = selection.selected.upgradeCost
     const effects = store.blessingEffects
     const stats = towerStatRows(def, tier, cell.row, effects, selection.selected, sources.value)
+    const frostSlow =
+      towerId === 'frost' ? stats.find((stat) => stat.key === 'slowAmount') : undefined
+    const tableStats = frostSlow ? stats.filter((stat) => stat !== frostSlow) : stats
     const lines: string[] = []
     if (towerId === 'bell') {
       const count = selection.selected.bellBoostedTowers
@@ -62,7 +66,7 @@ export function useSelectedTowerInfo() {
     if (aspect?.hunterMark) {
       const stacks = selection.selected.hunterStacks
       lines.push(
-        `Серия по одной цели — ${stacks}/${aspect.hunterMark.maxStacks} (+${formatPercent(stacks * aspect.hunterMark.damagePerStack)} к урону)`,
+        `Серия по одной цели ${stacks}/${aspect.hunterMark.maxStacks} (+${formatPercent(stacks * aspect.hunterMark.damagePerStack)} к урону)`,
       )
     }
     if (towerId === 'archer' && effects.doubleShotArrows) {
@@ -75,9 +79,14 @@ export function useSelectedTowerInfo() {
     }
     return {
       title: `${def.name} ${toRoman(tier + (aspect ? 1 : 0))}`,
-      description: towerDescription(def, effects),
-      stats,
-      showUpgradeCaption: upgradeCost !== null && stats.some((stat) => stat.details.length),
+      cellKey: cellKey(cell.col, cell.row),
+      characteristics: {
+        description: def.description,
+        hint: towerInteractionHint(def, effects),
+        frostSlow,
+        stats: tableStats,
+        nextLevel: tableStats.some((stat) => stat.next !== null) ? toRoman(tier + 1) : null,
+      },
       lines,
       hasAspects,
       aspect,

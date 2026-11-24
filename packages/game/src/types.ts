@@ -540,8 +540,6 @@ export interface GameState {
   lives: number
   /** Полный запас жизней трона для лечения между волнами */
   maxLives: number
-  /** Последняя волна, на которой трон получил урон. Ноль до первого прорыва. */
-  lastThroneDamageWave: number
   score: number
   /** Сколько врагов убито */
   kills: number
@@ -586,8 +584,6 @@ export interface GameEvents {
   waveCleared: { wave: number; bonus: number }
   /** Игроку предложены карточки благословений */
   rewardOffered: PendingReward
-  /** Трон получил урон в отрезке, за который полагалось благословение. */
-  rewardMissed: { firstWave: number; lastWave: number }
   rewardChosen: RewardPick
   /** Казна принесла золото за отбитую волну */
   income: { tower: Tower; gold: number }

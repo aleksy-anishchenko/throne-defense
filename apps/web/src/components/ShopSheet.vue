@@ -7,7 +7,7 @@ import { nextTick, useTemplateRef } from 'vue'
 import { useMenuFocus } from '@/composables/useMenuFocus'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
-import { shopPlacementDescription } from '@/utils/towerStats'
+import { shopPlacementDescription, shopTowerLabel } from '@/utils/towerStats'
 import TowerIcon from './TowerIcon.vue'
 
 const store = useGameStore()
@@ -55,7 +55,7 @@ async function chooseTower(towerId: string, event: MouseEvent) {
             class="drawer-card"
             :class="{ poor: store.hud.gold < towerDef.cost }"
             :aria-pressed="selection.armedTowerId === towerDef.id"
-            :aria-label="`${towerDef.name}, цена ${towerDef.cost}`"
+            :aria-label="shopTowerLabel(towerDef, store.hud.gold < towerDef.cost)"
             :aria-describedby="`shop-description-${towerDef.id}`"
             @click="chooseTower(towerDef.id, $event)"
           >
@@ -70,9 +70,6 @@ async function chooseTower(towerId: string, event: MouseEvent) {
             <span :id="`shop-description-${towerDef.id}`" class="drawer-card-description">{{
               shopPlacementDescription(towerDef)
             }}</span>
-            <span v-if="store.hud.gold < towerDef.cost" class="drawer-card-poor">
-              не хватает {{ towerDef.cost - store.hud.gold }}
-            </span>
           </button>
         </li>
       </ul>

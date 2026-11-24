@@ -28,7 +28,6 @@ export {
   REWARD_WAVES,
   doubleShotDescription,
   ICE_NEEDLES,
-  rewardSegmentForWave,
   type RewardDef,
   type RewardRarity,
   type RewardSetId,

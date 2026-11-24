@@ -20,22 +20,16 @@
   gap: 14px;
 }
 .reward-heading {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    'caption reroll'
-    'title title';
-  align-items: center;
-  gap: 8px 14px;
+  display: flow-root;
   padding-bottom: 14px;
   border-bottom: 1px solid #c7a4694d;
   text-align: left;
 }
 .sheet .reward-caption {
-  grid-area: caption;
   display: flex;
   align-items: center;
   gap: 9px;
+  margin-bottom: 0.35em;
   max-width: none;
   color: #dec8a5;
   font-size: 1rem;
@@ -52,7 +46,6 @@
   content: '';
 }
 .reward-sheet h1 {
-  grid-area: title;
   font-size: clamp(1.65rem, 4.2vw, 2.75rem);
 }
 .reward-options {
@@ -249,7 +242,9 @@
 }
 
 .reward-reroll {
-  grid-area: reroll;
+  float: right;
+  margin-bottom: 3px;
+  margin-inline-start: 10px;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -475,13 +470,12 @@
     padding: 12px;
   }
   .reward-sheet h1 {
-    font-size: clamp(1.65rem, 4.8vw, 2.4rem);
+    font-size: clamp(1.5rem, 4.8vw, 2.4rem);
   }
   .reward-choice {
     gap: 10px;
   }
   .reward-heading {
-    gap: 6px 9px;
     padding-bottom: 10px;
   }
   .sheet .reward-caption {
@@ -527,10 +521,6 @@
     font-size: clamp(1.65rem, 4.2vw, 2.1rem);
   }
   .reward-heading {
-    grid-template-areas:
-      'caption reroll'
-      'title reroll';
-    row-gap: 3px;
     padding-bottom: 6px;
   }
   .reward-choice {
@@ -579,7 +569,6 @@
     font-size: 1.5rem;
   }
   .reward-heading {
-    row-gap: 4px;
     padding-bottom: 7px;
   }
   .reward-choice,

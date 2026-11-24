@@ -118,7 +118,7 @@ describe('экономика Казны', () => {
 
     const withIncome = play(withTreasury)
     const withoutIncome = play(withoutTreasury)
-    expect(withIncome.picks).toHaveLength(1)
+    expect(withIncome.picks.map((pick) => pick.wave)).toEqual([5, 10])
     expect(withIncome.picks).toEqual(withoutIncome.picks)
     expect(withIncome.wealth).toBeGreaterThan(withoutIncome.wealth + TOWERS['treasury'].cost)
   })

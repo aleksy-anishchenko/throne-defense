@@ -179,11 +179,11 @@ const frost: TowerDef = {
   upgradeCosts: [60, 100],
   tiers: [
     // Баланс v4: урон был 3/5/8 — Морозко наносил урона на монету больше всех
-    { damage: 0, cooldown: 1.1, range: 1.7, slowAmount: 0.45, slowDuration: 1.6 },
-    { damage: 0, cooldown: 1.05, range: 1.9, slowAmount: 0.55, slowDuration: 2 },
+    { damage: 0, cooldown: 1, range: 1.7, slowAmount: 0.45, slowDuration: 1.6 },
+    { damage: 0, cooldown: 1, range: 1.9, slowAmount: 0.55, slowDuration: 2 },
     { damage: 0, cooldown: 1, range: 2.2, slowAmount: 0.65, slowDuration: 2.4 },
   ],
-  displayStats: ['slowAmount', 'attackRate', 'range'],
+  displayStats: ['slowAmount', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: false,

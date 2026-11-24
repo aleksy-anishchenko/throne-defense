@@ -12,14 +12,6 @@ export const REWARD_CHECKPOINTS = [
 
 export const REWARD_WAVES: readonly number[] = REWARD_CHECKPOINTS.map(({ wave }) => wave)
 
-/** Отрезок кампании, в котором сейчас идёт борьба за благословение. */
-export function rewardSegmentForWave(wave: number) {
-  const index = REWARD_WAVES.findIndex((checkpoint) => checkpoint >= wave)
-  const lastWave = REWARD_WAVES[index]
-  if (wave < 1 || lastWave === undefined) return null
-  return { firstWave: (REWARD_WAVES[index - 1] ?? 0) + 1, lastWave }
-}
-
 export const REWARD_RARITIES = {
   common: { label: 'Обычное', weight: 60 },
   rare: { label: 'Редкое', weight: 25 },

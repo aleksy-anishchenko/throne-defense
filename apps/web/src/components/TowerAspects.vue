@@ -20,12 +20,8 @@ const selection = useSelectionStore()
       >
         Отменить аспект — вернуть {{ info.aspectGoldPaid }}
       </button>
-      <p class="aspect-hint">
-        {{
-          info.canUndoSpecialization
-            ? 'Можно отменить до начала следующей волны.'
-            : 'Аспект закреплён.'
-        }}
+      <p v-if="info.canUndoSpecialization" class="aspect-hint">
+        Можно отменить до начала следующей волны.
       </p>
     </template>
     <template v-else>

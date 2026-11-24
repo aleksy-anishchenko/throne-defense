@@ -85,7 +85,6 @@ export function moveEnemies(world: World, dt: number): boolean {
       // Дошёл до трона
       enemy.isDead = true
       state.lives -= enemy.def.throneDamage
-      if (enemy.def.throneDamage > 0) state.lastThroneDamageWave = state.wave
       world.emit('leak', enemy)
       if (state.lives <= 0) {
         state.lives = 0

@@ -14,7 +14,7 @@ import {
   type TowerStats,
 } from '@throne/game'
 import { formatPercent, plural } from './format'
-import { formatStatLine, formatStatValue } from './towerStats'
+import { formatStatValue, formatTowerStat } from './towerStats'
 
 interface StatSource {
   name: string
@@ -44,11 +44,14 @@ interface LocalBonuses {
   fireRateBonus: number
   fireRateSources: number
   treasuryNeighbors: number
+  treasuryBonus: number
 }
 
 export interface TowerStatRow {
   key: StatKey
-  text: string
+  label: string
+  current: string
+  next: string | null
   details: string[]
 }
 
@@ -93,27 +96,27 @@ export function towerStatRows(
   const next = def.tiers[tier + 1]
   const upgraded = next && effective(next)
   return def.displayStats.map((key) => {
-    const text = formatStatLine(key, current, upgraded)
-    const unboosted = formatStatValue(key, base)
-    // Перезарядка Ловчего и скорость атаки меняются вместе. Источники подписаны у скорости.
-    if (key === 'cooldown' || unboosted === formatStatValue(key, current))
-      return { key, text, details: [] }
-
-    const bonuses: string[] = []
-    if (key === 'attackRate' && local.fireRateBonus > 0) {
+    const stat: TowerStatRow = { key, ...formatTowerStat(def, key, current, upgraded), details: [] }
+    if (formatStatValue(key, base) === stat.current) return stat
+    // Скорострельность и перезарядка меняются от одних и тех же усилений.
+    const bonusKey = key === 'cooldown' ? 'attackRate' : key
+    if (bonusKey === 'attackRate' && local.fireRateBonus > 0) {
       const source = local.fireRateSources > 1 ? 'Звонари («Два колокола»)' : 'Звонарь'
-      bonuses.push(`${source} +${formatPercent(local.fireRateBonus)}`)
+      stat.details.push(`${source} +${formatPercent(local.fireRateBonus)}`)
+    }
+    if (key === 'goldPerWave' && local.treasuryBonus > 0) {
+      stat.details.push(`Соседние Казны +${formatPercent(local.treasuryBonus)}`)
     }
     for (const { name, effect, count } of sources) {
-      const amount = sourceBonus(effect, key, row) * count
+      const amount = sourceBonus(effect, bonusKey, row) * count
       if (!amount) continue
       const points = Math.round(amount * 100)
       const increase =
         key === 'slowAmount'
           ? `${points} ${plural(points, ['процентный пункт', 'процентных пункта', 'процентных пунктов'])}`
           : formatPercent(amount)
-      bonuses.push(`${name} +${increase}`)
+      stat.details.push(`${name} +${increase}`)
     }
-    return { key, text, details: [`Без усилений — ${unboosted}`, ...bonuses] }
+    return stat
   })
 }

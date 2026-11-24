@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TowerDef } from '@throne/game'
+import { shopTowerLabel } from '@/utils/towerStats'
 import TowerIcon from './TowerIcon.vue'
 
 defineProps<{
@@ -18,7 +19,7 @@ const emit = defineEmits<{ pick: [] }>()
     class="card"
     :class="{ poor: isUnaffordable }"
     :aria-pressed="isArmed"
-    :aria-label="`${def.name}, цена ${def.cost}`"
+    :aria-label="shopTowerLabel(def, isUnaffordable)"
     :aria-description="def.shortDescription"
     @click="emit('pick')"
   >

@@ -98,9 +98,7 @@ const screenContent = computed(() => {
     case 'reward':
       return {
         title: isCrownGift.value ? REWARD_SETS.supplies.name : 'Выберите благословение',
-        text: isCrownGift.value
-          ? 'Выберите одно из двух обычных благословений.'
-          : 'Награда за волны без урона по трону',
+        text: isCrownGift.value ? 'Выберите одно из двух обычных благословений.' : '',
         note: '',
         buttons: [],
       }
@@ -173,7 +171,9 @@ watch([() => store.screen, () => store.rewards.kind], () => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="screen-title"
-      :aria-describedby="store.screen === 'reward' ? 'reward-caption' : undefined"
+      :aria-describedby="
+        store.screen === 'reward' && screenContent.text ? 'reward-caption' : undefined
+      "
       tabindex="-1"
       @keydown="keepDialogFocus($event, sheet)"
     >

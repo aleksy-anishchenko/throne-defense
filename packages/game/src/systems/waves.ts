@@ -2,10 +2,9 @@
 
 import { SCORE, waveBonus } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
-import { rewardSegmentForWave } from '../data/rewards.ts'
 import type { Level, SpawnEntry, WaveGroup, World } from '../types.ts'
 import { spawnEnemy } from './enemies.ts'
-import { offerReward, rewardStats } from './rewards.ts'
+import { isRewardWave, offerReward, rewardStats } from './rewards.ts'
 import { payTowerIncome } from './treasury.ts'
 
 /** Состав волны waveNumber (после последней — бесконечный режим) */
@@ -57,14 +56,7 @@ export function finishWave(world: World): void {
   const wave = state.wave
   state.wave++
   state.phase = 'build'
-  if (state.isEndless) return
-
-  const segment = rewardSegmentForWave(wave)
-  if (segment?.lastWave !== wave) return
-  if (state.lastThroneDamageWave >= segment.firstWave) {
-    world.emit('rewardMissed', segment)
-    return
-  }
+  if (state.isEndless || !isRewardWave(wave)) return
   const reward = offerReward(state, wave, world.level.def.id)
   if (reward) world.emit('rewardOffered', reward)
 }

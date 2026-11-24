@@ -90,10 +90,11 @@ describe('благословения после волн', () => {
   })
 
   it.each(REWARD_WAVES)(
-    'после %i-й волны без урона за отрезок предлагает три разные награды',
+    'после %i-й волны предлагает три разные награды даже при прорыве на самом рубеже',
     (wave) => {
       const game = newGame()
-      finishWave(game, wave)
+      finishWave(game, wave, 'rebel')
+      expect(game.state.lives).toBe(game.state.maxLives - 1)
       expect(game.state.phase).toBe('reward')
       expect(game.state.wave).toBe(wave + 1)
       expect(game.state.pendingReward?.wave).toBe(wave)
@@ -102,49 +103,31 @@ describe('благословения после волн', () => {
     },
   )
 
-  it('урон лишает награды только на текущем отрезке, даже на последней волне отрезка', () => {
+  it('после прорыва между рубежами игрок получает благословение в конце пятой волны', () => {
     const game = newGame()
-    const missed: { firstWave: number; lastWave: number }[] = []
-    game.on('rewardMissed', (segment) => missed.push(segment))
+    finishWave(game, 2, 'rebel')
+    expect(game.state.lives).toBe(game.state.maxLives - 1)
+    expect(game.state.phase).toBe('build')
+    expect(game.state.pendingReward).toBeNull()
 
-    finishWave(game, 3, 'rebel')
     finishWave(game, 5)
-    expect(game.state.lives).toBe(19)
+    const offer = waveOffer(game)
+    expect(offer.wave).toBe(5)
+    expect(offer.options).toHaveLength(3)
+    const pick = offer.options[0]!
+    expect(game.chooseReward(pick)).toBe(true)
+    expect(game.state.selectedRewards).toMatchObject([{ wave: 5, rewardId: pick }])
     expect(game.state.phase).toBe('build')
     expect(game.state.wave).toBe(6)
-    expect(game.state.pendingReward).toBeNull()
-
-    finishWave(game, 10)
-    const pick = waveOffer(game).options.find((id) => id !== 'field-medic')!
-    expect(game.chooseReward(pick)).toBe(true)
-    expect(game.state.lives).toBe(19)
-
-    finishWave(game, 15, 'armor')
-    expect(game.state.phase).toBe('build')
-    expect(game.state.pendingReward).toBeNull()
-    expect(game.state.lives).toBe(17)
-    expect(game.state.selectedRewards).toMatchObject([{ wave: 10, rewardId: pick }])
-    expect(missed).toEqual([
-      { firstWave: 1, lastWave: 5 },
-      { firstWave: 11, lastWave: 15 },
-    ])
-
-    finishWave(game, 20)
-    expect(waveOffer(game).wave).toBe(20)
   })
 
-  it('восстановление жизней не стирает прорыв, новая партия сбрасывает историю урона', () => {
+  it('падение трона на рубеже завершает партию', () => {
     const game = newGame()
-    finishWave(game, 27, 'rebel')
-    game.state.lives = game.state.maxLives
-    finishWave(game, 29)
+    game.state.lives = 1
+    finishWave(game, 29, 'rebel')
+    expect(game.state.phase).toBe('lost')
+    expect(game.state.lives).toBe(0)
     expect(game.state.pendingReward).toBeNull()
-    expect(game.state.wave).toBe(30)
-
-    game.reset()
-    expect(game.state.lastThroneDamageWave).toBe(0)
-    finishWave(game, 5)
-    expect(waveOffer(game).wave).toBe(5)
   })
 
   it.each([19, 28, 31, 35])('после %i-й волны нет рубежа с наградой', (wave) => {

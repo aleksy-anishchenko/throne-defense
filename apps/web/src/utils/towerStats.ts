@@ -23,7 +23,7 @@ export const STAT_DISPLAY: Record<StatKey, StatDisplay> = {
   slowAmount: { label: 'Замедление', format: formatPercent },
   splashRadius: { label: 'Радиус взрыва', format: formatDecimal, unit: cellUnit },
   pierceCount: { label: 'Целей за выстрел', format: String },
-  burnDamage: { label: `Урон от горения за ${MAGE_BURN.duration} с`, format: formatDecimal },
+  burnDamage: { label: `Урон от горения (за ${MAGE_BURN.duration} сек)`, format: formatDecimal },
   fireRateBonus: { label: 'Бонус к скорости атаки', format: formatPercent },
   goldPerWave: { label: 'Доход за волну', format: String },
   rootDuration: { label: 'Время в сети', format: formatDecimal, unit: () => 'с' },
@@ -61,6 +61,11 @@ export function placementReach(def: TowerDef): string {
   return `Радиус ${formatDecimal(stats.range)} ${cellUnit(stats.range)}`
 }
 
+export function shopTowerLabel(def: TowerDef, isUnaffordable: boolean): string {
+  const label = `${def.name}, цена ${def.cost}`
+  return isUnaffordable ? `${label}, недостаточно золота` : label
+}
+
 export function shopPlacementDescription(def: TowerDef): string {
   if (def.id === 'treasury') return 'Казны рядом повышают доход'
   const bonus = def.tiers[0].fireRateBonus
@@ -80,28 +85,29 @@ export function formatStatValue(key: StatKey, stats: TowerStats): string {
   return `${format(value)}${unit ? ` ${unit(value)}` : ''}`
 }
 
-/** Текущее и следующее значения делят одну подпись и единицу измерения. */
-export function formatStatLine(
-  statKey: StatKey,
+/** Значения можно прочитать по отдельности, включая единицы каждой ступени. */
+export function formatTowerStat(
+  def: TowerDef,
+  key: StatKey,
   currentStats: TowerStats,
-  nextStats: TowerStats | undefined,
-): string {
-  const { label, format } = statDisplay(statKey, currentStats)
-  const currentText = format(displayStatValue(currentStats, statKey) ?? 0)
-  const last = nextStats ?? currentStats
-  const changed = currentText !== format(displayStatValue(last, statKey) ?? 0)
-  return `${label} — ${changed ? `${currentText} → ` : ''}${formatStatValue(statKey, last)}`
+  nextStats?: TowerStats,
+) {
+  const label =
+    key === 'range' && def.id === 'frost' ? 'Дальность' : statDisplay(key, currentStats).label
+  const current = formatStatValue(key, currentStats)
+  const next = nextStats ? formatStatValue(key, nextStats) : null
+  return { label, current, next: next === current ? null : next }
 }
 
-export function towerDescription(
+export function towerInteractionHint(
   def: TowerDef,
   effects: Pick<RewardStats, 'secondBellShare' | 'iceAndFire'>,
 ): string {
-  let hint = def.interactionHint
   if (def.id === 'bell' && effects.secondBellShare > 0) {
-    hint = `«Два колокола» добавляют ${formatPercent(effects.secondBellShare)} бонуса второго по силе Звонаря.`
-  } else if (effects.iceAndFire && (def.id === 'mage' || def.id === 'frost')) {
-    hint = 'С благословением «Лёд и пламя» горение и замедление действуют одновременно.'
+    return `«Два колокола» добавляют ${formatPercent(effects.secondBellShare)} бонуса второго по силе Звонаря.`
   }
-  return hint ? `${def.description} ${hint}` : def.description
+  if (effects.iceAndFire && (def.id === 'mage' || def.id === 'frost')) {
+    return 'С благословением «Лёд и пламя» горение и замедление действуют одновременно.'
+  }
+  return def.interactionHint ?? ''
 }

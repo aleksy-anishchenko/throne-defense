@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { SIMULATION_STEP, bannerArmorOf, towerStats } from '../src/index.ts'
 import { cursePulse, damageEnemy, frostPulse, updateShots } from '../src/systems/combat.ts'
 import { moveEnemies } from '../src/systems/enemies.ts'
+import { updateTowers } from '../src/systems/towers.ts'
 import type { World } from '../src/types.ts'
 import { newGame, placeEnemy, worldOf } from './helpers.ts'
 
@@ -116,6 +117,22 @@ it.each([false, true])('болт бьёт по порядку касания п�
 })
 
 describe('Морозко', () => {
+  it.each([1, 2, 3])('на ступени %i выпускает волну холода раз в секунду', (level) => {
+    const game = newGame()
+    game.state.gold = 1000
+    const tower = game.build('frost', 5, 11)!
+    for (let step = 1; step < level; step++) expect(game.upgrade(5, 11)).toBe(true)
+    const enemy = placeEnemy(game, 'rebel', 1.5)
+    const world = worldOf(game)
+    updateTowers(world, SIMULATION_STEP)
+    expect(enemy.slowFactor).toBe(towerStats(tower).slowAmount)
+    expect(tower.cooldownLeft).toBe(1)
+    updateTowers(world, 0.75)
+    expect(tower.cooldownLeft).toBe(0.25)
+    updateTowers(world, 0.25)
+    expect(tower.cooldownLeft).toBe(1)
+  })
+
   it('замедляет врагов в радиусе', () => {
     const game = newGame()
     game.build('frost', 5, 11)

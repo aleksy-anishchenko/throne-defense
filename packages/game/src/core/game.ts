@@ -100,7 +100,6 @@ function initialState(level: Level, rewardSeed = 0): GameState {
     gold: level.def.startGold,
     lives: level.def.startLives,
     maxLives: level.def.startLives,
-    lastThroneDamageWave: 0,
     score: 0,
     kills: 0,
     isEndless: false,

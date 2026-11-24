@@ -32,7 +32,7 @@ async function reroll(event: MouseEvent) {
 <template>
   <div class="reward-choice">
     <header class="reward-heading">
-      <p id="reward-caption" class="reward-caption">{{ caption }}</p>
+      <p v-if="caption" id="reward-caption" class="reward-caption">{{ caption }}</p>
       <button
         v-if="store.rewards.rerollCost !== null"
         class="reward-reroll"
