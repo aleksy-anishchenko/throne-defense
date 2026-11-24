@@ -15,7 +15,7 @@ import {
   upgradeCost,
 } from '../systems/towers.ts'
 import { buildSpawnQueue, finishWave, getWaveGroups, spawnDueEnemies } from '../systems/waves.ts'
-import { updateBurning, updateShots } from '../systems/combat.ts'
+import { updateBurning, updateOilPuddles, updateShots } from '../systems/combat.ts'
 import { applyReward, rerollReward, rewardStats } from '../systems/rewards.ts'
 import type {
   GameEvents,
@@ -110,6 +110,7 @@ function initialState(level: Level, rewardSeed = 0): GameState {
     towersByCell: new Map(),
     enemies: [],
     shots: [],
+    oilPuddles: [],
     spawnQueue: [],
     splitQueue: [],
     waveTime: 0,
@@ -150,6 +151,7 @@ export function createGame(levelDef: LevelDef): Game {
     if (!Number.isFinite(dt) || dt <= 0) return
     state.time += dt
     if (state.phase === 'wave') spawnDueEnemies(world, dt)
+    updateOilPuddles(world, dt)
     if (!moveEnemies(world, dt)) {
       // Трон пал. Дошедшего врага убираем из списка, иначе он остался бы на поле «мёртвым»
       state.enemies = state.enemies.filter((enemy) => !enemy.isDead)

@@ -5,7 +5,7 @@ import { rewardStats, towerStats, type Enemy, type Game, type Tower } from '@thr
 import { bellBuffs } from '@/utils/bellSupport'
 import { getEnemyArt } from './enemies'
 import { GOLD, circle, drawNet, prefersReducedMotion, type Canvas2D } from './shapes'
-import { BELL_SWING_SPEED, BUFF_RGB, FIRE_RGB } from './statuses'
+import { BELL_SWING_SPEED, BUFF_RGB, FIRE_RGB, WILDFIRE } from './statuses'
 import { TOWER_ART } from './towers'
 
 interface TextEffect {
@@ -52,8 +52,7 @@ interface BoomEffect {
   y: number
   /** Радиус взрыва, клеток */
   radius: number
-  /** Ядро Пушкаря: не огонь, а пыль с тёмным краем. Нет — огненный взрыв */
-  isDust?: boolean
+  look: string
   timeLeft: number
   duration: number
 }
@@ -204,6 +203,7 @@ interface MoteLook {
 interface StatusParticles {
   isActive(enemy: Enemy): boolean
   look: MoteLook
+  wildfireLook?: MoteLook
   /** Сколько частиц в секунду от одного врага (в среднем) */
   rate: number
   /** Откуда вылетает: по высоте, в долях радиуса от центра врага (минус — выше), [от, до] */
@@ -221,6 +221,12 @@ const STATUS_PARTICLES: readonly StatusParticles[] = [
     // Огонь: искорки летят вверх
     isActive: (enemy) => enemy.burnTimeLeft > 0,
     look: { youngColor: '#fff0a8', oldColor: '#ffb347', shape: 'dot', size: 0.06 },
+    wildfireLook: {
+      youngColor: WILDFIRE.core,
+      oldColor: WILDFIRE.middle,
+      shape: 'dot',
+      size: 0.06,
+    },
     rate: 10,
     spawnY: [-1.2, -0.6],
     speedY: [-0.8, -0.45],
@@ -319,8 +325,9 @@ export function createEffects(game: Game): Effects {
 
   function drawBoom(ctx: Canvas2D, boom: BoomEffect, lifeShare: number) {
     const radius = boom.radius * (1 - lifeShare * 0.6)
-    if (!boom.isDust) {
-      ctx.fillStyle = `rgba(255,140,50,${lifeShare * 0.45})`
+    if (boom.look !== 'cannonball') {
+      const rgb = boom.look === 'wildfire' ? WILDFIRE.rgb : FIRE_RGB
+      ctx.fillStyle = `rgba(${rgb},${lifeShare * 0.45})`
       circle(ctx, boom.x, boom.y, radius)
       ctx.fill()
       return
@@ -421,7 +428,7 @@ export function createEffects(game: Game): Effects {
         const timeLeft = randomBetween(particles.lifetime)
         add({
           kind: 'mote',
-          look: particles.look,
+          look: (enemy.wildfire && particles.wildfireLook) || particles.look,
           x: enemy.x + (Math.random() - 0.5) * radius * 1.4,
           y: enemy.y + radius * randomBetween(particles.spawnY),
           vx: (Math.random() - 0.5) * particles.drift,
@@ -506,10 +513,9 @@ export function createEffects(game: Game): Effects {
       TOWER_ART[tower.def.id]?.onFire?.({ add }, tower, stats)
     }),
     game.on('splash', ({ x, y, radius, look }) => {
-      const isDust = look === 'cannonball'
-      add({ kind: 'boom', x, y, radius, isDust, timeLeft: BOOM_DURATION, duration: BOOM_DURATION })
+      add({ kind: 'boom', x, y, radius, look, timeLeft: BOOM_DURATION, duration: BOOM_DURATION })
       // от ядра летят комья земли и осколки камня
-      if (isDust) spawnSparks(x, y, CANNON_DEBRIS_COLOR, CANNON_DEBRIS_COUNT)
+      if (look === 'cannonball') spawnSparks(x, y, CANNON_DEBRIS_COLOR, CANNON_DEBRIS_COUNT)
     }),
     game.on('net', ({ x, y, radius }) =>
       add({ kind: 'net', x, y, radius, timeLeft: NET_DURATION, duration: NET_DURATION }),
@@ -552,14 +558,19 @@ export function createEffects(game: Game): Effects {
     ),
     // Сеть сгорела — оранжевые искры и огненное кольцо разбегается от врага
     game.on('netBurn', (enemy) => {
-      spawnSparks(enemy.x, enemy.y, NET_BURN_SPARK_COLOR, NET_BURN_SPARK_COUNT)
+      spawnSparks(
+        enemy.x,
+        enemy.y,
+        enemy.wildfire ? WILDFIRE.middle : NET_BURN_SPARK_COLOR,
+        NET_BURN_SPARK_COUNT,
+      )
       add({
         kind: 'ring',
         x: enemy.x,
         y: enemy.y,
         startRadius: enemy.def.radius,
         endRadius: enemy.def.radius + NET_BURN_RING_GROWTH,
-        rgb: FIRE_RGB,
+        rgb: enemy.wildfire ? WILDFIRE.rgb : FIRE_RGB,
         timeLeft: NET_BURN_DURATION,
         duration: NET_BURN_DURATION,
       })

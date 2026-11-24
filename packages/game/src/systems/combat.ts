@@ -1,8 +1,17 @@
 // Урон, снаряды и «выстрелы-ауры». Башни (data/towers.ts) собираются из этих кирпичиков.
 
-import { SCORE } from '../data/balance.ts'
+import { BOILING_OIL, SCORE } from '../data/balance.ts'
 import { ICE_NEEDLES } from '../data/rewards.ts'
-import type { DamageKind, Enemy, HomingShot, LineShot, Tower, TowerStats, World } from '../types.ts'
+import type {
+  DamageKind,
+  Enemy,
+  HomingShot,
+  LineShot,
+  OilPuddle,
+  Tower,
+  TowerStats,
+  World,
+} from '../types.ts'
 import { bannerArmorOf, queueSplit } from './enemies.ts'
 import { rewardStats } from './rewards.ts'
 
@@ -60,6 +69,7 @@ export interface HomingShotOptions {
   burnDamage?: number
   /** За сколько секунд догорает поджог */
   burnDuration?: number
+  mageAspect?: HomingShot['mageAspect']
   /** Сеть: сколько секунд держит всех, кого накрыла (вместе с splashRadius — радиус сети) */
   rootDuration?: number
 }
@@ -169,6 +179,7 @@ export function shootHoming(
     splashRadius: options.splashRadius ?? 0,
     burnDamage: options.burnDamage ?? 0,
     burnDuration: options.burnDuration ?? 0,
+    mageAspect: options.mageAspect,
     rootDuration: options.rootDuration ?? 0,
     isDone: false,
   })
@@ -261,6 +272,7 @@ function rootEnemy(enemy: Enemy, duration: number): void {
 function extinguishWithSteam(world: World, enemy: Enemy): void {
   enemy.burnDamageLeft = 0
   enemy.burnTimeLeft = 0
+  enemy.wildfire = false
   world.emit('steam', { x: enemy.x, y: enemy.y })
 }
 
@@ -376,6 +388,19 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
     }
     // Сеть падает, а не взрывается — у неё своё событие и своя картинка
     const area = { x: shot.targetX, y: shot.targetY, radius: shot.splashRadius }
+    if (shot.mageAspect === 'boiling-oil') {
+      const puddles = world.state.oilPuddles
+      const existing = puddles.find(
+        (puddle) => puddle.x === area.x && puddle.y === area.y && puddle.radius === area.radius,
+      )
+      if (existing) existing.timeLeft = BOILING_OIL.puddleDuration
+      else
+        puddles.push({
+          ...area,
+          pathDistance: shot.target.pathDistance,
+          timeLeft: BOILING_OIL.puddleDuration,
+        })
+    }
     if (shot.rootDuration > 0) world.emit('net', area)
     else world.emit('splash', { ...area, look: shot.look })
   } else if (!shot.target.isDead) {
@@ -387,7 +412,8 @@ function updateHomingShot(world: World, shot: HomingShot, dt: number): void {
 function hitWithShot(world: World, shot: HomingShot, enemy: Enemy, damageShare = 1): void {
   // Сеть не ранит: без этой проверки броня превратила бы урон 0 в 1 (Math.max(1, …))
   if (shot.damage > 0) damageEnemy(world, enemy, shot.damage * damageShare, shot.damageKind)
-  igniteEnemy(world, enemy, shot.burnDamage, shot.burnDuration)
+  if (shot.mageAspect === 'boiling-oil') enemy.oilTimeLeft = BOILING_OIL.coatDuration
+  igniteEnemy(world, enemy, shot)
   rootEnemy(enemy, shot.rootDuration)
 }
 
@@ -397,7 +423,8 @@ function hitWithShot(world: World, shot: HomingShot, enemy: Enemy, damageShare =
  * Огонь растапливает лёд (замедление снимается, а огня — меньше, см. THAW_BURN_MULTIPLIER).
  * Пойманный в сеть загорелся — сеть догорает: держит не дольше NET_ON_FIRE_SHARE своего времени
  */
-function igniteEnemy(world: World, enemy: Enemy, burnDamage: number, burnDuration: number): void {
+function igniteEnemy(world: World, enemy: Enemy, shot: HomingShot): void {
+  const { burnDamage, burnDuration } = shot
   if (enemy.isDead || burnDamage <= 0 || burnDuration <= 0) return
   let burnShare = 1
   if (enemy.slowTimeLeft > 0 && !rewardStats(world.state).iceAndFire) {
@@ -418,13 +445,54 @@ function igniteEnemy(world: World, enemy: Enemy, burnDamage: number, burnDuratio
   if (rate + 1e-9 < currentRate) return
   enemy.burnDamageLeft = rate * burnDuration
   enemy.burnTimeLeft = burnDuration
+  enemy.wildfire = shot.mageAspect === 'wildfire'
+}
+
+/** Расстояние учитывает край врага. Допуск хода нужен прогнозу для отбора достижимых луж. */
+export function withinOilReach(enemy: Enemy, puddle: OilPuddle, travel = 0): boolean {
+  const reach = puddle.radius + enemy.def.radius * SPLASH_ENEMY_RADIUS_SHARE + travel
+  return (enemy.x - puddle.x) ** 2 + (enemy.y - puddle.y) ** 2 <= reach ** 2
+}
+
+/** Действующая часть шага в луже и две секунды покрытия после неё. */
+export function coatFromPuddle(enemy: Enemy, puddle: OilPuddle, activeSeconds: number): void {
+  if (activeSeconds > 0 && withinOilReach(enemy, puddle)) {
+    enemy.oilTimeLeft = Math.max(enemy.oilTimeLeft, activeSeconds + BOILING_OIL.coatDuration)
+  }
+}
+
+/** Новые враги пачкаются в оставленной луже даже после продажи Огневика. */
+export function updateOilPuddles({ state }: World, dt: number): void {
+  const puddles = state.oilPuddles
+  if (!puddles.length) return
+  for (const puddle of puddles) {
+    const activeSeconds = Math.min(dt, puddle.timeLeft)
+    for (const enemy of state.enemies) {
+      if (!enemy.isDead) coatFromPuddle(enemy, puddle, activeSeconds)
+    }
+    puddle.timeLeft -= dt
+  }
+  if (puddles.some((puddle) => puddle.timeLeft <= 0)) {
+    state.oilPuddles = puddles.filter((puddle) => puddle.timeLeft > 0)
+  }
+}
+
+/** Урон активного поджога за указанный отрезок, с учётом оставшегося масла. */
+export function pendingBurnDamage(enemy: Enemy, seconds = enemy.burnTimeLeft): number {
+  if (enemy.burnTimeLeft <= 0) return 0
+  const burning = Math.min(seconds, enemy.burnTimeLeft)
+  const oiled = Math.min(burning, enemy.oilTimeLeft)
+  return (enemy.burnDamageLeft / enemy.burnTimeLeft) * (burning + oiled * BOILING_OIL.burnBonus)
 }
 
 /** Горящие враги теряют здоровье: равными долями, так что запас огня догорает ровно к сроку */
 export function updateBurning(world: World, dt: number): void {
   const damageMultiplier = rewardStats(world.state).damageMultiplier
   for (const enemy of world.state.enemies) {
-    if (enemy.isDead || enemy.burnTimeLeft <= 0) continue
+    if (enemy.isDead) continue
+    const damage = pendingBurnDamage(enemy, dt)
+    enemy.oilTimeLeft = Math.max(0, enemy.oilTimeLeft - dt)
+    if (enemy.burnTimeLeft <= 0) continue
     const share = Math.min(1, dt / enemy.burnTimeLeft)
     const burnDamage = enemy.burnDamageLeft * share
     enemy.burnDamageLeft -= burnDamage
@@ -432,8 +500,9 @@ export function updateBurning(world: World, dt: number): void {
     if (enemy.burnTimeLeft <= 0) {
       enemy.burnTimeLeft = 0
       enemy.burnDamageLeft = 0
+      enemy.wildfire = false
     }
     // Огонь — магия: броня его не режет
-    loseHp(world, enemy, burnDamage * damageMultiplier)
+    loseHp(world, enemy, damage * damageMultiplier)
   }
 }

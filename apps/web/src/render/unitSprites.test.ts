@@ -105,6 +105,8 @@ describe('SVG-облики стражей', () => {
     ['archer', 'ricochet'],
     ['ballista', 'giant-slayer'],
     ['ballista', 'armor-breaker'],
+    ['mage', 'boiling-oil'],
+    ['mage', 'wildfire'],
   ])('%s выбирает облик специализации %s на IV ступени', (id, aspectId) => {
     expect(drawSprites(id, 2, aspectId).frames).toEqual([`${id}-${aspectId}`])
     expect(drawSprites(id, 2).frames).toEqual([`${id}-iii`])

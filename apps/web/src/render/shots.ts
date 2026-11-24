@@ -2,7 +2,7 @@
 
 import type { Shot } from '@throne/game'
 import { PARCHMENT, circle, drawNet, prefersReducedMotion, type Canvas2D } from './shapes'
-import { FIRE_CORE, FIRE_MIDDLE, FIRE_OUTER, FIRE_OUTLINE } from './statuses'
+import { FIRE, WILDFIRE } from './statuses'
 
 /** Штрих-«хвост» за снарядом: от точки позади до самого снаряда (длина и толщина — в клетках) */
 function drawStreak(ctx: Canvas2D, shot: Shot, length: number, color: string, lineWidth: number) {
@@ -42,7 +42,9 @@ function fireballPath(ctx: Canvas2D, radius: number, tail: number, wobble: numbe
  * Фаербол Огневика: те же цвета и тёмная обводка, что у пламени на горящем враге
  * (statuses.ts) — видно, что это тот самый огонь. Повёрнут по направлению полёта
  */
-function drawFireball(ctx: Canvas2D, shot: Shot) {
+const OIL_FIRE = { ...FIRE, outer: '#251b24', middle: '#e88a35', outline: '#c28e63' }
+
+function drawFireball(ctx: Canvas2D, shot: Shot, palette = FIRE) {
   // Мерцание — от места в полёте (у снаряда нет своих часов), как вращение сети
   const phase = shot.x * 9 + shot.y * 9
   const flicker = prefersReducedMotion ? 1 : 0.85 + 0.15 * Math.sin(phase * 2.3)
@@ -50,20 +52,20 @@ function drawFireball(ctx: Canvas2D, shot: Shot) {
   ctx.translate(shot.x, shot.y)
   ctx.rotate(shot.angle)
   // мягкое свечение вокруг
-  ctx.fillStyle = 'rgba(255,130,40,.28)'
+  ctx.fillStyle = `rgba(${palette.rgb},.28)`
   circle(ctx, 0, 0, FIREBALL_RADIUS * 1.9)
   ctx.fill()
   ctx.lineJoin = 'round'
   fireballPath(ctx, FIREBALL_RADIUS, FIREBALL_TAIL * flicker, wobble)
-  ctx.fillStyle = FIRE_OUTER
+  ctx.fillStyle = palette.outer
   ctx.fill()
-  ctx.strokeStyle = FIRE_OUTLINE
+  ctx.strokeStyle = palette.outline
   ctx.lineWidth = 0.022
   ctx.stroke()
   fireballPath(ctx, FIREBALL_RADIUS * 0.7, FIREBALL_TAIL * 0.6 * flicker, wobble * 0.6)
-  ctx.fillStyle = FIRE_MIDDLE
+  ctx.fillStyle = palette.middle
   ctx.fill()
-  ctx.fillStyle = FIRE_CORE
+  ctx.fillStyle = palette.core
   circle(ctx, FIREBALL_RADIUS * 0.15, 0, FIREBALL_RADIUS * 0.45)
   ctx.fill()
 }
@@ -138,6 +140,8 @@ const SHOT_ART: Record<string, (ctx: Canvas2D, shot: Shot) => void> = {
   cannonball: drawCannonball,
   // Огневик: фаербол — огненный шар с языками пламени, тянущимися назад
   orb: drawFireball,
+  'boiling-oil': (ctx, shot) => drawFireball(ctx, shot, OIL_FIRE),
+  wildfire: (ctx, shot) => drawFireball(ctx, shot, WILDFIRE),
 }
 
 export function drawShot(ctx: Canvas2D, shot: Shot): void {

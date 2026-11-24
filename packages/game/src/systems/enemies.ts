@@ -1,6 +1,6 @@
 // Враги: появление, движение по ковру, прорыв к трону, лечение и распад на части.
 
-import { hpMultiplier } from '../data/balance.ts'
+import { BOILING_OIL, hpMultiplier } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
 import type { Enemy, World } from '../types.ts'
 import { rewardStats } from './rewards.ts'
@@ -49,6 +49,8 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
     healCooldownLeft: def.heal?.cooldown ?? 0,
     burnDamageLeft: 0,
     burnTimeLeft: 0,
+    wildfire: false,
+    oilTimeLeft: 0,
     rootTimeLeft: 0,
     rootImmunityLeft: 0,
     rootDuration: 0,
@@ -57,6 +59,18 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
     armorBreakTimeLeft: 0,
     isDead: false,
   })
+}
+
+/** Сколько клеток пройдёт враг за шаг с текущей сетью и замедлениями. */
+export function enemyStepDistance(enemy: Enemy, dt: number, enemySpeedMultiplier: number): number {
+  if (enemy.rootTimeLeft > 0) return 0
+  const frostSlow = enemy.slowTimeLeft > 0 ? enemy.slowFactor : 0
+  let travelTime = dt * (1 - frostSlow)
+  if (enemy.oilTimeLeft > 0) {
+    const oilSlow = BOILING_OIL.slowAmount * (1 - (enemy.def.slowResistance ?? 0))
+    travelTime -= Math.min(dt, enemy.oilTimeLeft) * Math.max(0, oilSlow - frostSlow)
+  }
+  return enemy.def.speed * enemySpeedMultiplier * travelTime
 }
 
 /**
@@ -71,15 +85,10 @@ export function moveEnemies(world: World, dt: number): boolean {
 
   for (const enemy of state.enemies) {
     if (enemy.isDead) continue
-    let speed = enemy.def.speed * enemySpeedMultiplier
-    if (enemy.slowTimeLeft > 0) {
-      speed *= 1 - enemy.slowFactor
-      enemy.slowTimeLeft -= dt
-    }
-    // В сети — стоит. Замедление при этом идёт своим чередом
-    if (enemy.rootTimeLeft > 0) speed = 0
+    const distance = enemyStepDistance(enemy, dt, enemySpeedMultiplier)
+    if (enemy.slowTimeLeft > 0) enemy.slowTimeLeft -= dt
     tickStatusTimers(world, enemy, dt)
-    enemy.pathDistance += speed * dt
+    enemy.pathDistance += distance
 
     if (enemy.pathDistance >= path.length) {
       // Дошёл до трона

@@ -128,7 +128,7 @@ export const REWARD_LIST: readonly RewardDef[] = [
   },
   {
     id: 'wildfire',
-    name: 'Дикий огонь',
+    name: 'Испепеление',
     description: '+30% к урону Огневика горением',
     rarity: 'common',
     setId: 'arsenal',

@@ -14,8 +14,8 @@ import {
   type TowerDef,
 } from '@throne/game'
 
-/** Шаг стратегии: id башни («поставить такую») или 'upgrade' («улучшить слабейшую») */
-export type StrategyStep = string
+/** Строка задаёт постройку или upgrade. Специализация доводит выбранного стража до IV. */
+export type StrategyStep = string | { towerId: string; aspectId: string }
 
 /**
  * Стратегия бота: сначала выполняется `opening`, потом бесконечно по кругу `loop`.
@@ -211,6 +211,24 @@ function spendGold(game: Game, strategy: Strategy, stepIndex: number): number {
         ? strategy.opening[stepIndex]
         : strategy.loop[(stepIndex - strategy.opening.length) % strategy.loop.length]
 
+    if (typeof strategyStep !== 'string') {
+      const { towerId, aspectId } = strategyStep
+      if (!TOWERS[towerId]?.aspects?.some((aspect) => aspect.id === aspectId)) {
+        throw new Error(`Стратегия «${strategy.name}» не может выбрать ${aspectId} у ${towerId}`)
+      }
+      const tower = game.state.towers.find((tower) => tower.def.id === towerId && !tower.aspectId)
+      if (!tower) {
+        stepIndex++
+        continue
+      }
+      if (tower.tier < tower.def.tiers.length - 1) {
+        if (!game.upgrade(tower.col, tower.row)) return stepIndex
+        continue
+      }
+      if (!game.specialize(tower.col, tower.row, aspectId)) return stepIndex
+      stepIndex++
+      continue
+    }
     if (strategyStep === 'upgrade') {
       const tower = weakestTower(game)
       const cost = tower ? upgradeCost(tower, rewardStats(game.state).upgradeCostMultiplier) : null
@@ -309,6 +327,18 @@ export const STRATEGIES: Strategy[] = [
     loop: ['upgrade', 'archer'],
   },
   { name: 'Только огневики', opening: ['mage', 'mage'], loop: ['upgrade', 'mage'] },
+  ...(['boiling-oil', 'wildfire'] as const).map((firstAspect) => ({
+    name: firstAspect === 'boiling-oil' ? 'Огневики с маслом и синим огнём' : 'Два синих Огневика',
+    opening: [
+      'archer',
+      'mage',
+      { towerId: 'archer', aspectId: 'ricochet' },
+      { towerId: 'mage', aspectId: firstAspect },
+      'mage',
+      { towerId: 'mage', aspectId: 'wildfire' },
+    ],
+    loop: ['ballista', 'upgrade', 'upgrade', 'warlock', 'bell', 'archer', 'upgrade'],
+  })),
   { name: 'Только пушкари', opening: ['cannon'], loop: ['upgrade', 'cannon'] },
   {
     name: 'Смешанная (старый бот)',

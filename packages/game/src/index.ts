@@ -7,6 +7,7 @@ export type { Path } from './core/path.ts'
 
 export {
   BALANCE_VERSION,
+  BOILING_OIL,
   MAGE_BURN,
   REFUND_RATE,
   SCORE,
@@ -19,6 +20,8 @@ export {
 } from './data/balance.ts'
 export { ENEMIES } from './data/enemies.ts'
 export { bannerArmorOf } from './systems/enemies.ts'
+export { pendingBurnDamage } from './systems/combat.ts'
+export { forecastBurnDamage } from './systems/burn-forecast.ts'
 export {
   REWARDS,
   REWARD_LIST,

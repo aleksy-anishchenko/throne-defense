@@ -692,8 +692,12 @@ const HEALTH_BAR_PADDING = 0.015
  * Полоска здоровья над раненым врагом. Рисуется отдельным проходом — после всех врагов,
  * чтобы соседний враг её не закрыл. Оранжевый хвост — сколько ещё догорит
  */
-export function drawEnemyHealthBar(ctx: Canvas2D, enemy: Enemy, bobPhase: number): void {
-  if (enemy.hp >= enemy.maxHp) return
+export function drawEnemyHealthBar(
+  ctx: Canvas2D,
+  enemy: Enemy,
+  bobPhase: number,
+  remainingBurnDamage: number,
+): void {
   const art = getEnemyArt(enemy.def.id)
   const radius = enemy.def.radius
   const bodyBarY = -radius - (art.healthBarOffset ?? DEFAULT_HEALTH_BAR_OFFSET)
@@ -718,11 +722,9 @@ export function drawEnemyHealthBar(ctx: Canvas2D, enemy: Enemy, bobPhase: number
   )
   ctx.fillStyle = healthBarColor(healthFraction)
   ctx.fillRect(left, barY, barWidth * healthFraction, HEALTH_BAR_HEIGHT)
-  // Сколько ещё догорит (проклятие усиливает и огонь)
-  if (enemy.burnDamageLeft > 0) {
-    const curseMultiplier = enemy.curseTimeLeft > 0 ? 1 + enemy.curseAmount : 1
-    const burnFraction = Math.min(hp, enemy.burnDamageLeft * curseMultiplier) / enemy.maxHp
-    ctx.fillStyle = BURN_PREVIEW_COLOR
+  if (remainingBurnDamage > 0) {
+    const burnFraction = Math.min(hp, remainingBurnDamage) / enemy.maxHp
+    ctx.fillStyle = enemy.wildfire ? '#80dfff' : BURN_PREVIEW_COLOR
     ctx.fillRect(
       left + barWidth * (healthFraction - burnFraction),
       barY,

@@ -3,16 +3,18 @@
 import {
   TOWERS,
   bannerArmorOf,
+  forecastBurnDamage,
   rewardStats,
   towerStats,
   type Game,
+  type RewardStats,
   type Tower,
   type TowerDef,
 } from '@throne/game'
 import type { BoardView, Cell } from '@/types'
 import { createEffects } from './effects'
 import { drawEnemy, drawEnemyHealthBar, getEnemyArt } from './enemies'
-import { buildHall, drawThrone } from './hall'
+import { buildHall, drawOilPuddles, drawThrone } from './hall'
 import {
   CELL_CENTER,
   FLOOR_COLOR,
@@ -335,9 +337,11 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   }
 
   /** Полоски здоровья — поверх всех врагов, искр и снарядов */
-  function drawHealthBars() {
+  function drawHealthBars(rewards: RewardStats) {
     for (const enemy of game.state.enemies) {
-      drawEnemyHealthBar(ctx, enemy, effects.bobPhase(enemy))
+      if (enemy.hp >= enemy.maxHp) continue
+      const burn = forecastBurnDamage(enemy, game.level.path, game.state.oilPuddles, rewards)
+      drawEnemyHealthBar(ctx, enemy, effects.bobPhase(enemy), burn)
     }
   }
 
@@ -471,7 +475,9 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
 
       const isPlaying = game.isPlaying()
 
-      const { secondBellShare } = rewardStats(state)
+      drawOilPuddles(ctx, game.level, state.oilPuddles)
+      const rewards = rewardStats(state)
+      const { secondBellShare } = rewards
       const preview = isPlaying ? placementPreview(boardView, secondBellShare) : null
       if (isPlaying && boardView.armedTowerId && !(preview && boardView.isTouchPlacement))
         drawFreeCellDots()
@@ -504,7 +510,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
 
       for (const shot of state.shots) drawShot(ctx, shot)
       effects.draw(ctx)
-      drawHealthBars()
+      drawHealthBars(rewards)
 
       if (preview) drawGhostTower(preview, time, boardView.isTouchPlacement)
       // Плашки поверх предпросмотра клеток — подсветка не приглушает действующий процент.

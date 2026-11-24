@@ -4,7 +4,7 @@
 import {
   cellKey,
   doubleShotDescription,
-  ICE_NEEDLES,
+  REWARDS,
   TOWERS,
   discountedUpgradePrice,
   type TargetMode,
@@ -73,9 +73,8 @@ export function useSelectedTowerInfo() {
       lines.push(`Двойной выстрел. ${doubleShotDescription(effects.doubleShotArrows)}.`)
     }
     if (towerId === 'ballista' && effects.iceNeedles) {
-      lines.push(
-        `Ледяные иглы — при попадании по замедленной цели до ${ICE_NEEDLES.targets} игл по ${formatPercent(ICE_NEEDLES.damageShare)} урона болта`,
-      )
+      const needles = REWARDS['ice-needles']
+      lines.push(`${needles.name}. ${needles.description}`)
     }
     return {
       title: `${def.name} ${toRoman(tier + (aspect ? 1 : 0))}`,

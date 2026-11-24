@@ -12,7 +12,7 @@ import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/comba
 import { rewardStats } from '../systems/rewards.ts'
 import { towerAspect } from '../systems/towers.ts'
 import type { Enemy, TowerDef } from '../types.ts'
-import { MAGE_BURN } from './balance.ts'
+import { BOILING_OIL, MAGE_BURN } from './balance.ts'
 import { DOUBLE_SHOT_INTERVAL } from './rewards.ts'
 
 /** Болт баллисты летит дальше её радиуса обстрела: дальность полёта = range × 1.15 (множитель) */
@@ -135,6 +135,8 @@ const archer: TowerDef = {
   },
 }
 
+const WILDFIRE_BURN = { damageBonus: 0.15, duration: 2 } as const
+
 const mage: TowerDef = {
   id: 'mage',
   name: 'Огневик',
@@ -142,6 +144,21 @@ const mage: TowerDef = {
   description: 'Поджигает цель и врагов рядом с ней. Горение игнорирует броню.',
   cost: 90,
   upgradeCosts: [80, 130],
+  aspects: [
+    {
+      id: 'boiling-oil',
+      name: 'Кипящее масло',
+      description: `Оставляет лужу на ${BOILING_OIL.puddleDuration} с. Задетые враги и все, кто входит в лужу, получают до ${BOILING_OIL.slowAmount * 100}% замедления и на ${BOILING_OIL.burnBonus * 100}% больше урона от горения. После выхода масло действует ещё ${BOILING_OIL.coatDuration} с.`,
+      cost: 150,
+    },
+    {
+      id: 'wildfire',
+      name: 'Дикий огонь',
+      description: `Синее пламя наносит на ${WILDFIRE_BURN.damageBonus * 100}% больше урона за поджог. Весь урон проходит за ${WILDFIRE_BURN.duration} с вместо ${MAGE_BURN.duration}.`,
+      cost: 150,
+      intenseBurn: WILDFIRE_BURN,
+    },
+  ],
   tiers: [
     // Горение без накопления силы; v15: попадание само по себе не ранит.
     { damage: 0, cooldown: 1.2, range: 1.5, splashRadius: 0.55 },
@@ -157,16 +174,20 @@ const mage: TowerDef = {
   canChooseTarget: false,
   preferUnburning: true,
   takesFireRateBonus: true,
-  fire: (world, tower, target, stats) =>
+  fire: (world, tower, target, stats) => {
+    const id = tower.aspectId
+    const mageAspect = id === 'boiling-oil' || id === 'wildfire' ? id : undefined
     shootHoming(world, tower, target, {
-      look: 'orb',
+      look: mageAspect ?? 'orb',
+      mageAspect,
       speed: 6.5,
       damage: stats.damage,
       damageKind: 'magic',
       splashRadius: stats.splashRadius,
       burnDamage: stats.burnDamage,
       burnDuration: stats.burnDuration,
-    }),
+    })
+  },
 }
 
 const frost: TowerDef = {

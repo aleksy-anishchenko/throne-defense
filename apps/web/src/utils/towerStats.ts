@@ -1,7 +1,7 @@
 // Как показывать характеристики выбранной башни.
 
 import type { RewardStats, StatKey, TowerDef, TowerStats } from '@throne/game'
-import { displayStatValue, MAGE_BURN } from '@throne/game'
+import { displayStatValue } from '@throne/game'
 import { formatDecimal, formatPercent, plural } from './format'
 
 function cellUnit(range: number): string {
@@ -23,7 +23,7 @@ export const STAT_DISPLAY: Record<StatKey, StatDisplay> = {
   slowAmount: { label: 'Замедление', format: formatPercent },
   splashRadius: { label: 'Радиус взрыва', format: formatDecimal, unit: cellUnit },
   pierceCount: { label: 'Целей за выстрел', format: String },
-  burnDamage: { label: `Урон от горения (за ${MAGE_BURN.duration} сек)`, format: formatDecimal },
+  burnDamage: { label: 'Урон от горения', format: formatDecimal },
   fireRateBonus: { label: 'Бонус к скорости атаки', format: formatPercent },
   goldPerWave: { label: 'Доход за волну', format: String },
   rootDuration: { label: 'Время в сети', format: formatDecimal, unit: () => 'с' },
@@ -85,7 +85,11 @@ export function formatTowerStat(
   currentStats: TowerStats,
   nextStats?: TowerStats,
 ) {
-  const label = key === 'range' && def.id === 'frost' ? 'Дальность' : STAT_DISPLAY[key].label
+  let label = STAT_DISPLAY[key].label
+  if (key === 'range' && def.id === 'frost') label = 'Дальность'
+  if (key === 'burnDamage' && currentStats.burnDuration) {
+    label += ` (за ${formatDecimal(currentStats.burnDuration)} сек)`
+  }
   const current = formatStatValue(key, currentStats)
   const next = nextStats ? formatStatValue(key, nextStats) : null
   return { label, current, next: next === current ? null : next }

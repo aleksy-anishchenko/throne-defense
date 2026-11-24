@@ -4,7 +4,7 @@
 // Правило оформления: приглушённые цвета, без оранжевого, голубого, фиолетового и яркого
 // золота — ими рисуются эффекты (огонь, лёд, проклятие, баффы), с ними не должно путаться
 
-import type { Level, Point } from '@throne/game'
+import type { Level, OilPuddle, Point } from '@throne/game'
 import { drawProps } from './props'
 import { FLOOR_COLOR, circle, prefersReducedMotion, roundedRect } from './shapes'
 import type { Canvas2D } from './shapes'
@@ -68,6 +68,77 @@ function roundedRoute(points: readonly Point[]): Path2D {
   route.lineTo(...points[points.length - 1])
   return route
 }
+
+/** Тёмная плёнка вытянута вдоль ковра. Блики и лопающиеся пузырьки выдают горячее масло. */
+export function drawOilPuddles(ctx: Canvas2D, level: Level, puddles: readonly OilPuddle[]) {
+  for (const { x, y, pathDistance, radius, timeLeft } of puddles) {
+    const [beforeX, beforeY] = level.path.positionAt(pathDistance - radius / 2)
+    const [afterX, afterY] = level.path.positionAt(pathDistance + radius / 2)
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(Math.atan2(afterY - beforeY, afterX - beforeX))
+    ctx.scale(radius, Math.min(radius, CARPET_WIDTH * 0.4))
+    ctx.globalAlpha = Math.min(1, timeLeft * 3)
+    ctx.beginPath()
+    ctx.moveTo(-0.95, -0.14)
+    ctx.bezierCurveTo(-0.88, -0.38, -0.71, -0.32, -0.62, -0.54)
+    ctx.bezierCurveTo(-0.46, -0.98, -0.12, -0.98, 0.1, -0.8)
+    ctx.bezierCurveTo(0.32, -0.61, 0.47, -0.93, 0.71, -0.64)
+    ctx.bezierCurveTo(0.86, -0.46, 0.75, -0.29, 0.89, -0.1)
+    ctx.bezierCurveTo(1.14, 0.22, 0.79, 0.65, 0.57, 0.54)
+    ctx.bezierCurveTo(0.37, 0.42, 0.31, 0.94, -0.06, 0.9)
+    ctx.bezierCurveTo(-0.37, 0.88, -0.41, 0.58, -0.64, 0.65)
+    ctx.bezierCurveTo(-0.83, 0.71, -1.05, 0.18, -0.95, -0.14)
+    ctx.closePath()
+    const film = ctx.createLinearGradient(-0.2, -0.9, 0.2, 0.92)
+    film.addColorStop(0, 'rgba(104,65,65,.88)')
+    film.addColorStop(0.25, 'rgba(48,37,51,.91)')
+    film.addColorStop(0.65, 'rgba(30,25,34,.94)')
+    film.addColorStop(1, 'rgba(70,42,43,.9)')
+    ctx.fillStyle = film
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(38,25,33,.95)'
+    ctx.lineWidth = 0.045
+    ctx.stroke()
+
+    ctx.fillStyle = 'rgba(208,149,100,.48)'
+    ctx.beginPath()
+    ctx.moveTo(-0.81, -0.14)
+    ctx.bezierCurveTo(-0.55, -0.19, -0.55, -0.81, -0.18, -0.72)
+    ctx.bezierCurveTo(-0.48, -0.59, -0.49, -0.12, -0.81, -0.14)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(234,190,135,.84)'
+    ctx.lineWidth = 0.032
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(-0.47, -0.54)
+    ctx.quadraticCurveTo(-0.4, -0.68, -0.3, -0.7)
+    ctx.stroke()
+
+    const swell = prefersReducedMotion ? 1 : 1 + 0.16 * Math.sin(timeLeft * 7 + x + y)
+    for (const [bubbleX, bubbleY, size] of OIL_BUBBLES) {
+      const bubble = size * swell
+      ctx.beginPath()
+      ctx.ellipse(bubbleX, bubbleY, bubble, bubble * 1.45, -0.25, 0, Math.PI * 2)
+      ctx.fillStyle = '#49323a'
+      ctx.fill()
+      ctx.strokeStyle = '#b9885b'
+      ctx.lineWidth = 0.024
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.ellipse(bubbleX, bubbleY, bubble * 0.68, bubble * 1.05, -0.25, 3.5, 5.1)
+      ctx.strokeStyle = '#f0ca8f'
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+}
+
+const OIL_BUBBLES = [
+  [0.39, 0.02, 0.093],
+  [0.58, -0.11, 0.046],
+  [-0.11, 0.5, 0.057],
+] as const
 
 /** Ковёр идёт по маршруту врагов. Скругление, кант и вышивка рисуются на фоне. */
 function drawCarpet(

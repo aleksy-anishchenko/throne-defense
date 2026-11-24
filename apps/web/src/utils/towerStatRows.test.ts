@@ -14,6 +14,7 @@ function rows(
   options: {
     rewards?: RewardId[]
     tier?: number
+    aspectId?: string
     row?: number
     bellBonus?: number
     bells?: number
@@ -28,6 +29,7 @@ function rows(
     row,
     rewardStats({ selectedRewards }),
     {
+      aspectId: options.aspectId,
       fireRateBonus: bellBonus,
       fireRateSources: bells,
       bellCells: 0,
@@ -41,6 +43,20 @@ function rows(
 }
 
 describe('характеристики выбранного стража', () => {
+  it('показывает длительность и полный урон выбранного огня с учётом благословений', () => {
+    expect(rows('mage', { tier: 2, aspectId: 'boiling-oil' })['burnDamage']).toMatchObject({
+      label: 'Урон от горения (за 5 сек)',
+      current: '61,2',
+    })
+    expect(rows('mage', { tier: 2, aspectId: 'wildfire' })['burnDamage']).toMatchObject({
+      label: 'Урон от горения (за 2 сек)',
+      current: '70,38',
+    })
+    expect(
+      rows('mage', { tier: 2, aspectId: 'wildfire', rewards: ['wildfire'] })['burnDamage'],
+    ).toMatchObject({ current: '91,49', details: ['Благословение «Испепеление» +30%'] })
+  })
+
   it('показывает скорость атаки у стреляющих стражей и время перезарядки у Ловчего', () => {
     const showsAttackRate = ['archer', 'ballista', 'cannon', 'mage']
     for (const def of TOWER_LIST) {
@@ -126,7 +142,7 @@ describe('характеристики выбранного стража', () =>
       label: 'Урон от горения (за 5 сек)',
       current: '19,89',
       next: '48,62',
-      details: ['Дикий огонь +30%'],
+      details: ['Благословение «Испепеление» +30%'],
     })
   })
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { PLAYABLE_LEVELS, createGame } from '@throne/game'
 import { findBestCell } from './bot.ts'
 import { measureDefense } from './towers.ts'
+import { measureMageAspects } from './mage-aspects.ts'
 
 describe('стенд специализаций', () => {
   const level = PLAYABLE_LEVELS[0]
@@ -28,5 +29,17 @@ describe('стенд специализаций', () => {
     expect(() =>
       measureDefense(level, [{ ...placement, aspectId: 'missing' }], stream, 20),
     ).toThrow('специализацию')
+  })
+
+  it('сравнивает пять покупок Огневика за одинаковое золото в каждом игровом зале', () => {
+    for (const hall of PLAYABLE_LEVELS) {
+      const results = measureMageAspects(hall)
+      expect(new Set(results.map((result) => result.name)).size).toBe(5)
+      expect(new Set(results.map((result) => result.spentGold))).toEqual(new Set([1510]))
+      for (const result of results) {
+        expect(result.kills).toBeGreaterThan(0)
+        expect(result.livesLost).toBeGreaterThanOrEqual(result.leaks)
+      }
+    }
   })
 })

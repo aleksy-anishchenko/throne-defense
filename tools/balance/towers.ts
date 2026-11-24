@@ -62,16 +62,7 @@ export interface CombatReport {
   elapsed: number
 }
 
-/** Один и тот же поток для одиночной башни, армии и проверок поддержки */
-function runStream(game: Game, stream: EnemyStream, immortal = false): CombatReport {
-  if (
-    !Number.isInteger(stream.count) ||
-    stream.count < 1 ||
-    !Number.isFinite(stream.gap) ||
-    stream.gap < 0
-  ) {
-    throw new Error('Неверные параметры потока')
-  }
+function trackCombat(game: Game): CombatReport {
   const report: CombatReport = {
     spentGold: game.state.towers.reduce(
       (sum, tower) => sum + investedGold(tower.def, tower.tier, tower.aspectId),
@@ -92,6 +83,20 @@ function runStream(game: Game, stream: EnemyStream, immortal = false): CombatRep
     report.livesLost += enemy.def.throneDamage
     report.damage += enemy.maxHp - enemy.hp
   })
+  return report
+}
+
+/** Один и тот же поток для одиночной башни, армии и проверок поддержки */
+function runStream(game: Game, stream: EnemyStream, immortal = false): CombatReport {
+  if (
+    !Number.isInteger(stream.count) ||
+    stream.count < 1 ||
+    !Number.isFinite(stream.gap) ||
+    stream.gap < 0
+  ) {
+    throw new Error('Неверные параметры потока')
+  }
+  const report = trackCombat(game)
   const world = { state: game.state, level: game.level, emit: () => {} }
   let spawned = 0
   for (let i = 0; i < MAX_WAVE_STEPS; i++) {
@@ -119,18 +124,11 @@ function measurementGame(level: LevelDef, wave: number): Game {
   game.reset()
   game.state.gold = UNLIMITED
   game.state.lives = UNLIMITED
-  // Остаёмся в build: врагов выпускает стенд, бонусов и автоматических волн здесь нет.
   game.state.wave = wave
   return game
 }
 
-/** Реальный бой с заданной расстановкой; нужен и для сравнения поддержки за те же деньги */
-export function measureDefense(
-  level: LevelDef,
-  placements: readonly Placement[],
-  stream: EnemyStream,
-  wave = 1,
-): CombatReport {
+function deployDefense(level: LevelDef, placements: readonly Placement[], wave: number): Game {
   const game = measurementGame(level, wave)
   for (const placement of placements) {
     if (!game.build(placement.towerId, placement.col, placement.row))
@@ -145,7 +143,35 @@ export function measureDefense(
       throw new Error('Не удалось выбрать специализацию башни стенда')
     }
   }
-  return runStream(game, stream)
+  return game
+}
+
+/** Бой с заданной расстановкой и однородным потоком врагов. */
+export function measureDefense(
+  level: LevelDef,
+  placements: readonly Placement[],
+  stream: EnemyStream,
+  wave = 1,
+): CombatReport {
+  return runStream(deployDefense(level, placements, wave), stream)
+}
+
+/** Отдельная волна кампании с её обычным расписанием, лечением и распадом врагов. */
+export function measureWaveDefense(
+  level: LevelDef,
+  placements: readonly Placement[],
+  wave: number,
+): CombatReport {
+  const game = deployDefense(level, placements, wave)
+  const report = trackCombat(game)
+  game.startWave()
+  for (let step = 0; step < MAX_WAVE_STEPS && game.state.phase === 'wave'; step++) {
+    game.step(SIMULATION_STEP)
+  }
+  if (game.state.wavesCleared !== wave)
+    throw new Error(`Волна ${wave} в зале «${level.name}» не завершилась`)
+  report.elapsed = game.state.time
+  return report
 }
 
 /** Армия одного типа на общий бюджет. Остаток денег не даёт преимущества в сравнении. */

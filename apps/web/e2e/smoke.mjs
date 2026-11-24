@@ -1427,12 +1427,14 @@ async function desktop(page, url) {
   )
   await rerollButton.click()
   const iceNeedles = rewardCards.filter({ hasText: 'Ледяные иглы' })
+  const needlesDescription = await iceNeedles.locator('.reward-description').innerText()
   const iceNeedlesSet = iceNeedles.locator('.reward-card-set')
   check(
     'после обновления «Ледяные иглы» показывают эффект и прогресс 2 из 3',
     (await blades.count()) === 0 &&
       (await iceNeedles.getAttribute('data-rarity')) === 'rare' &&
-      (await iceNeedles.locator('.reward-description').innerText()).includes('25%') &&
+      needlesDescription.includes('по врагу под морозом') &&
+      needlesDescription.includes('25%') &&
       (await iceNeedles
         .locator('img')
         .evaluate((icon) => icon.complete && icon.naturalWidth > 0)) &&
@@ -1452,6 +1454,16 @@ async function desktop(page, url) {
       (await tooltip.locator('.reward-set-status').innerText()) === 'Собрано 2 из 3' &&
       (await bladesIcon.locator('.reward-progress .is-filled').count()) === 2,
   )
+
+  await page.getByRole('button', { name: /^Баллиста/ }).click()
+  await clickCell(page, 4, 9)
+  await page.keyboard.press('Escape')
+  await clickCell(page, 4, 9)
+  check(
+    'карточка Баллисты показывает то же условие для игл, что и благословение',
+    (await page.locator('.tower-info').innerText()).includes(needlesDescription),
+  )
+  await page.getByRole('button', { name: /Вернуть/ }).click()
 
   // Проверяем состав двух волн и переходы между этапами. Бои сокращаем после выхода врагов.
   await page.evaluate(() => {
@@ -1511,7 +1523,7 @@ async function desktop(page, url) {
   check(
     'лишняя карта собранного набора показывает «Бонус уже получен»',
     (await rewardCards
-      .filter({ hasText: 'Дикий огонь' })
+      .filter({ hasText: 'Испепеление' })
       .locator('.reward-set-status')
       .innerText()) === 'Бонус уже получен',
   )
@@ -1685,6 +1697,51 @@ async function desktop(page, url) {
         return tower.aspectId === 'armor-breaker' && tower.aspectLocked
       })),
   )
+
+  // Два Огневика у входа получают разные аспекты через обычную панель.
+  await page.evaluate(() => {
+    const { store, game } = window.__throne
+    store.newGame()
+    game.state.gold = 900
+    for (const col of [2, 4]) {
+      game.build('mage', col, 9)
+      game.upgrade(col, 9)
+      game.upgrade(col, 9)
+    }
+    store.syncHud()
+  })
+  await clickCell(page, 2, 9)
+  const oilOption = aspects.getByRole('button', { name: 'Кипящее масло за 150 золота' })
+  check(
+    'масло указывает верхнюю границу замедления',
+    (await oilOption.innerText()).includes('до 20% замедления'),
+  )
+  await oilOption.click()
+  await clickCell(page, 4, 9)
+  await aspects.getByRole('button', { name: 'Дикий огонь за 150 золота' }).click()
+  await waitForFrames(page)
+  check(
+    'Огневик IV показывает 70,38 урона за 2 с, обе специализации оплачены',
+    (await readStatRows(page.locator('.tower-info'))).includes(
+      'Урон от горения (за 2 сек) 70,38',
+    ) && (await readGameSnapshot(page)).gold === 0,
+  )
+  await page.getByRole('button', { name: 'Начать волну' }).click()
+  const oiledAndBurning = await page.evaluate(() => {
+    const { game } = window.__throne
+    game.setPaused(true)
+    for (let i = 0; i < 600; i++) {
+      game.step(1 / 60)
+      if (
+        game.state.oilPuddles.length &&
+        game.state.enemies.some((e) => e.wildfire && e.oilTimeLeft > 0)
+      )
+        return true
+    }
+    return false
+  })
+  await waitForFrames(page)
+  check('первые враги попадают в масляную лужу и загораются синим', oiledAndBurning)
 
   // Стрелки снимают выбор с плиты: цифра ставит стража под курсор, а не на старую плиту
   await page.evaluate(() => window.__throne.store.newGame())

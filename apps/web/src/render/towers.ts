@@ -722,6 +722,8 @@ const ASPECT_COLORS: Readonly<Record<string, string>> = {
   'armor-breaker': '#91dbef',
   'hunter-mark': '#9bd36a',
   ricochet: '#d6a8ff',
+  'boiling-oil': '#e0a357',
+  wildfire: '#7aafff',
 }
 
 const aspectColor = (aspectId: string | null) =>
@@ -772,6 +774,18 @@ export function drawAspectMark(ctx: Canvas2D, { x, y, aspectId }: Tower) {
     ctx.lineTo(-0.02, 0)
     ctx.lineTo(0.02, 0.015)
     ctx.lineTo(0, 0.06)
+  } else if (aspectId === 'boiling-oil') {
+    ctx.moveTo(0.01, -0.085)
+    ctx.bezierCurveTo(0.02, -0.03, 0.07, 0.01, 0.055, 0.045)
+    ctx.bezierCurveTo(0.035, 0.1, -0.075, 0.075, -0.055, 0.01)
+    ctx.closePath()
+  } else if (aspectId === 'wildfire') {
+    ctx.moveTo(-0.055, 0.03)
+    ctx.quadraticCurveTo(-0.075, 0, -0.03, -0.045)
+    ctx.lineTo(-0.02, -0.005)
+    ctx.quadraticCurveTo(0.02, -0.04, 0.033, -0.09)
+    ctx.quadraticCurveTo(0.075, -0.015, 0.04, 0.045)
+    ctx.quadraticCurveTo(0, 0.09, -0.055, 0.03)
   } else if (aspectId === 'hunter-mark') {
     ctx.arc(0, 0, 0.045, 0, Math.PI * 2)
     ctx.moveTo(-0.08, 0)

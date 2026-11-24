@@ -21,10 +21,20 @@ export const FROST_RGB = '170,230,255'
 export const CURSE_RGB = '190,120,255'
 
 /** Цвета пламени: снаружи внутрь. Светлая сердцевина и тёмная обводка — видно на любом фоне */
-export const FIRE_OUTER = '#ff6a1a'
-export const FIRE_MIDDLE = '#ffc23a'
-export const FIRE_CORE = '#fff4b8'
-export const FIRE_OUTLINE = 'rgba(70,18,0,.85)'
+export const FIRE = {
+  rgb: FIRE_RGB,
+  outer: '#ff6a1a',
+  middle: '#ffc23a',
+  core: '#fff4b8',
+  outline: 'rgba(70,18,0,.85)',
+}
+export const WILDFIRE = {
+  rgb: '74,147,255',
+  outer: '#325de2',
+  middle: '#49c7ff',
+  core: '#f2ffff',
+  outline: '#162d67',
+}
 
 /** Насколько кольцо у ног выходит за край врага, клеток. */
 const RING_SLOT_MARGINS = [0.07, 0.14, 0.21] as const
@@ -92,6 +102,27 @@ const STATUS_LOOKS: readonly StatusLook[] = [
     drawMark: (ctx, radius) => drawBrokenArmor(ctx, radius),
   },
   {
+    isActive: (enemy) => enemy.oilTimeLeft > 0,
+    rgb: '192,144,84',
+    hasTint: false,
+    drawMark(ctx, radius) {
+      ctx.save()
+      ctx.translate(-0.72 * radius, 0.43 * radius)
+      ctx.scale(radius, radius)
+      ctx.fillStyle = '#251b24'
+      ctx.strokeStyle = '#e6b378'
+      ctx.lineWidth = 0.085
+      ctx.beginPath()
+      ctx.moveTo(0.04, -0.65)
+      ctx.bezierCurveTo(0.04, -0.36, 0.34, -0.18, 0.28, 0.07)
+      ctx.bezierCurveTo(0.21, 0.4, -0.31, 0.35, -0.29, 0.04)
+      ctx.bezierCurveTo(-0.29, -0.18, -0.09, -0.36, 0.04, -0.65)
+      ctx.fill()
+      ctx.stroke()
+      ctx.restore()
+    },
+  },
+  {
     // Сеть: сама сеть поверх врага, чуть шире его; без кольца и оттенка.
     // Горит (враг в огне) — грузила тлеют оранжевым: сеть скоро сгорит
     isActive: (enemy) => enemy.rootTimeLeft > 0,
@@ -113,7 +144,8 @@ const STATUS_LOOKS: readonly StatusLook[] = [
     rgb: FIRE_RGB,
     ring: { slot: 0, hasGlow: true, brightness: flicker(11, 0.5) },
     hasTint: true,
-    drawMark: (ctx, radius, time) => drawFlames(ctx, radius, time),
+    drawMark: (ctx, radius, time, enemy) =>
+      drawFlames(ctx, radius, time, enemy.wildfire ? WILDFIRE : FIRE),
   },
 ]
 
@@ -175,6 +207,10 @@ export function drawBannerShield(ctx: Canvas2D, x: number, y: number) {
   ctx.restore()
 }
 
+function statusRgb(look: StatusLook, enemy: Enemy) {
+  return look.rgb === FIRE_RGB && enemy.wildfire ? WILDFIRE.rgb : look.rgb
+}
+
 /** Кольца у ног — до тела врага */
 export function drawStatusRings(ctx: Canvas2D, enemy: Enemy, radius: number, time: number) {
   for (const look of STATUS_LOOKS) {
@@ -182,12 +218,13 @@ export function drawStatusRings(ctx: Canvas2D, enemy: Enemy, radius: number, tim
     if (!ring || !look.isActive(enemy)) continue
     const slot = look.rgb === FIRE_RGB && enemy.slowTimeLeft > 0 ? 2 : ring.slot
     const ringRadius = radius + RING_SLOT_MARGINS[slot]
+    const rgb = statusRgb(look, enemy)
     if (ring.hasGlow) {
-      ctx.fillStyle = `rgba(${look.rgb},.22)`
+      ctx.fillStyle = `rgba(${rgb},.22)`
       circle(ctx, 0, 0, ringRadius)
       ctx.fill()
     }
-    ctx.strokeStyle = `rgba(${look.rgb},${0.45 + 0.5 * ring.brightness(time)})`
+    ctx.strokeStyle = `rgba(${rgb},${0.45 + 0.5 * ring.brightness(time)})`
     ctx.lineWidth = RING_WIDTH
     if (ring.isDashed) ctx.setLineDash([0.06, 0.05])
     circle(ctx, 0, 0, ringRadius)
@@ -200,7 +237,7 @@ export function drawStatusRings(ctx: Canvas2D, enemy: Enemy, radius: number, tim
 export function drawStatusMarks(ctx: Canvas2D, enemy: Enemy, radius: number, time: number) {
   for (const look of STATUS_LOOKS) {
     if (!look.hasTint || !look.isActive(enemy)) continue
-    ctx.fillStyle = `rgba(${look.rgb},${TINT_ALPHA})`
+    ctx.fillStyle = `rgba(${statusRgb(look, enemy)},${TINT_ALPHA})`
     circle(ctx, 0, 0, radius)
     ctx.fill()
   }
@@ -306,18 +343,19 @@ function drawFlame(
   height: number,
   sway: number,
   outlineWidth: number,
+  palette: typeof FIRE,
 ) {
   flamePath(ctx, x, baseY, width, height, sway)
-  ctx.fillStyle = FIRE_OUTER
+  ctx.fillStyle = palette.outer
   ctx.fill()
-  ctx.strokeStyle = FIRE_OUTLINE
+  ctx.strokeStyle = palette.outline
   ctx.lineWidth = outlineWidth
   ctx.stroke()
   flamePath(ctx, x, baseY, width * 0.62, height * 0.68, sway * 0.6)
-  ctx.fillStyle = FIRE_MIDDLE
+  ctx.fillStyle = palette.middle
   ctx.fill()
   flamePath(ctx, x, baseY, width * 0.3, height * 0.38, sway * 0.3)
-  ctx.fillStyle = FIRE_CORE
+  ctx.fillStyle = palette.core
   ctx.fill()
 }
 
@@ -332,7 +370,7 @@ const BURN_TONGUES: readonly (readonly [number, number, number, number])[] = [
 ]
 
 /** Три пляшущих языка пламени поверх врага */
-function drawFlames(ctx: Canvas2D, radius: number, time: number) {
+function drawFlames(ctx: Canvas2D, radius: number, time: number, palette: typeof FIRE) {
   ctx.lineJoin = 'round'
   BURN_TONGUES.forEach(([shareX, shareY, widthShare, heightShare], i) => {
     const flickerShare = prefersReducedMotion ? 1 : 0.85 + 0.15 * Math.sin(time * 14 + i * 2.1)
@@ -345,6 +383,7 @@ function drawFlames(ctx: Canvas2D, radius: number, time: number) {
       heightShare * radius * flickerShare,
       sway,
       radius * 0.09,
+      palette,
     )
   })
 }

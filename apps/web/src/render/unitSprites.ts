@@ -44,7 +44,17 @@ const towerFrames = new Map<string, TowerSpriteFrames>([
       ]),
     },
   ],
-  ['mage', { size: 0.81, tiers: [2, 30, 31] }],
+  [
+    'mage',
+    {
+      size: 0.81,
+      tiers: [2, 30, 31],
+      aspects: new Map([
+        ['boiling-oil', 49],
+        ['wildfire', 50],
+      ]),
+    },
+  ],
   ['frost', { size: 0.77, tiers: [3, 32, 33] }],
   ['cannon', { size: 0.9, tiers: [8, 34, 35] }],
   ['trapper', { size: 0.89, tiers: [9, 37, 38] }],

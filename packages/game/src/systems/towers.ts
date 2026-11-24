@@ -14,11 +14,21 @@ import type {
 } from '../types.ts'
 import { effectiveTowerStats, rewardStats } from './rewards.ts'
 
-export const towerStats = (tower: Pick<Tower, 'def' | 'tier'>): TowerStats =>
-  tower.def.tiers[tower.tier]
+export function towerStats(
+  tower: Pick<Tower, 'def' | 'tier'> & { aspectId?: string | null },
+): TowerStats {
+  const base = tower.def.tiers[tower.tier]
+  const burn = tower.aspectId && towerAspect(tower)?.intenseBurn
+  if (!burn || base.burnDamage === undefined) return base
+  return {
+    ...base,
+    burnDamage: base.burnDamage * (1 + burn.damageBonus),
+    burnDuration: burn.duration,
+  }
+}
 
 /** Данные выбранной специализации или null, если башня ещё без аспекта. */
-export const towerAspect = (tower: Tower) =>
+export const towerAspect = (tower: Pick<Tower, 'def'> & { aspectId?: string | null }) =>
   tower.def.aspects?.find((aspect) => aspect.id === tower.aspectId) ?? null
 
 export function displayStatValue(stats: TowerStats, key: StatKey): number | undefined {

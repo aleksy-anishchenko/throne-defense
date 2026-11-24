@@ -1,6 +1,7 @@
 import {
   applyTowerRewards,
   reloadProgress,
+  towerStats,
   REWARDS,
   REWARD_SETS,
   REWARD_SET_SIZE,
@@ -29,7 +30,7 @@ export function statSources(
 ): StatSource[] {
   const active: StatSource[] = blessings.map(({ rewardId, count }) => {
     const { name, effect } = REWARDS[rewardId]
-    return { name, effect, count }
+    return { name: rewardId === 'wildfire' ? `Благословение «${name}»` : name, effect, count }
   })
   for (const id of Object.keys(setCounts) as RewardSetId[]) {
     const { name, effect } = REWARD_SETS[id]
@@ -41,6 +42,7 @@ export function statSources(
 }
 
 interface LocalBonuses {
+  aspectId?: string | null
   fireRateBonus: number
   fireRateSources: number
   bellCells: number
@@ -93,7 +95,7 @@ export function towerStatRows(
     }
   }
 
-  const base = def.tiers[tier]
+  const base = towerStats({ def, tier, aspectId: local.aspectId })
   const current = effective(base)
   const next = def.tiers[tier + 1]
   const upgraded = next && effective(next)

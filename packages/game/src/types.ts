@@ -67,6 +67,8 @@ export type StatKey =
  */
 export type TargetMode = 'first' | 'strongest'
 
+export type MageAspectId = 'boiling-oil' | 'wildfire'
+
 /** Взаимоисключающая специализация после последней обычной ступени башни. */
 export interface TowerAspectDef {
   id: string
@@ -77,6 +79,8 @@ export interface TowerAspectDef {
   giantDamageBonus?: number
   /** Попадание снимает броню на столько секунд; повторное обновляет срок. */
   armorBreakDuration?: number
+  /** Меняет полный урон и длительность одного поджога. */
+  intenseBurn?: { damageBonus: number; duration: number }
   /** Последовательные выстрелы по одной цели накапливают бонус к урону. */
   hunterMark?: {
     /** Прибавка к урону за каждый шаг серии: 0.1 — на 10%. */
@@ -361,7 +365,7 @@ export interface Tower {
   y: number
   /** Ступень улучшения с нуля: 0 — это «I» */
   tier: number
-  /** Выбранная специализация; числовые характеристики остаются от последней обычной ступени. */
+  /** Выбранная специализация после последней обычной ступени. */
   aspectId: string | null
   /** Выбор закрепляется при старте волны или покупке во время волны. */
   aspectLocked: boolean
@@ -411,6 +415,10 @@ export interface Enemy {
   burnDamageLeft: number
   /** За сколько секунд догорит весь запас огня */
   burnTimeLeft: number
+  /** Активный поджог оставлен синим пламенем. */
+  wildfire: boolean
+  /** Секунды действия масла на враге. */
+  oilTimeLeft: number
   /** Сколько ещё секунд враг стоит в сети Ловчего */
   rootTimeLeft: number
   /**
@@ -463,6 +471,8 @@ export interface HomingShot {
   burnDamage: number
   /** За сколько секунд догорает поджог, секунд */
   burnDuration: number
+  /** Аспект Огневика в момент выстрела. */
+  mageAspect?: MageAspectId
   /** Сеть: сколько секунд держит всех, кого накрыла; 0 — снаряд не сеть */
   rootDuration: number
   /** Снаряд долетел или потерял смысл: его уберут в конце шага */
@@ -505,6 +515,15 @@ export interface LineShot {
 }
 
 export type Shot = HomingShot | LineShot
+
+export interface OilPuddle {
+  x: number
+  y: number
+  /** Место на ковре, вдоль которого растекается лужа. */
+  pathDistance: number
+  radius: number
+  timeLeft: number
+}
 
 /**
  * idle — партия не начата (на экране меню),
@@ -556,6 +575,7 @@ export interface GameState {
   towersByCell: Map<string, Tower>
   enemies: Enemy[]
   shots: Shot[]
+  oilPuddles: OilPuddle[]
   /** Кто ещё выйдет в этой волне; отсортировано так, что ближайший — в конце */
   spawnQueue: SpawnEntry[]
   /** Кто появится в конце шага на месте погибших (см. EnemyDef.splitInto) */
