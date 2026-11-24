@@ -16,6 +16,9 @@ import { damageEnemy, updateBurning, updateOilPuddles, updateShots } from '../sr
 import { moveEnemies } from '../src/systems/enemies.ts'
 import { newGame, placeEnemy, worldOf } from './helpers.ts'
 
+const tierThreeBurn = 73.44
+const wildfireBurn = tierThreeBurn * 1.15
+
 function buildMage(game: Game, col: number, aspect?: MageAspectId) {
   const tower = game.build('mage', col, 11)!
   expect(game.upgrade(col, 11) && game.upgrade(col, 11)).toBe(true)
@@ -41,13 +44,13 @@ describe('два аспекта Огневика', () => {
     const ogre = placeEnemy(game, 'ogre', 2)
     for (let i = 0; i < 60 && !ogre.wildfire; i++) game.step(SIMULATION_STEP)
     expect(ogre.burnTimeLeft).toBe(2)
-    expect(ogre.burnDamageLeft).toBeCloseTo(70.38)
+    expect(ogre.burnDamageLeft).toBeCloseTo(wildfireBurn, 6)
     game.sell(5, 11)
     const hp = ogre.hp
     for (let i = 0; i < 60; i++) game.step(SIMULATION_STEP)
-    expect(hp - ogre.hp).toBeCloseTo(35.19)
+    expect(hp - ogre.hp).toBeCloseTo(wildfireBurn / 2, 6)
     for (let i = 0; i < 61; i++) game.step(SIMULATION_STEP)
-    expect(hp - ogre.hp).toBeCloseTo(70.38)
+    expect(hp - ogre.hp).toBeCloseTo(wildfireBurn, 6)
     expect(ogre.wildfire).toBe(false)
   })
 
@@ -60,7 +63,7 @@ describe('два аспекта Огневика', () => {
     const far = placeEnemy(game, 'scout', 4)
     hit(game, mage, primary)
     expect([primary.oilTimeLeft, near.oilTimeLeft, far.oilTimeLeft]).toEqual([2, 2, 0])
-    expect(primary.burnDamageLeft).toBeCloseTo(61.2)
+    expect(primary.burnDamageLeft).toBeCloseTo(tierThreeBurn)
     expect(primary.slowTimeLeft).toBe(0)
     hit(game, mage, primary)
     expect(game.state.oilPuddles).toHaveLength(1)
@@ -72,7 +75,7 @@ describe('два аспекта Огневика', () => {
     expect(entrant.pathDistance).toBeCloseTo(2 + 0.25 * 0.8)
     expect(entrant.oilTimeLeft).toBeCloseTo(2)
     expect(entrant.burnDamageLeft).toBe(0)
-    expect(primary.maxHp - primary.hp).toBeCloseTo((61.2 / 5) * 0.25 * 1.3)
+    expect(primary.maxHp - primary.hp).toBeCloseTo((tierThreeBurn / 5) * 0.25 * 1.3)
     expect(far.oilTimeLeft).toBe(0)
     for (let i = 0; i < 11; i++) game.step(0.25)
     expect(game.state.oilPuddles).toEqual([])
@@ -95,11 +98,11 @@ describe('два аспекта Огневика', () => {
     hit(game, oil, ogre)
     expect(ogre.wildfire).toBe(true)
     expect(ogre.burnTimeLeft).toBe(1.5)
-    expect(ogre.burnDamageLeft).toBeCloseTo((70.38 / 2) * 1.3 * 1.5)
+    expect(ogre.burnDamageLeft).toBeCloseTo((wildfireBurn / 2) * 1.3 * 1.5)
     damageEnemy(world, ogre, 10, 'physical')
     expect(hp - ogre.hp).toBeCloseTo(10)
     updateBurning(world, 1.5)
-    expect(hp - ogre.hp).toBeCloseTo(10 + (70.38 / 2) * 1.3 * 1.5 * 1.3)
+    expect(hp - ogre.hp).toBeCloseTo(10 + (wildfireBurn / 2) * 1.3 * 1.5 * 1.3)
     expect(ogre.burnDamageLeft).toBe(0)
     expect(ogre.oilTimeLeft).toBe(0.5)
 
@@ -107,7 +110,7 @@ describe('два аспекта Огневика', () => {
     hit(game, normal, ogre)
     const lastHp = ogre.hp
     updateBurning(world, 5)
-    expect(lastHp - ogre.hp).toBeCloseTo((61.2 / 5) * 1.3 * (5 + 0.5 * 0.3))
+    expect(lastHp - ogre.hp).toBeCloseTo((tierThreeBurn / 5) * 1.3 * (5 + 0.5 * 0.3))
   })
 
   it('перекрытие луж обновляет покрытие, а противник учитывает своё сопротивление', () => {
@@ -174,7 +177,7 @@ describe('прогноз горения на полосе здоровья', () 
     const enemy = placeEnemy(game, 'armor', 2)
     Object.assign(enemy, {
       burnTimeLeft: 5,
-      burnDamageLeft: 61.2,
+      burnDamageLeft: tierThreeBurn,
       rootTimeLeft: 0.3,
       curseTimeLeft: 1.5,
       curseAmount: 0.3,
@@ -183,13 +186,13 @@ describe('прогноз горения на полосе здоровья', () 
       const [x, y] = game.level.path.positionAt(distance)
       game.state.oilPuddles.push({ x, y, pathDistance: distance, radius: 0.75, timeLeft: 2.5 })
     }
-    expect(compareWithBattle(game, enemy)).toBeGreaterThan(61.2)
+    expect(compareWithBattle(game, enemy)).toBeGreaterThan(tierThreeBurn)
   })
 
   it('ограничивает прогноз уроном до прорыва к трону', () => {
     const game = newGame()
     const enemy = placeEnemy(game, 'ogre', game.level.path.length - 0.2)
-    Object.assign(enemy, { burnTimeLeft: 2, burnDamageLeft: 70.38, oilTimeLeft: 0.2 })
+    Object.assign(enemy, { burnTimeLeft: 2, burnDamageLeft: wildfireBurn, oilTimeLeft: 0.2 })
     const fullBurn = pendingBurnDamage(enemy)
     const forecast = compareWithBattle(game, enemy)
     expect(enemy.isDead).toBe(true)

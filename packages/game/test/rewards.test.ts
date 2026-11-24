@@ -483,7 +483,7 @@ describe('благословения после волн', () => {
     const mage = wildfire.build('mage', 5, 11)!
     expect(
       effectiveTowerStats(wildfire.state, mage, TOWERS['mage'].tiers[0]).burnDamage,
-    ).toBeCloseTo(15.3 * 1.3)
+    ).toBeCloseTo(18.36 * 1.3)
 
     const control = newGame()
     choose(control, 'control-master')

@@ -46,15 +46,15 @@ describe('характеристики выбранного стража', () =>
   it('показывает длительность и полный урон выбранного огня с учётом благословений', () => {
     expect(rows('mage', { tier: 2, aspectId: 'boiling-oil' })['burnDamage']).toMatchObject({
       label: 'Урон от горения (за 5 сек)',
-      current: '61,2',
+      current: '73,44',
     })
     expect(rows('mage', { tier: 2, aspectId: 'wildfire' })['burnDamage']).toMatchObject({
       label: 'Урон от горения (за 2 сек)',
-      current: '70,38',
+      current: '84,46',
     })
     expect(
       rows('mage', { tier: 2, aspectId: 'wildfire', rewards: ['wildfire'] })['burnDamage'],
-    ).toMatchObject({ current: '91,49', details: ['Благословение «Испепеление» +30%'] })
+    ).toMatchObject({ current: '109,79', details: ['Благословение «Испепеление» +30%'] })
   })
 
   it('показывает скорость атаки у стреляющих стражей и время перезарядки у Ловчего', () => {
@@ -140,8 +140,8 @@ describe('характеристики выбранного стража', () =>
     })
     expect(rows('mage', { rewards: ['wildfire'] })['burnDamage']).toMatchObject({
       label: 'Урон от горения (за 5 сек)',
-      current: '19,89',
-      next: '48,62',
+      current: '23,87',
+      next: '58,34',
       details: ['Благословение «Испепеление» +30%'],
     })
   })

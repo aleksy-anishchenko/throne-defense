@@ -1721,9 +1721,9 @@ async function desktop(page, url) {
   await aspects.getByRole('button', { name: 'Дикий огонь за 150 золота' }).click()
   await waitForFrames(page)
   check(
-    'Огневик IV показывает 70,38 урона за 2 с, обе специализации оплачены',
+    'Огневик IV показывает 84,46 урона за 2 с, обе специализации оплачены',
     (await readStatRows(page.locator('.tower-info'))).includes(
-      'Урон от горения (за 2 сек) 70,38',
+      'Урон от горения (за 2 сек) 84,46',
     ) && (await readGameSnapshot(page)).gold === 0,
   )
   await page.getByRole('button', { name: 'Начать волну' }).click()
@@ -2138,7 +2138,7 @@ async function phone(page, url) {
     (await towerMenu.locator('.tower-description').innerText()) ===
       'Поджигает цель и врагов рядом с ней. Горение игнорирует броню.' &&
       mageStats ===
-        'Урон от горения (за 5 сек) 15,3 / 37,4 | Скорость атаки 0,83 атак/с / 0,91 атак/с | Дальность атаки 1,5 клетки / 1,7 клетки' &&
+        'Урон от горения (за 5 сек) 18,36 / 44,88 | Скорость атаки 0,83 атак/с / 0,91 атак/с | Дальность атаки 1,5 клетки / 1,7 клетки' &&
       (await towerMenu.locator('.tower-stat-next svg').count()) === 3 &&
       towerMenuText.includes('Улучшить') &&
       towerMenuText.includes('Вернуть'),
