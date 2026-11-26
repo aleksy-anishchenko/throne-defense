@@ -12,7 +12,7 @@ import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/comba
 import { rewardStats } from '../systems/rewards.ts'
 import { towerAspect } from '../systems/towers.ts'
 import type { Enemy, TowerDef } from '../types.ts'
-import { BOILING_OIL, MAGE_BURN, MIN_ENEMY_SPEED_SHARE } from './balance.ts'
+import { BOILING_OIL, MAGE_BURN } from './balance.ts'
 import { DOUBLE_SHOT_INTERVAL } from './rewards.ts'
 
 /** Болт баллисты летит дальше её радиуса обстрела: дальность полёта = range × 1.15 (множитель) */
@@ -151,13 +151,13 @@ const mage: TowerDef = {
     {
       id: 'boiling-oil',
       name: 'Кипящее масло',
-      description: `Лужа держится ${BOILING_OIL.puddleDuration} с. При попадании или входе в лужу враг получает ${BOILING_OIL.slowAmount * 100}% замедления и на ${BOILING_OIL.burnBonus * 100}% больше урона от любого поджога. Замедление складывается с холодом Морозко (общий предел с благословениями — ${(1 - MIN_ENEMY_SPEED_SHARE) * 100}%). После выхода масло действует ещё ${BOILING_OIL.coatDuration} с.`,
+      description: `Оставляет лужу на ${BOILING_OIL.puddleDuration} с. Задетые враги и все, кто входит в лужу, получают ${BOILING_OIL.slowAmount * 100}% замедления и на ${BOILING_OIL.burnBonus * 100}% больше урона от горения. После выхода масло действует ещё ${BOILING_OIL.coatDuration} с.`,
       cost: 150,
     },
     {
       id: 'wildfire',
       name: 'Дикий огонь',
-      description: `Синее пламя наносит на ${WILDFIRE_BURN.damageBonus * 100}% больше урона за поджог. Весь урон проходит за ${WILDFIRE_BURN.duration} с вместо ${MAGE_BURN.duration}. Поджоги «Дикого огня» и «Кипящего масла» складываются.`,
+      description: `Синее пламя наносит на ${WILDFIRE_BURN.damageBonus * 100}% больше урона за поджог. Весь урон проходит за ${WILDFIRE_BURN.duration} с вместо ${MAGE_BURN.duration}.`,
       cost: 150,
       intenseBurn: WILDFIRE_BURN,
     },

@@ -1727,22 +1727,24 @@ async function desktop(page, url) {
   })
   await clickCell(page, 2, 9)
   const oilOption = aspects.getByRole('button', { name: 'Кипящее масло за 150 золота' })
-  const oilText = await oilOption.innerText()
+  const oilText = await oilOption.locator('.aspect-description').innerText()
   check(
-    'карточка масла показывает длительность лужи, её замедление и общий предел',
-    oilText.includes('Лужа держится 4 с') &&
-      oilText.includes('получает 20% замедления') &&
-      oilText.includes('на 30% больше урона от любого поджога') &&
-      oilText.includes('общий предел с благословениями — 90%'),
+    'карточка «Кипящего масла» показывает действие лужи и длительность покрытия',
+    oilText ===
+      'Оставляет лужу на 4 с. Задетые враги и все, кто входит в лужу, получают 20% замедления и на 30% больше урона от горения. После выхода масло действует ещё 2 с.',
   )
   await oilOption.click()
+  check(
+    'после покупки Огневик показывает то же описание масла',
+    (await aspects.locator('.aspect-description').innerText()) === oilText,
+  )
   await clickCell(page, 4, 9)
   const wildfireOption = aspects.getByRole('button', { name: 'Дикий огонь за 150 золота' })
-  const wildfireText = await wildfireOption.innerText()
+  const wildfireText = await wildfireOption.locator('.aspect-description').innerText()
   check(
-    'карточка синего пламени показывает прибавку к урону и сочетание с масляным поджогом',
-    wildfireText.includes('на 20% больше урона') &&
-      wildfireText.includes('«Кипящего масла» складываются'),
+    'карточка «Дикого огня» показывает урон и длительность поджога',
+    wildfireText ===
+      'Синее пламя наносит на 20% больше урона за поджог. Весь урон проходит за 2 с вместо 5.',
   )
   await wildfireOption.click()
   await waitForFrames(page)
