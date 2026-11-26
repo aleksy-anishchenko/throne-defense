@@ -11,7 +11,7 @@
 //
 // Новый эффект — новая запись в STATUS_LOOKS (и, если нужно, в STATUS_PARTICLES в effects.ts).
 
-import type { Enemy } from '@throne/game'
+import { burnTimeRemaining, type Enemy } from '@throne/game'
 import { circle, drawNet, prefersReducedMotion } from './shapes'
 import type { Canvas2D } from './shapes'
 
@@ -135,17 +135,16 @@ const STATUS_LOOKS: readonly StatusLook[] = [
         0,
         radius * ROOT_NET_SCALE,
         0.4,
-        enemy.burnTimeLeft > 0 ? '#ff8a2a' : '#a9b4c6',
+        burnTimeRemaining(enemy) > 0 ? '#ff8a2a' : '#a9b4c6',
       ),
   },
   {
     // Огонь: мерцающее оранжевое кольцо со свечением, оранжевый оттенок, языки пламени
-    isActive: (enemy) => enemy.burnTimeLeft > 0,
+    isActive: (enemy) => burnTimeRemaining(enemy) > 0,
     rgb: FIRE_RGB,
     ring: { slot: 0, hasGlow: true, brightness: flicker(11, 0.5) },
     hasTint: true,
-    drawMark: (ctx, radius, time, enemy) =>
-      drawFlames(ctx, radius, time, enemy.wildfire ? WILDFIRE : FIRE),
+    drawMark: drawFlames,
   },
 ]
 
@@ -370,9 +369,10 @@ const BURN_TONGUES: readonly (readonly [number, number, number, number])[] = [
 ]
 
 /** Три пляшущих языка пламени поверх врага */
-function drawFlames(ctx: Canvas2D, radius: number, time: number, palette: typeof FIRE) {
+function drawFlames(ctx: Canvas2D, radius: number, time: number, enemy: Enemy) {
   ctx.lineJoin = 'round'
   BURN_TONGUES.forEach(([shareX, shareY, widthShare, heightShare], i) => {
+    const palette = enemy.wildfire && (!enemy.oilBurn || shareX === 0) ? WILDFIRE : FIRE
     const flickerShare = prefersReducedMotion ? 1 : 0.85 + 0.15 * Math.sin(time * 14 + i * 2.1)
     const sway = prefersReducedMotion ? 0 : 0.18 * Math.sin(time * 9 + i * 1.7)
     drawFlame(

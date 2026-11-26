@@ -50,11 +50,11 @@ describe('характеристики выбранного стража', () =>
     })
     expect(rows('mage', { tier: 2, aspectId: 'wildfire' })['burnDamage']).toMatchObject({
       label: 'Урон от горения (за 2 сек)',
-      current: '84,46',
+      current: '88,13',
     })
     expect(
       rows('mage', { tier: 2, aspectId: 'wildfire', rewards: ['wildfire'] })['burnDamage'],
-    ).toMatchObject({ current: '109,79', details: ['Благословение «Испепеление» +30%'] })
+    ).toMatchObject({ current: '114,57', details: ['Благословение «Испепеление» +30%'] })
   })
 
   it('показывает скорость атаки у стреляющих стражей и время перезарядки у Ловчего', () => {
@@ -75,21 +75,21 @@ describe('характеристики выбранного стража', () =>
     })
     expect(rows('warlock', { rewards: ['rapid-orders'] })['attackRate']).toBeUndefined()
     expect(rows('trapper', { rewards: ['rapid-orders'] })['cooldown'].details).toEqual([
-      'Быстрые приказы +15%',
+      'Быстрые приказы +20%',
     ])
   })
 
   it('Звонарь и благословение ускоряют стрельбу на обеих ступенях', () => {
     expect(rows('archer', { rewards: ['rapid-orders'] })['attackRate']).toMatchObject({
-      current: '2,88 атак/с',
-      next: '3,19 атак/с',
+      current: '3 атак/с',
+      next: '3,33 атак/с',
     })
     expect(
       rows('archer', { bellBonus: 0.2, bells: 1, rewards: ['rapid-orders'] })['attackRate'],
     ).toMatchObject({
-      current: '3,45 атак/с',
-      next: '3,83 атак/с',
-      details: ['Звонарь +20%', 'Быстрые приказы +15%'],
+      current: '3,6 атак/с',
+      next: '4 атак/с',
+      details: ['Звонарь +20%', 'Быстрые приказы +20%'],
     })
     const twoBells = rows('archer', { bellBonus: 0.5, bells: 2, rewards: ['two-bells'] })
     expect(twoBells['attackRate']).toMatchObject({
@@ -106,17 +106,17 @@ describe('характеристики выбранного стража', () =>
   it('учитывает собранный набор и положение башни, в том числе на высшей ступени', () => {
     const rewards: RewardId[] = ['sharpened-steel', 'last-stand', 'wildfire']
     expect(rows('archer', { rewards, row: 3 })['damage']).toMatchObject({
-      current: '11,17',
-      next: '19,15',
-      details: ['Заточенные клинки +18%', 'Последний рубеж +20%', 'Гнев стражи +15%'],
+      current: '11,51',
+      next: '19,73',
+      details: ['Заточенные клинки +22%', 'Последний рубеж +20%', 'Гнев стражи +15%'],
     })
     expect(rows('archer', { rewards, row: 4 })['damage']).toMatchObject({
-      current: '9,31',
-      next: '15,96',
-      details: ['Заточенные клинки +18%', 'Гнев стражи +15%'],
+      current: '9,59',
+      next: '16,44',
+      details: ['Заточенные клинки +22%', 'Гнев стражи +15%'],
     })
     const max = rows('archer', { rewards, row: 3, tier: 2 })
-    expect(max['damage']).toMatchObject({ label: 'Урон', current: '30,32', next: null })
+    expect(max['damage']).toMatchObject({ label: 'Урон', current: '31,24', next: null })
     expect(max['damage'].details).toContain('Гнев стражи +15%')
     expect(max['range'].details).toEqual([])
   })

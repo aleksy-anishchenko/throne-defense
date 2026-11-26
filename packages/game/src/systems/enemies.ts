@@ -1,8 +1,9 @@
 // Враги: появление, движение по ковру, прорыв к трону, лечение и распад на части.
 
-import { BOILING_OIL, hpMultiplier } from '../data/balance.ts'
+import { BOILING_OIL, MIN_ENEMY_SPEED_SHARE, hpMultiplier } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
 import type { Enemy, World } from '../types.ts'
+import { burnTimeRemaining } from './burning.ts'
 import { rewardStats } from './rewards.ts'
 
 /** Насколько отстают друг от друга по ковру те, на кого распался враг, клеток */
@@ -61,16 +62,25 @@ export function spawnEnemy(world: World, enemyId: string, pathDistance = 0): voi
   })
 }
 
+/** Доля базовой скорости после совместного действия башен и благословений. */
+export function enemySpeedShare(blessingMultiplier: number, towerSlow = 0): number {
+  return Math.max(MIN_ENEMY_SPEED_SHARE, blessingMultiplier * (1 - towerSlow))
+}
+
 /** Сколько клеток пройдёт враг за шаг с текущей сетью и замедлениями. */
 export function enemyStepDistance(enemy: Enemy, dt: number, enemySpeedMultiplier: number): number {
   if (enemy.rootTimeLeft > 0) return 0
-  const frostSlow = enemy.slowTimeLeft > 0 ? enemy.slowFactor : 0
-  let travelTime = dt * (1 - frostSlow)
-  if (enemy.oilTimeLeft > 0) {
-    const oilSlow = BOILING_OIL.slowAmount * (1 - (enemy.def.slowResistance ?? 0))
-    travelTime -= Math.min(dt, enemy.oilTimeLeft) * Math.max(0, oilSlow - frostSlow)
-  }
-  return enemy.def.speed * enemySpeedMultiplier * travelTime
+  const frostTime = Math.min(dt, Math.max(0, enemy.slowTimeLeft))
+  const oilTime = Math.min(dt, enemy.oilTimeLeft)
+  const overlapTime = Math.min(frostTime, oilTime)
+  const normalTime = dt - Math.max(frostTime, oilTime)
+  const oilSlow = BOILING_OIL.slowAmount * (1 - (enemy.def.slowResistance ?? 0))
+  const travelTime =
+    normalTime * enemySpeedShare(enemySpeedMultiplier) +
+    (frostTime - overlapTime) * enemySpeedShare(enemySpeedMultiplier, enemy.slowFactor) +
+    (oilTime - overlapTime) * enemySpeedShare(enemySpeedMultiplier, oilSlow) +
+    overlapTime * enemySpeedShare(enemySpeedMultiplier, enemy.slowFactor + oilSlow)
+  return enemy.def.speed * travelTime
 }
 
 /**
@@ -118,7 +128,8 @@ export function moveEnemies(world: World, dt: number): boolean {
 function tickStatusTimers(world: World, enemy: Enemy, dt: number): void {
   const wasRooted = enemy.rootTimeLeft > 0
   enemy.rootTimeLeft = Math.max(0, enemy.rootTimeLeft - dt)
-  if (wasRooted && enemy.rootTimeLeft === 0 && enemy.burnTimeLeft > 0) world.emit('netBurn', enemy)
+  if (wasRooted && enemy.rootTimeLeft === 0 && burnTimeRemaining(enemy) > 0)
+    world.emit('netBurn', enemy)
   enemy.rootImmunityLeft = Math.max(0, enemy.rootImmunityLeft - dt)
   enemy.curseTimeLeft = Math.max(0, enemy.curseTimeLeft - dt)
   enemy.armorBreakTimeLeft = Math.max(0, enemy.armorBreakTimeLeft - dt)

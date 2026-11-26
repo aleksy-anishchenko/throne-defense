@@ -1,5 +1,6 @@
 // Урон, снаряды и «выстрелы-ауры». Башни (data/towers.ts) собираются из этих кирпичиков.
 
+import { rollCombatChance } from '../core/random.ts'
 import { BOILING_OIL, SCORE } from '../data/balance.ts'
 import { ICE_NEEDLES } from '../data/rewards.ts'
 import type {
@@ -12,6 +13,7 @@ import type {
   TowerStats,
   World,
 } from '../types.ts'
+import { advanceBurning, applyBurn, burnTimeRemaining } from './burning.ts'
 import { bannerArmorOf, queueSplit } from './enemies.ts'
 import { rewardStats } from './rewards.ts'
 
@@ -90,6 +92,7 @@ export interface LineShotOptions {
   giantDamageBonus?: number
   /** Длительность снятия брони после попадания. */
   armorBreakDuration?: number
+  armorBreakChance?: number
   iceNeedles?: boolean
 }
 
@@ -207,6 +210,7 @@ export function shootLine(
     damageKind: options.damageKind,
     giantDamageBonus: options.giantDamageBonus ?? 0,
     armorBreakDuration: options.armorBreakDuration ?? 0,
+    armorBreakChance: options.armorBreakChance ?? 1,
     iceNeedles: options.iceNeedles ?? false,
     piercesLeft: options.pierceCount,
     hitEnemies: new Set(),
@@ -230,7 +234,8 @@ export function frostPulse(world: World, tower: Tower, stats: TowerStats): void 
       enemy.slowTimeLeft = Math.max(enemy.slowTimeLeft, slowDuration)
     }
     if (stats.damage > 0) damageEnemy(world, enemy, stats.damage, 'magic')
-    if (!iceAndFire && enemy.burnDamageLeft > 0 && !enemy.isDead) extinguishWithSteam(world, enemy)
+    if (!iceAndFire && burnTimeRemaining(enemy) > 0 && !enemy.isDead)
+      extinguishWithSteam(world, enemy)
   }
 }
 
@@ -262,7 +267,7 @@ export function cursePulse(world: World, tower: Tower, stats: TowerStats): void 
 function rootEnemy(enemy: Enemy, duration: number): void {
   if (enemy.isDead || duration <= 0 || enemy.rootImmunityLeft > 0) return
   const fullTime = duration * (1 - (enemy.def.controlResistance ?? 0))
-  const rootTime = enemy.burnTimeLeft > 0 ? fullTime * NET_ON_FIRE_SHARE : fullTime
+  const rootTime = burnTimeRemaining(enemy) > 0 ? fullTime * NET_ON_FIRE_SHARE : fullTime
   enemy.rootDuration = fullTime
   enemy.rootTimeLeft = rootTime
   enemy.rootImmunityLeft = rootTime + ROOT_IMMUNITY_SECONDS
@@ -273,6 +278,7 @@ function extinguishWithSteam(world: World, enemy: Enemy): void {
   enemy.burnDamageLeft = 0
   enemy.burnTimeLeft = 0
   enemy.wildfire = false
+  enemy.oilBurn = undefined
   world.emit('steam', { x: enemy.x, y: enemy.y })
 }
 
@@ -317,7 +323,11 @@ function updateLineShot(world: World, shot: LineShot, dt: number): void {
   for (const { enemy, distance } of hits) {
     if (enemy.isDead) continue
     shot.hitEnemies.add(enemy)
-    if (shot.armorBreakDuration > 0 && armorWithBanner(world, enemy) > 0) {
+    if (
+      shot.armorBreakDuration > 0 &&
+      armorWithBanner(world, enemy) > 0 &&
+      rollCombatChance(world.state, shot.armorBreakChance)
+    ) {
       enemy.armorBreakTimeLeft = Math.max(enemy.armorBreakTimeLeft, shot.armorBreakDuration)
     }
     const damageMultiplier = enemy.def.isGiant ? 1 + shot.giantDamageBonus : 1
@@ -418,8 +428,7 @@ function hitWithShot(world: World, shot: HomingShot, enemy: Enemy, damageShare =
 }
 
 /**
- * Поджечь врага: равный огонь обновляет длительность, сильный заменяет слабый.
- * Слабый поджог не продлевает сильный. Сила — урон в секунду, а не оставшийся запас.
+ * Поджечь врага. Поджоги двух специализаций совместимы. Остальные конкурируют по урону в секунду.
  * Огонь растапливает лёд (замедление снимается, а огня — меньше, см. THAW_BURN_MULTIPLIER).
  * Пойманный в сеть загорелся — сеть догорает: держит не дольше NET_ON_FIRE_SHARE своего времени
  */
@@ -439,13 +448,7 @@ function igniteEnemy(world: World, enemy: Enemy, shot: HomingShot): void {
     enemy.rootImmunityLeft -= enemy.rootTimeLeft - burningNetTime
     enemy.rootTimeLeft = burningNetTime
   }
-  const rate = (burnDamage * burnShare) / burnDuration
-  const currentRate = enemy.burnTimeLeft > 0 ? enemy.burnDamageLeft / enemy.burnTimeLeft : 0
-  // Допуск нужен из-за округления остатка урона при шагах симуляции.
-  if (rate + 1e-9 < currentRate) return
-  enemy.burnDamageLeft = rate * burnDuration
-  enemy.burnTimeLeft = burnDuration
-  enemy.wildfire = shot.mageAspect === 'wildfire'
+  applyBurn(enemy, shot.mageAspect, burnDamage * burnShare, burnDuration)
 }
 
 /** Расстояние учитывает край врага. Допуск хода нужен прогнозу для отбора достижимых луж. */
@@ -477,32 +480,13 @@ export function updateOilPuddles({ state }: World, dt: number): void {
   }
 }
 
-/** Урон активного поджога за указанный отрезок, с учётом оставшегося масла. */
-export function pendingBurnDamage(enemy: Enemy, seconds = enemy.burnTimeLeft): number {
-  if (enemy.burnTimeLeft <= 0) return 0
-  const burning = Math.min(seconds, enemy.burnTimeLeft)
-  const oiled = Math.min(burning, enemy.oilTimeLeft)
-  return (enemy.burnDamageLeft / enemy.burnTimeLeft) * (burning + oiled * BOILING_OIL.burnBonus)
-}
-
 /** Горящие враги теряют здоровье: равными долями, так что запас огня догорает ровно к сроку */
 export function updateBurning(world: World, dt: number): void {
   const damageMultiplier = rewardStats(world.state).damageMultiplier
   for (const enemy of world.state.enemies) {
     if (enemy.isDead) continue
-    const damage = pendingBurnDamage(enemy, dt)
-    enemy.oilTimeLeft = Math.max(0, enemy.oilTimeLeft - dt)
-    if (enemy.burnTimeLeft <= 0) continue
-    const share = Math.min(1, dt / enemy.burnTimeLeft)
-    const burnDamage = enemy.burnDamageLeft * share
-    enemy.burnDamageLeft -= burnDamage
-    enemy.burnTimeLeft -= dt
-    if (enemy.burnTimeLeft <= 0) {
-      enemy.burnTimeLeft = 0
-      enemy.burnDamageLeft = 0
-      enemy.wildfire = false
-    }
+    const damage = advanceBurning(enemy, dt)
     // Огонь — магия: броня его не режет
-    loseHp(world, enemy, damage * damageMultiplier)
+    if (damage > 0) loseHp(world, enemy, damage * damageMultiplier)
   }
 }

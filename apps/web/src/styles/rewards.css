@@ -500,6 +500,21 @@
       'set set';
     row-gap: 5px;
   }
+  .reward-gift-sheet .reward-card {
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 3px 8px;
+    padding-block: 4px;
+  }
+  .reward-gift-sheet .reward-card-copy {
+    gap: 2px;
+  }
+  .reward-gift-sheet .reward-card-set {
+    padding: 2px 5px;
+    gap: 1px;
+  }
+  .reward-gift-sheet .reward-rarity-chip {
+    display: none;
+  }
 }
 @media (max-width: 360px) {
   .reward-overlay {

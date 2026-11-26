@@ -12,7 +12,7 @@ import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/comba
 import { rewardStats } from '../systems/rewards.ts'
 import { towerAspect } from '../systems/towers.ts'
 import type { Enemy, TowerDef } from '../types.ts'
-import { BOILING_OIL, MAGE_BURN } from './balance.ts'
+import { BOILING_OIL, MAGE_BURN, MIN_ENEMY_SPEED_SHARE } from './balance.ts'
 import { DOUBLE_SHOT_INTERVAL } from './rewards.ts'
 
 /** Болт баллисты летит дальше её радиуса обстрела: дальность полёта = range × 1.15 (множитель) */
@@ -51,6 +51,10 @@ function ricochetTargets(
     .slice(0, count)
 }
 
+const ARCHER_ASPECT_COST = 140
+const HUNTER_MARK = { damagePerStack: 0.1, maxStacks: 10 } as const
+const RICOCHET_DAMAGE_SHARE = 0.6
+
 const archer: TowerDef = {
   id: 'archer',
   name: 'Лучник',
@@ -62,17 +66,16 @@ const archer: TowerDef = {
     {
       id: 'hunter-mark',
       name: 'Метка охотника',
-      description:
-        'Каждый последовательный выстрел по той же цели даёт +10% урона, до +50%. Смена цели сбрасывает серию.',
-      cost: 120,
-      hunterMark: { damagePerStack: 0.1, maxStacks: 5 },
+      description: `Каждый повторный выстрел по той же цели даёт +${HUNTER_MARK.damagePerStack * 100}% урона (до +${HUNTER_MARK.damagePerStack * HUNTER_MARK.maxStacks * 100}%), а смена цели сбрасывает серию.`,
+      cost: ARCHER_ASPECT_COST,
+      hunterMark: HUNTER_MARK,
     },
     {
       id: 'ricochet',
       name: 'Рикошет',
-      description: 'Стрела поражает основную цель и ещё двух врагов поблизости на 60% и 30% урона.',
-      cost: 120,
-      ricochet: { shares: [0.6, 0.3], radius: 1.3 },
+      description: `Стрела наносит полный урон основной цели и по ${RICOCHET_DAMAGE_SHARE * 100}% урона ещё двум врагам поблизости.`,
+      cost: ARCHER_ASPECT_COST,
+      ricochet: { shares: [RICOCHET_DAMAGE_SHARE, RICOCHET_DAMAGE_SHARE], radius: 1.3 },
     },
   ],
   tiers: [
@@ -101,7 +104,7 @@ const archer: TowerDef = {
     let arrows = 1
     if (bonusArrows > 0) {
       tower.shotsSinceDouble++
-      if (tower.shotsSinceDouble === DOUBLE_SHOT_INTERVAL) {
+      if (tower.shotsSinceDouble >= DOUBLE_SHOT_INTERVAL) {
         tower.shotsSinceDouble = 0
         arrows += bonusArrows
       }
@@ -135,7 +138,7 @@ const archer: TowerDef = {
   },
 }
 
-const WILDFIRE_BURN = { damageBonus: 0.15, duration: 2 } as const
+const WILDFIRE_BURN = { damageBonus: 0.2, duration: 2 } as const
 
 const mage: TowerDef = {
   id: 'mage',
@@ -148,19 +151,19 @@ const mage: TowerDef = {
     {
       id: 'boiling-oil',
       name: 'Кипящее масло',
-      description: `Оставляет лужу на ${BOILING_OIL.puddleDuration} с. Задетые враги и все, кто входит в лужу, получают до ${BOILING_OIL.slowAmount * 100}% замедления и на ${BOILING_OIL.burnBonus * 100}% больше урона от горения. После выхода масло действует ещё ${BOILING_OIL.coatDuration} с.`,
+      description: `Лужа держится ${BOILING_OIL.puddleDuration} с. При попадании или входе в лужу враг получает ${BOILING_OIL.slowAmount * 100}% замедления и на ${BOILING_OIL.burnBonus * 100}% больше урона от любого поджога. Замедление складывается с холодом Морозко (общий предел с благословениями — ${(1 - MIN_ENEMY_SPEED_SHARE) * 100}%). После выхода масло действует ещё ${BOILING_OIL.coatDuration} с.`,
       cost: 150,
     },
     {
       id: 'wildfire',
       name: 'Дикий огонь',
-      description: `Синее пламя наносит на ${WILDFIRE_BURN.damageBonus * 100}% больше урона за поджог. Весь урон проходит за ${WILDFIRE_BURN.duration} с вместо ${MAGE_BURN.duration}.`,
+      description: `Синее пламя наносит на ${WILDFIRE_BURN.damageBonus * 100}% больше урона за поджог. Весь урон проходит за ${WILDFIRE_BURN.duration} с вместо ${MAGE_BURN.duration}. Поджоги «Дикого огня» и «Кипящего масла» складываются.`,
       cost: 150,
       intenseBurn: WILDFIRE_BURN,
     },
   ],
   tiers: [
-    // Горение без накопления силы; v15: попадание само по себе не ранит.
+    // Урон Огневика полностью приходится на горение.
     { damage: 0, cooldown: 1.2, range: 1.5, splashRadius: 0.55 },
     { damage: 0, cooldown: 1.1, range: 1.7, splashRadius: 0.65 },
     { damage: 0, cooldown: 1, range: 1.9, splashRadius: 0.75 },
@@ -211,6 +214,9 @@ const frost: TowerDef = {
   fire: (world, tower, _target, stats) => frostPulse(world, tower, stats),
 }
 
+const GIANT_SLAYER_BONUS = 0.4
+const ARMOR_BREAK = { chance: 0.5, duration: 4 } as const
+
 const ballista: TowerDef = {
   id: 'ballista',
   name: 'Баллиста',
@@ -222,18 +228,17 @@ const ballista: TowerDef = {
     {
       id: 'giant-slayer',
       name: 'Сокрушитель',
-      description:
-        'Болт наносит на 60% больше урона исполинам — ограм, Горынычам, генералам мятежников и Узурпатору.',
+      description: `Болт наносит на ${GIANT_SLAYER_BONUS * 100}% больше урона исполинам — ограм, Горынычам, генералам мятежников и Узурпатору.`,
       cost: 180,
-      giantDamageBonus: 0.6,
+      giantDamageBonus: GIANT_SLAYER_BONUS,
     },
     {
       id: 'armor-breaker',
       name: 'Раскол лат',
-      description:
-        'Болт снимает броню на 4 секунды, включая защиту под знаменем. Повторное попадание обновляет длительность.',
+      description: `При каждом попадании болт с вероятностью ${ARMOR_BREAK.chance * 100}% снимает броню на ${ARMOR_BREAK.duration} с, включая защиту знамени. Повторное срабатывание обновляет срок.`,
       cost: 180,
-      armorBreakDuration: 4,
+      armorBreakDuration: ARMOR_BREAK.duration,
+      armorBreakChance: ARMOR_BREAK.chance,
     },
   ],
   tiers: [
@@ -261,6 +266,7 @@ const ballista: TowerDef = {
       maxDistance: stats.range * BALLISTA_REACH_FACTOR,
       giantDamageBonus: aspect?.giantDamageBonus,
       armorBreakDuration: aspect?.armorBreakDuration,
+      armorBreakChance: aspect?.armorBreakChance,
       iceNeedles: rewardStats(world.state).iceNeedles,
     })
   },

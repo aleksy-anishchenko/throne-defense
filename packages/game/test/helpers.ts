@@ -4,9 +4,9 @@ import { throneHall } from '../src/levels/throne-hall.ts'
 import type { Enemy, World } from '../src/types.ts'
 
 /** Новая партия на «Тронном зале», уже начатая (фаза build) */
-export function newGame(): Game {
+export function newGame(seed = 0): Game {
   const game = createGame(throneHall)
-  game.reset()
+  game.reset(undefined, seed)
   return game
 }
 

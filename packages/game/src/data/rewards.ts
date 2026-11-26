@@ -21,7 +21,7 @@ export const REWARD_RARITIES = {
 export type RewardRarity = keyof typeof REWARD_RARITIES
 
 export const REWARD_SET_SIZE = 3
-export const CROWN_GIFT_OPTION_COUNT = 3
+export const CROWN_GIFT_OPTION_COUNT = 4
 
 export const REWARD_SETS = {
   arsenal: {
@@ -46,8 +46,10 @@ export const REWARD_SETS = {
 
 export type RewardSetId = keyof typeof REWARD_SETS
 
-export const DOUBLE_SHOT_INTERVAL = 5
-export const ICE_NEEDLES = { targets: 4, radius: 1, damageShare: 0.25 }
+export const DOUBLE_SHOT_INTERVAL = 4
+export const ICE_NEEDLES = { targets: 4, radius: 1, damageShare: 0.3 }
+const SHARPENED_STEEL_BONUS = 0.22
+const RAPID_ORDERS_BONUS = 0.2
 const SECOND_BELL_SHARE = 0.5
 
 export function doubleShotDescription(extraArrows = 1): string {
@@ -89,18 +91,18 @@ export const REWARD_LIST: readonly RewardDef[] = [
   {
     id: 'sharpened-steel',
     name: 'Заточенные клинки',
-    description: '+18% ко всему урону стражей',
+    description: `+${Math.round(SHARPENED_STEEL_BONUS * 100)}% ко всему урону стражей`,
     rarity: 'legendary',
     setId: 'arsenal',
-    effect: { kind: 'damage', amount: 0.18 },
+    effect: { kind: 'damage', amount: SHARPENED_STEEL_BONUS },
   },
   {
     id: 'rapid-orders',
     name: 'Быстрые приказы',
-    description: '+15% к скорости стрельбы',
+    description: `+${Math.round(RAPID_ORDERS_BONUS * 100)}% к скорости стрельбы`,
     rarity: 'rare',
     setId: 'arsenal',
-    effect: { kind: 'fireRate', amount: 0.15 },
+    effect: { kind: 'fireRate', amount: RAPID_ORDERS_BONUS },
   },
   {
     id: 'bounty',
@@ -210,7 +212,7 @@ export const REWARD_LIST: readonly RewardDef[] = [
   {
     id: 'ice-needles',
     name: 'Ледяные иглы',
-    description: `Болт Баллисты выпускает до ${ICE_NEEDLES.targets} игл при первом попадании по врагу под морозом. Иглы бьют разные цели в радиусе ${ICE_NEEDLES.radius} клетки, по ${Math.round(ICE_NEEDLES.damageShare * 100)}% урона болта.`,
+    description: `При первом попадании болта Баллисты по врагу под морозом иглы поражают ${ICE_NEEDLES.targets} разные цели в радиусе ${ICE_NEEDLES.radius} клетки. Каждая игла наносит ${Math.round(ICE_NEEDLES.damageShare * 100)}% урона болта.`,
     rarity: 'rare',
     setId: 'arsenal',
     effect: { kind: 'iceNeedles' },

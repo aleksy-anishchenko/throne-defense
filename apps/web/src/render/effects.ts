@@ -1,7 +1,14 @@
 // Визуальные эффекты: искры, всплывающее «+6», кольца мороза, взрывы, тряска экрана.
 // Логика игры про них ничего не знает — эффекты появляются в ответ на её события.
 
-import { rewardStats, towerStats, type Enemy, type Game, type Tower } from '@throne/game'
+import {
+  burnTimeRemaining,
+  rewardStats,
+  towerStats,
+  type Enemy,
+  type Game,
+  type Tower,
+} from '@throne/game'
 import { bellBuffs } from '@/utils/bellSupport'
 import { getEnemyArt } from './enemies'
 import { GOLD, circle, drawNet, prefersReducedMotion, type Canvas2D } from './shapes'
@@ -219,7 +226,7 @@ interface StatusParticles {
 const STATUS_PARTICLES: readonly StatusParticles[] = [
   {
     // Огонь: искорки летят вверх
-    isActive: (enemy) => enemy.burnTimeLeft > 0,
+    isActive: (enemy) => burnTimeRemaining(enemy) > 0,
     look: { youngColor: '#fff0a8', oldColor: '#ffb347', shape: 'dot', size: 0.06 },
     wildfireLook: {
       youngColor: WILDFIRE.core,

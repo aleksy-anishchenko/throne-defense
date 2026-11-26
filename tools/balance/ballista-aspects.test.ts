@@ -21,7 +21,7 @@ describe('стенд специализаций', () => {
     )
     expect(base.spentGold).toBe(510)
     expect(specialized.spentGold).toBe(690)
-    expect(specialized.damage / base.damage).toBeCloseTo(1.6)
+    expect(specialized.damage / base.damage).toBeCloseTo(1.4)
     expect(specialized.leaks).toBe(base.leaks)
   })
 
@@ -35,7 +35,7 @@ describe('стенд специализаций', () => {
     for (const hall of PLAYABLE_LEVELS) {
       const results = measureMageAspects(hall)
       expect(new Set(results.map((result) => result.name)).size).toBe(5)
-      expect(new Set(results.map((result) => result.spentGold))).toEqual(new Set([1510]))
+      expect(new Set(results.map((result) => result.spentGold))).toEqual(new Set([1530]))
       for (const result of results) {
         expect(result.kills).toBeGreaterThan(0)
         expect(result.livesLost).toBeGreaterThanOrEqual(result.leaks)

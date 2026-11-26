@@ -38,7 +38,7 @@ export interface Game {
   readonly on: Emitter<GameEvents>['on']
 
   /** Начать новую партию. levelDef — в другом зале (у залов одно поле, см. levels/hall-base.ts) */
-  reset(levelDef?: LevelDef, rewardSeed?: number): void
+  reset(levelDef?: LevelDef, seed?: number): void
   /** Идёт ли партия: между волнами (build) или во время волны (wave) */
   isPlaying(): boolean
   /** Лежит ли клетка (столбец, строка) внутри поля. Дробные столбец и строка — не клетка */
@@ -92,7 +92,7 @@ const CELL_CENTER_OFFSET = 0.5
  */
 const MAX_PENDING_TIME = 1
 
-function initialState(level: Level, rewardSeed = 0): GameState {
+function initialState(level: Level, seed = 0): GameState {
   return {
     phase: 'idle',
     wave: 1,
@@ -115,7 +115,8 @@ function initialState(level: Level, rewardSeed = 0): GameState {
     splitQueue: [],
     waveTime: 0,
     nextId: 1,
-    rewardSeed,
+    rewardSeed: seed,
+    combatSeed: seed,
     pendingReward: null,
     selectedRewards: [],
   }
@@ -187,7 +188,7 @@ export function createGame(levelDef: LevelDef): Game {
     towerAt,
     step,
 
-    reset(nextLevelDef, rewardSeed) {
+    reset(nextLevelDef, seed) {
       if (nextLevelDef && nextLevelDef !== level.def) {
         level = createLevel(nextLevelDef)
         world.level = level
@@ -195,7 +196,7 @@ export function createGame(levelDef: LevelDef): Game {
       // Скорость — настройка игрока, а не часть партии: сохраняем её
       const { speed } = state
       // Object.assign, а не новый объект: кто держит ссылку на state, увидит новую партию
-      Object.assign(state, initialState(level, rewardSeed))
+      Object.assign(state, initialState(level, seed))
       state.phase = 'build'
       state.speed = speed
       pendingTime = 0

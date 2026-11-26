@@ -1,3 +1,4 @@
+import { nextRandom, RANDOM_RANGE } from '../core/random.ts'
 import {
   CROWN_GIFT_OPTION_COUNT,
   REWARD_CHECKPOINTS,
@@ -32,7 +33,6 @@ export interface RewardSummary {
 /** Сколько наград предлагать за один рубеж */
 const REWARD_OPTION_COUNT = 3
 const REROLL_COST_INCREMENT = 20
-const RANDOM_RANGE = 2 ** 32
 const TOTAL_RARITY_WEIGHT = Object.values(REWARD_RARITIES).reduce(
   (sum, { weight }) => sum + weight,
   0,
@@ -47,10 +47,6 @@ function hashString(text: string): number {
     hash = Math.imul(hash, 16777619)
   }
   return hash >>> 0
-}
-
-function nextRandom(seed: number): number {
-  return (Math.imul(seed, 1664525) + 1013904223) >>> 0
 }
 
 function takeReward(pool: RewardId[], seed: number): RewardId {

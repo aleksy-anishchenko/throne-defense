@@ -19,10 +19,10 @@ import { newGame, placeEnemy, worldOf } from './helpers.ts'
 
 const ASPECT_COST = 180
 const BASE_COST = 510
-const ARCHER_ASPECT_COST = 120
+const ARCHER_ASPECT_COST = 140
 
-function setUp(aspectId?: string) {
-  const game = newGame()
+function setUp(aspectId?: string, seed?: number) {
+  const game = newGame(seed)
   game.state.gold = 5000
   game.state.wave = 20
   const tower = game.build('ballista', 5, 11)!
@@ -147,7 +147,7 @@ describe('покупка специализации', () => {
 })
 
 describe('аспекты Лучника', () => {
-  it('Лучник III покупает один из двух аспектов за 120 золота', () => {
+  it('Лучник III покупает один из двух аспектов за 140 золота', () => {
     const { game, tower } = setUpArcher()
     expect(tower.def.cost).toBe(60)
     expect(tower.def.upgradeCosts).toEqual([50, 80])
@@ -162,23 +162,23 @@ describe('аспекты Лучника', () => {
     expect(tower.tier).toBe(2)
   })
 
-  it('Метка охотника повышает урон серии до 50% и сбрасывается при смене цели', () => {
+  it('Метка охотника повышает урон серии до +100% и сбрасывается при смене цели', () => {
     const { game, tower } = setUpArcher('hunter-mark')
     const first = targetAt(game, tower, 'ogre', 1)
     const second = targetAt(game, tower, 'ogre', 1.5)
     const damages: number[] = []
-    for (let shot = 0; shot < 6; shot++) {
+    for (let shot = 0; shot < 12; shot++) {
       tower.def.fire!(worldOf(game), tower, first, towerStats(tower))
       damages.push(game.state.shots.at(-1)!.damage)
     }
     expect(damages.map((damage) => Number(damage.toFixed(1)))).toEqual([
-      19, 20.9, 22.8, 24.7, 26.6, 28.5,
+      19, 20.9, 22.8, 24.7, 26.6, 28.5, 30.4, 32.3, 34.2, 36.1, 38, 38,
     ])
     tower.def.fire!(worldOf(game), tower, second, towerStats(tower))
     expect(game.state.shots.at(-1)!.damage).toBe(19)
   })
 
-  it('Рикошет выпускает две дополнительные стрелы на 60% и 30% урона', () => {
+  it('Рикошет выпускает две дополнительные стрелы по 60% урона', () => {
     const { game, tower } = setUpArcher('ricochet')
     const primary = targetAt(game, tower, 'ogre', 1)
     const near = placeEnemy(game, 'ogre')
@@ -190,7 +190,7 @@ describe('аспекты Лучника', () => {
     tower.def.fire!(worldOf(game), tower, primary, towerStats(tower))
     const homing = game.state.shots.filter((shot) => shot.kind === 'homing')
     expect(homing.map((shot) => shot.target)).toEqual([primary, near, farther])
-    expect(homing.map((shot) => shot.damage)).toEqual([19, 11.4, 5.7])
+    expect(homing.map((shot) => shot.damage)).toEqual([19, 11.4, 11.4])
   })
 })
 
@@ -274,7 +274,7 @@ describe('Сокрушитель', () => {
     expect(shot.distanceLeft).toBeCloseTo(3.1 * 1.15)
     expect(shot.armorBreakDuration).toBe(0)
     updateShots(worldOf(game), 0.2)
-    const damage = enemy.def.isGiant ? 312 : 195
+    const damage = enemy.def.isGiant ? 273 : 195
     expect(enemy.maxHp - enemy.hp).toBeCloseTo(damage - enemy.def.armor * 0.5)
     expect(enemy.armorBreakTimeLeft).toBe(0)
   })
@@ -288,7 +288,7 @@ describe('Сокрушитель', () => {
       shoot(game, tower, targetId === 'rebel' ? rebel : ogre)
       updateShots(worldOf(game), 0.2)
       expect(rebel.maxHp - rebel.hp).toBeCloseTo(195)
-      expect(ogre.maxHp - ogre.hp).toBeCloseTo(312)
+      expect(ogre.maxHp - ogre.hp).toBeCloseTo(273)
     },
   )
 
@@ -305,7 +305,7 @@ describe('Сокрушитель', () => {
     game.specialize(tower.col, tower.row, 'giant-slayer')
     shoot(game, tower, boss)
     updateShots(worldOf(game), 0.2)
-    expect(boss.maxHp - boss.hp).toBeCloseTo((312 - 2) * 1.4)
+    expect(boss.maxHp - boss.hp).toBeCloseTo((273 - 2) * 1.4)
   })
 
   it('болт сохраняет аспект при выстреле, даже если затем башню продали', () => {
@@ -314,7 +314,7 @@ describe('Сокрушитель', () => {
     shoot(game, tower, boss)
     game.sell(tower.col, tower.row)
     updateShots(worldOf(game), 0.2)
-    expect(boss.maxHp - boss.hp).toBeCloseTo(310)
+    expect(boss.maxHp - boss.hp).toBeCloseTo(271)
   })
 
   it('купленный в бою аспект действует с первого выстрела после покупки', () => {
@@ -328,7 +328,7 @@ describe('Сокрушитель', () => {
     const hp = boss.hp
     shoot(game, tower, boss)
     updateShots(worldOf(game), 0.2)
-    expect(hp - boss.hp).toBeCloseTo(310)
+    expect(hp - boss.hp).toBeCloseTo(271)
   })
 })
 
@@ -359,22 +359,33 @@ describe('Раскол лат', () => {
     expect(enemy.maxHp - enemy.hp).toBe(195)
   })
 
-  it('снятие брони действует для обоих пробитых врагов, но не для остальных экземпляров', () => {
-    const { game, tower } = setUp('armor-breaker')
-    const first = targetAt(game, tower, 'armor', 0.8)
-    const second = targetAt(game, tower, 'boss', 1.8)
-    const missed = targetAt(game, tower, 'armor', 2)
-    missed.y += 2
-    shoot(game, tower, first)
-    updateShots(worldOf(game), 0.2)
-    expect([
-      first.armorBreakTimeLeft,
-      second.armorBreakTimeLeft,
-      missed.armorBreakTimeLeft,
-    ]).toEqual([4, 4, 0])
-    damageEnemy(worldOf(game), missed, 19, 'physical')
-    expect(missed.maxHp - missed.hp).toBeCloseTo(14)
-  })
+  it.each([
+    { seed: 0, timers: [4, 4, 0], damage: [195, 195] },
+    { seed: 680, timers: [4, 0, 0], damage: [195, 193] },
+    { seed: 682, timers: [0, 4, 0], damage: [192.5, 195] },
+    { seed: 1000, timers: [0, 0, 0], damage: [192.5, 193] },
+  ])(
+    'проверяет шанс 50% отдельно для каждой пробитой цели (партия $seed)',
+    ({ seed, timers, damage }) => {
+      // При 680 первый бросок чуть ниже 0,5, при 682 — чуть выше.
+      const { game, tower } = setUp('armor-breaker', seed)
+      const first = targetAt(game, tower, 'armor', 0.8)
+      const second = targetAt(game, tower, 'boss', 1.8)
+      const missed = targetAt(game, tower, 'armor', 2)
+      missed.y += 2
+      shoot(game, tower, first)
+      updateShots(worldOf(game), 0.2)
+      expect([
+        first.armorBreakTimeLeft,
+        second.armorBreakTimeLeft,
+        missed.armorBreakTimeLeft,
+      ]).toEqual(timers)
+      expect([first.maxHp - first.hp, second.maxHp - second.hp]).toEqual(damage)
+      expect(game.state.rewardSeed).toBe(seed)
+      damageEnemy(worldOf(game), missed, 19, 'physical')
+      expect(missed.maxHp - missed.hp).toBeCloseTo(14)
+    },
+  )
 
   it('помогает физическому и пробивающему урону союзников, после 4 с броня возвращается', () => {
     const { game, tower } = setUp('armor-breaker')
@@ -396,8 +407,8 @@ describe('Раскол лат', () => {
     expect(enemy.def.armor).toBe(5)
   })
 
-  it('повторные попадания двух Баллист обновляют срок, а не складывают его', () => {
-    const { game, tower } = setUp('armor-breaker')
+  it('повторное срабатывание любой Баллисты обновляет срок до четырёх секунд', () => {
+    const { game, tower } = setUp('armor-breaker', 5)
     const other = game.build('ballista', 6, 11)!
     game.upgrade(other.col, other.row)
     game.upgrade(other.col, other.row)
@@ -410,6 +421,9 @@ describe('Раскол лат', () => {
     game.state.shots = []
     enemy.x = other.x - 1
     enemy.y = other.y
+    shoot(game, other, enemy)
+    updateShots(worldOf(game), 0.2)
+    expect(enemy.armorBreakTimeLeft).toBe(2)
     shoot(game, other, enemy)
     updateShots(worldOf(game), 0.2)
     expect(enemy.armorBreakTimeLeft).toBe(4)

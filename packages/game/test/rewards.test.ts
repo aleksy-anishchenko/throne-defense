@@ -25,7 +25,7 @@ import {
   type RewardSetId,
   type Tower,
 } from '../src/index.ts'
-import { damageEnemy, frostPulse, updateShots } from '../src/systems/combat.ts'
+import { damageEnemy, frostPulse, updateBurning, updateShots } from '../src/systems/combat.ts'
 import { updateHealers } from '../src/systems/enemies.ts'
 import { updateTowers } from '../src/systems/towers.ts'
 import { newGame, placeEnemy, worldOf } from './helpers.ts'
@@ -379,11 +379,15 @@ describe('благословения после волн', () => {
   it('«Заточенные клинки» усиливают обычный урон и горение', () => {
     const game = newGame()
     choose(game, 'sharpened-steel')
-    const enemy = placeEnemy(game, 'rebel', 1.5)
+    const enemy = placeEnemy(game, 'boss', 1.5)
     const hp = enemy.hp
-    damageEnemy(worldOf(game), enemy, 10, 'magic')
-    expect(hp - enemy.hp).toBeCloseTo(11.8)
-    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.18)
+    const world = worldOf(game)
+    damageEnemy(world, enemy, 10, 'magic')
+    expect(hp - enemy.hp).toBeCloseTo(12.2)
+    enemy.burnDamageLeft = 10
+    enemy.burnTimeLeft = 1
+    updateBurning(world, 1)
+    expect(hp - enemy.hp).toBeCloseTo(24.4)
   })
 
   it('«Быстрые приказы» ускоряют перезарядку башни', () => {
@@ -391,10 +395,10 @@ describe('благословения после волн', () => {
     choose(game, 'rapid-orders')
     const tower = game.build('archer', 5, 11)!
     placeEnemy(game, 'rebel', 2)
-    tower.cooldownLeft = 0.113
+    tower.cooldownLeft = 0.119
     updateTowers(worldOf(game), 0.1)
     expect(game.state.shots).toHaveLength(1)
-    expect(rewardStats(game.state).fireRateMultiplier).toBeCloseTo(1.15)
+    expect(rewardStats(game.state).fireRateMultiplier).toBeCloseTo(1.2)
   })
 
   it('«Щедрая награда» добавляет золото за убийство', () => {
@@ -454,16 +458,16 @@ describe('благословения после волн', () => {
       const tower = game.build('archer', 5, 11)!
       expect(game.startWave()).toBe(true)
       game.setPaused(paused)
-      game.state.gold = 35 + 56 + 83
+      game.state.gold = 35 + 56 + 97
       expect(game.upgrade(tower.col, tower.row)).toBe(true)
-      expect(game.state.gold).toBe(56 + 83)
+      expect(game.state.gold).toBe(56 + 97)
       expect(game.upgrade(tower.col, tower.row)).toBe(true)
-      expect(game.state.gold).toBe(83)
+      expect(game.state.gold).toBe(97)
       expect(game.specialize(tower.col, tower.row, 'ricochet')).toBe(false)
       game.state.gold += 1
       expect(game.specialize(tower.col, tower.row, 'ricochet')).toBe(true)
       expect(game.state.gold).toBe(0)
-      expect(tower.aspectGoldPaid).toBe(84)
+      expect(tower.aspectGoldPaid).toBe(98)
       expect(tower.aspectLocked).toBe(true)
       expect(tower.goldSinceLastWave).toBe(0)
       expect(game.undoSpecialization(tower.col, tower.row)).toBe(false)
@@ -473,7 +477,7 @@ describe('благословения после волн', () => {
       game.step(SIMULATION_STEP)
       expect(game.state.phase).toBe('build')
       expect(game.undoSpecialization(tower.col, tower.row)).toBe(false)
-      expect(game.sell(tower.col, tower.row)).toBe(Math.floor((60 + 35 + 56 + 84) * REFUND_RATE))
+      expect(game.sell(tower.col, tower.row)).toBe(Math.floor((60 + 35 + 56 + 98) * REFUND_RATE))
     },
   )
 
@@ -557,7 +561,7 @@ describe('благословения после волн', () => {
     expect(game.chooseReward('field-medic')).toBe(true)
   })
 
-  it('«Двойной выстрел» выпускает вторую стрелу на пятой атаке каждого Лучника', () => {
+  it('«Двойной выстрел» выпускает вторую стрелу на каждой четвёртой атаке Лучника', () => {
     const game = newGame()
     choose(game, 'double-shot')
     const archer = game.build('archer', 5, 11)!
@@ -570,7 +574,7 @@ describe('благословения после волн', () => {
       return game.state.shots
     }
 
-    for (let attack = 0; attack < 4; attack++) expect(fire(archer)).toHaveLength(1)
+    for (let attack = 0; attack < 3; attack++) expect(fire(archer)).toHaveLength(1)
     expect(fire(other)).toHaveLength(1)
     const volley = fire(archer)
     expect(volley).toHaveLength(2)
@@ -584,10 +588,14 @@ describe('благословения после волн', () => {
       8,
     )
     expect(target.burnDamageLeft).toBe(0)
-    expect(fire(archer)).toHaveLength(1)
+    for (let attack = 5; attack <= 7; attack++) expect(fire(archer)).toHaveLength(1)
+    expect(fire(archer)).toHaveLength(2)
+    expect(fire(other)).toHaveLength(1)
+    expect(fire(other)).toHaveLength(1)
+    expect(fire(other)).toHaveLength(2)
   })
 
-  it('«Ледяные иглы» один раз за болт бьют до четырёх разных соседей замедленной цели', () => {
+  it('«Ледяные иглы» поражают четырёх разных соседей по 30% урона один раз за болт', () => {
     const game = newGame()
     game.state.gold = 1000
     choose(game, 'ice-needles')
@@ -623,15 +631,24 @@ describe('благословения после волн', () => {
     expect(bolt.kind === 'line' && [...bolt.hitEnemies]).toEqual([primary, second])
     const targetIds = needles.map((shot) => shot.kind === 'homing' && shot.target.id)
     expect(targetIds).toEqual(nearest.map(({ id }) => id))
-    expect(needles.every(({ damage }) => damage === stats.damage / 4)).toBe(true)
+    const needleDamage = stats.damage * 0.3
+    expect(needles.every(({ damage }) => damage === needleDamage)).toBe(true)
 
     game.state.shots = needles
     const beforeHits = nearest.map(({ hp }) => hp)
     updateShots(world, 1)
     for (const [index, enemy] of nearest.entries()) {
-      expect(beforeHits[index] - enemy.hp).toBeCloseTo(stats.damage / 4 - enemy.def.armor / 2)
+      expect(beforeHits[index] - enemy.hp).toBeCloseTo(needleDamage - enemy.def.armor / 2)
     }
     expect(unchanged.map(({ hp }) => hp)).toEqual(unchangedHp)
+
+    game.state.enemies = [primary, nearest[0]]
+    game.state.shots = []
+    ballista.def.fire!(world, ballista, primary, stats)
+    updateShots(world, 1)
+    expect(
+      game.state.shots.filter((shot) => shot.kind === 'homing').map((shot) => shot.target.id),
+    ).toEqual([nearest[0].id])
   })
 
   it('«Два колокола» используют полный сильнейший бонус и половину второго', () => {
@@ -688,16 +705,16 @@ describe('благословения после волн', () => {
   it('третье благословение «Гнева стражи» открывает прибавку к общему урону', () => {
     const game = newGame()
     choose(game, 'sharpened-steel')
-    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.18)
+    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.22)
     choose(game, 'rapid-orders')
-    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.18)
-    expect(rewardStats(game.state).fireRateMultiplier).toBeCloseTo(1.15)
+    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.22)
+    expect(rewardStats(game.state).fireRateMultiplier).toBeCloseTo(1.2)
     choose(game, 'double-shot')
-    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.33)
+    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.37)
     const enemy = placeEnemy(game, 'rebel', 1.5)
     const hp = enemy.hp
     damageEnemy(worldOf(game), enemy, 10, 'magic')
-    expect(hp - enemy.hp).toBeCloseTo(13.3)
+    expect(hp - enemy.hp).toBeCloseTo(13.7)
   })
 
   it('третье благословение «Тяжёлого марша» замедляет врагов вместе с «Распутицей»', () => {
@@ -712,7 +729,7 @@ describe('благословения после волн', () => {
     expect(enemy.pathDistance).toBeCloseTo(enemy.def.speed * 0.75 * 0.9 * SIMULATION_STEP, 8)
   })
 
-  it('«Дар короны» за три благословения предлагает три новые обычные карты', () => {
+  it('«Дар короны» за три благословения предлагает четыре новые обычные карты', () => {
     const game = newGame()
     choose(game, 'war-chest')
     choose(game, 'royal-tax')
@@ -735,8 +752,8 @@ describe('благословения после волн', () => {
     expect(game.state.phase).toBe('reward')
     expect(game.state.wave).toBe(wave + 1)
     expect(game.startWave()).toBe(false)
-    expect(gift.options).toHaveLength(3)
-    expect(new Set(gift.options).size).toBe(3)
+    expect(gift.options).toHaveLength(4)
+    expect(new Set(gift.options).size).toBe(4)
     expect(gift.options).not.toContain('war-chest')
     expect(gift.options.every((id) => REWARDS[id].rarity === 'common')).toBe(true)
     expect(gift.options.every((id) => !previous.options.includes(id))).toBe(true)
@@ -744,9 +761,9 @@ describe('благословения после волн', () => {
     expect(game.chooseReward('war-chest')).toBe(false)
     expect(game.state.pendingReward).toBe(gift)
 
-    const [rewardId, other] = gift.options
+    const rewardId = gift.options[3]
     expect(game.chooseReward(rewardId)).toBe(true)
-    expect(game.chooseReward(other)).toBe(false)
+    expect(game.chooseReward(gift.options[0])).toBe(false)
     expect(game.state.selectedRewards).toHaveLength(4)
     expect(game.state.selectedRewards.at(-1)).toEqual({ wave, rewardId })
     expect(game.state.gold).toBe(gold)
@@ -755,29 +772,34 @@ describe('благословения после волн', () => {
     expect(offers).toHaveLength(2)
   })
 
-  it('«Дар короны» на последнем рубеже добирает до трёх пропущенными картами', () => {
-    const game = newGame()
-    for (const id of ['war-chest', 'bounty', 'field-medic', 'wildfire', 'last-stand'] as const) {
-      choose(game, id)
-    }
-    game.state.phase = 'reward'
-    game.state.pendingReward = {
-      kind: 'wave',
-      wave: 29,
-      options: ['buyback', 'control-master', 'empty-vials'],
-      rerolls: 0,
-    }
+  it.each([
+    { earlier: 'rapid-orders', fresh: ['double-shot', 'wildfire'] },
+    { earlier: 'wildfire', fresh: ['double-shot'] },
+  ] as const)(
+    '«Дар короны» дополняет оставшиеся обычные карты пропущенными после $earlier',
+    ({ earlier, fresh }) => {
+      const game = newGame()
+      for (const id of ['war-chest', 'bounty', 'field-medic', earlier, 'last-stand'] as const) {
+        choose(game, id)
+      }
+      game.state.phase = 'reward'
+      game.state.pendingReward = {
+        kind: 'wave',
+        wave: 29,
+        options: ['buyback', 'control-master', 'empty-vials'],
+        rerolls: 0,
+      }
 
-    expect(game.chooseReward('buyback')).toBe(true)
-    expect(game.state.pendingReward).toMatchObject({
-      kind: 'crown-gift',
-      wave: 29,
-    })
-    const options = game.state.pendingReward!.options
-    expect(options).toHaveLength(3)
-    expect(options[0]).toBe('double-shot')
-    expect(options.slice(1).sort()).toEqual(['control-master', 'empty-vials'])
-  })
+      expect(game.chooseReward('buyback')).toBe(true)
+      expect(game.state.pendingReward).toMatchObject({
+        kind: 'crown-gift',
+        wave: 29,
+      })
+      const options = game.state.pendingReward!.options
+      expect(options.slice(0, fresh.length).sort()).toEqual(fresh)
+      expect(options.slice(fresh.length).sort()).toEqual(['control-master', 'empty-vials'])
+    },
+  )
 
   it('«Дар короны» даётся один раз за партию, его карточка засчитывается в другой набор', () => {
     const game = newGame()
@@ -793,7 +815,7 @@ describe('благословения после волн', () => {
 
     expect(game.chooseReward(attackReward)).toBe(true)
     expect(rewardSetCounts(game.state.selectedRewards).arsenal).toBe(3)
-    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.33)
+    expect(rewardStats(game.state).damageMultiplier).toBeCloseTo(1.37)
     choose(game, 'two-bells', 29)
     expect(rewardSetCounts(game.state.selectedRewards).supplies).toBe(4)
     expect(game.state.pendingReward).toBeNull()
@@ -820,7 +842,7 @@ describe('благословения после волн', () => {
       {
         rewardId: 'sharpened-steel',
         name: 'Заточенные клинки',
-        description: '+36% ко всему урону стражей',
+        description: '+44% ко всему урону стражей',
         count: 2,
       },
       {

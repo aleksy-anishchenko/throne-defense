@@ -20,7 +20,7 @@ export {
 } from './data/balance.ts'
 export { ENEMIES } from './data/enemies.ts'
 export { bannerArmorOf } from './systems/enemies.ts'
-export { pendingBurnDamage } from './systems/combat.ts'
+export { burnTimeRemaining, pendingBurnDamage } from './systems/burning.ts'
 export { forecastBurnDamage } from './systems/burn-forecast.ts'
 export {
   REWARDS,

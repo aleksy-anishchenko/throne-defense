@@ -1001,7 +1001,7 @@ async function desktop(page, url) {
   await archerCard.click()
   await clickCell(page, 2, 9)
 
-  // Лучник III: два аспекта по 120, покупка и отмена видны в панели.
+  // Покупка и отмена аспекта Лучника III через панель башни.
   const goldBeforeArcherAspectTest = (await readGameSnapshot(page)).gold
   await page.evaluate(() => (window.__throne.game.state.gold = 1000))
   await clickCell(page, 4, 9)
@@ -1009,19 +1009,21 @@ async function desktop(page, url) {
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
   const archerAspects = page.locator('.tower-info .tower-aspects')
+  const hunterOption = archerAspects.getByRole('button', { name: 'Метка охотника за 140 золота' })
+  const ricochetOption = archerAspects.getByRole('button', { name: 'Рикошет за 140 золота' })
   check(
-    'Лучник III: два аспекта по 120',
+    'карточки Лучника за 140 показывают предел метки в скобках и урон обеих стрел Рикошета',
     (await archerAspects.locator('.aspect-option').count()) === 2 &&
-      (await archerAspects.innerText()).includes('Метка охотника') &&
-      (await archerAspects.innerText()).includes('Рикошет'),
+      (await hunterOption.innerText()).includes('(до +100%)') &&
+      (await ricochetOption.innerText()).includes('по 60% урона ещё двум'),
   )
   const archerGoldBeforeAspect = (await readGameSnapshot(page)).gold
-  await archerAspects.getByRole('button', { name: 'Рикошет за 120 золота' }).click()
+  await ricochetOption.click()
   await waitForFrames(page)
   check(
-    'Рикошет: Лучник IV и списание 120',
+    'покупка Рикошета за 140 повышает Лучника до IV ступени',
     (await page.locator('.tower-info b').textContent()) === 'Лучник IV' &&
-      (await readGameSnapshot(page)).gold === archerGoldBeforeAspect - 120 &&
+      (await readGameSnapshot(page)).gold === archerGoldBeforeAspect - 140 &&
       (await page.evaluate(() => window.__throne.game.towerAt(4, 9).aspectId)) === 'ricochet',
   )
   await archerAspects.getByRole('button', { name: /Отменить аспект/ }).click()
@@ -1336,9 +1338,9 @@ async function desktop(page, url) {
   )
   const blades = rewardCards.filter({ hasText: 'Заточенные клинки' })
   check(
-    '«Заточенные клинки» стали легендарными и дают +18% урона',
+    '«Заточенные клинки» дают +22% урона',
     (await blades.getAttribute('data-rarity')) === 'legendary' &&
-      (await blades.locator('.reward-description').innerText()).includes('+18%'),
+      (await blades.locator('.reward-description').innerText()).includes('+22%'),
   )
   await blades.click()
   await waitForFrames(page)
@@ -1365,7 +1367,7 @@ async function desktop(page, url) {
   check(
     'наведение показывает бонус «Гнева стражи» и прогресс 1 из 3',
     (await tooltip.isVisible()) &&
-      (await tooltip.innerText()).includes('+18% ко всему урону стражей') &&
+      (await tooltip.innerText()).includes('+22% ко всему урону стражей') &&
       (await tooltip.locator('.reward-set-title').innerText()) === 'Набор «Гнев стражи»' &&
       (await tooltip.locator('.reward-set-status').innerText()) === 'Собрано 1 из 3' &&
       (await tooltip.locator('.reward-set-effect').innerText()).includes('+15%') &&
@@ -1434,7 +1436,8 @@ async function desktop(page, url) {
     (await blades.count()) === 0 &&
       (await iceNeedles.getAttribute('data-rarity')) === 'rare' &&
       needlesDescription.includes('по врагу под морозом') &&
-      needlesDescription.includes('25%') &&
+      needlesDescription.includes('поражают 4 разные цели') &&
+      needlesDescription.includes('Каждая игла наносит 30% урона болта') &&
       (await iceNeedles
         .locator('img')
         .evaluate((icon) => icon.complete && icon.naturalWidth > 0)) &&
@@ -1450,7 +1453,7 @@ async function desktop(page, url) {
     (await readGameSnapshot(page)).rewards.join(',') ===
       'sharpened-steel,field-medic,ice-needles' &&
       (await bladesIcon.locator('.reward-count').count()) === 0 &&
-      (await tooltip.innerText()).includes('+18% ко всему урону стражей') &&
+      (await tooltip.innerText()).includes('+22% ко всему урону стражей') &&
       (await tooltip.locator('.reward-set-status').innerText()) === 'Собрано 2 из 3' &&
       (await bladesIcon.locator('.reward-progress .is-filled').count()) === 2,
   )
@@ -1506,8 +1509,9 @@ async function desktop(page, url) {
   const doubleShot = rewardCards.filter({ hasText: 'Двойной выстрел' })
   check(
     'третья карта «Гнева стражи» подсвечена подписью «Откроет бонус»',
-    (await doubleShot.locator('.reward-set-ready .reward-set-status').innerText()) ===
-      'Откроет бонус',
+    (await doubleShot.locator('.reward-description').innerText()).includes('Каждый 4-й выстрел') &&
+      (await doubleShot.locator('.reward-set-ready .reward-set-status').innerText()) ===
+        'Откроет бонус',
   )
   await doubleShot.click()
   await waitForFrames(page)
@@ -1642,12 +1646,23 @@ async function desktop(page, url) {
   await page.getByRole('button', { name: /Улучшить/ }).click()
   await waitForFrames(page)
   const aspects = page.locator('.tower-info .tower-aspects')
+  const slayerOption = aspects.getByRole('button', {
+    name: 'Сокрушитель за 180 золота',
+    exact: true,
+  })
+  const slayerText = await slayerOption.innerText()
+  const breakerText = await aspects
+    .getByRole('button', { name: 'Раскол лат за 180 золота', exact: true })
+    .innerText()
   check(
-    'Баллиста III: два аспекта по 180, «Сокрушитель» включает генерала',
+    'карточки Баллисты III показывают бонус 40% по исполинам и шанс 50% снять броню',
     (await aspects.locator('.aspect-option').count()) === 2 &&
-      (await aspects.innerText()).includes('генералам мятежников'),
+      slayerText.includes('на 40% больше урона') &&
+      slayerText.includes('генералам мятежников') &&
+      breakerText.includes('с вероятностью 50%') &&
+      breakerText.includes('на 4 с'),
   )
-  await aspects.getByRole('button', { name: 'Сокрушитель за 180 золота', exact: true }).click()
+  await slayerOption.click()
   await waitForFrames(page)
   check(
     'покупка аспекта: IV ступень, списано 180, только одна специализация',
@@ -1712,18 +1727,29 @@ async function desktop(page, url) {
   })
   await clickCell(page, 2, 9)
   const oilOption = aspects.getByRole('button', { name: 'Кипящее масло за 150 золота' })
+  const oilText = await oilOption.innerText()
   check(
-    'масло указывает верхнюю границу замедления',
-    (await oilOption.innerText()).includes('до 20% замедления'),
+    'карточка масла показывает длительность лужи, её замедление и общий предел',
+    oilText.includes('Лужа держится 4 с') &&
+      oilText.includes('получает 20% замедления') &&
+      oilText.includes('на 30% больше урона от любого поджога') &&
+      oilText.includes('общий предел с благословениями — 90%'),
   )
   await oilOption.click()
   await clickCell(page, 4, 9)
-  await aspects.getByRole('button', { name: 'Дикий огонь за 150 золота' }).click()
+  const wildfireOption = aspects.getByRole('button', { name: 'Дикий огонь за 150 золота' })
+  const wildfireText = await wildfireOption.innerText()
+  check(
+    'карточка синего пламени показывает прибавку к урону и сочетание с масляным поджогом',
+    wildfireText.includes('на 20% больше урона') &&
+      wildfireText.includes('«Кипящего масла» складываются'),
+  )
+  await wildfireOption.click()
   await waitForFrames(page)
   check(
-    'Огневик IV показывает 84,46 урона за 2 с, обе специализации оплачены',
+    'Огневик IV показывает 88,13 урона за 2 с, обе специализации оплачены',
     (await readStatRows(page.locator('.tower-info'))).includes(
-      'Урон от горения (за 2 сек) 84,46',
+      'Урон от горения (за 2 сек) 88,13',
     ) && (await readGameSnapshot(page)).gold === 0,
   )
   await page.getByRole('button', { name: 'Начать волну' }).click()
@@ -1734,14 +1760,16 @@ async function desktop(page, url) {
       game.step(1 / 60)
       if (
         game.state.oilPuddles.length &&
-        game.state.enemies.some((e) => e.wildfire && e.oilTimeLeft > 0)
+        game.state.enemies.some(
+          (e) => e.wildfire && e.oilBurn?.burnTimeLeft > 0 && e.oilTimeLeft > 0,
+        )
       )
         return true
     }
     return false
   })
   await waitForFrames(page)
-  check('первые враги попадают в масляную лужу и загораются синим', oiledAndBurning)
+  check('на враге в масле одновременно действуют оба поджога Огневика', oiledAndBurning)
 
   // Стрелки снимают выбор с плиты: цифра ставит стража под курсор, а не на старую плиту
   await page.evaluate(() => window.__throne.store.newGame())
@@ -2501,7 +2529,7 @@ async function phone(page, url) {
     game.upgrade(4, 9)
     game.startWave()
   })
-  await finishRewardWave(page, 20, 30)
+  await finishRewardWave(page, 20, 18)
   const beforeGift = await readGameSnapshot(page)
   const engineer = phoneRewardCards.filter({ hasText: 'Военный инженер' })
   check(
@@ -2511,6 +2539,7 @@ async function phone(page, url) {
       (await engineer.locator('.reward-description').innerText()).includes(
         '30% на улучшения и аспекты',
       ) &&
+      (await engineer.locator('.reward-set-effect').innerText()).includes('из 4 обычных') &&
       (await engineer.locator('.reward-set-ready .reward-set-status').innerText()) ===
         'Откроет бонус' &&
       (await engineer.locator('img').evaluate((icon) => icon.complete && icon.naturalWidth > 0)),
@@ -2520,15 +2549,15 @@ async function phone(page, url) {
   await gift.waitFor()
   const giftCards = gift.locator('.reward-card')
   const duringGift = await readGameSnapshot(page)
-  const giftCardsFit = await giftCards.evaluateAll((cards) =>
-    cards.every((card) => {
+  const giftCardBounds = await giftCards.evaluateAll((cards) =>
+    cards.map((card) => {
       const { left, right, top, bottom } = card.getBoundingClientRect()
-      return left >= 0 && right <= innerWidth && top >= 0 && bottom <= innerHeight
+      return { left, right, top, bottom }
     }),
   )
   check(
-    '320×568: «Дар короны» предлагает три обычные карты, поле выключено',
-    (await giftCards.count()) === 3 &&
+    '320×568: «Дар короны» предлагает четыре обычные карты, поле выключено',
+    (await giftCards.count()) === 4 &&
       (await gift.getAttribute('aria-describedby')) === 'reward-caption' &&
       (await gift.locator('#reward-caption').innerText()) ===
         'Выберите одно обычное благословение.' &&
@@ -2536,15 +2565,19 @@ async function phone(page, url) {
       (await giftCards.evaluateAll((cards) =>
         cards.every((card) => card.dataset.rarity === 'common'),
       )) &&
-      giftCardsFit &&
+      giftCardBounds.every(
+        ({ left, right, top, bottom }) => left >= 0 && right <= 320 && top >= 0 && bottom <= 568,
+      ) &&
       (await gift.locator('.reward-reroll').count()) === 0 &&
       (await page.locator('.stage').evaluate((stage) => stage.inert)) &&
       duringGift.gold === beforeGift.gold,
+    JSON.stringify(giftCardBounds),
   )
-  const buybackCard = giftCards.filter({ hasText: 'Выкуп' })
+  const buybackCard = giftCards.nth(3)
   check(
-    '320×568: карточка «Выкуп» показывает возврат 100% между волнами',
-    (await buybackCard.locator('.reward-description').innerText()).includes('100%') &&
+    '320×568: четвёртая карточка «Выкуп» показывает возврат 100% между волнами',
+    (await buybackCard.locator('strong').innerText()) === 'Выкуп' &&
+      (await buybackCard.locator('.reward-description').innerText()).includes('100%') &&
       (await buybackCard.locator('img').evaluate((icon) => icon.complete && icon.naturalWidth > 0)),
   )
   await buybackCard.tap()
@@ -2597,28 +2630,28 @@ async function phone(page, url) {
     if (!game.build('archer', 4, 9) || !game.upgrade(4, 9)) {
       throw new Error('Не удалось подготовить Лучника II для проверки скидки')
     }
-    game.state.gold = 140
+    game.state.gold = 56 + 98
     store.syncHud()
   })
   await tapTile(4, 9)
   await page.getByRole('button', { name: 'Улучшить за 56', exact: true }).tap()
   check(
     '320×568: с «Военным инженером» улучшение Лучника до III стоит 56',
-    (await readGameSnapshot(page)).gold === 84,
+    (await readGameSnapshot(page)).gold === 98,
   )
   const discountedArcher = page.getByRole('dialog', { name: 'Башня: Лучник III', exact: true })
   await discountedArcher.waitFor({ timeout: 5000 })
   await discountedArcher
-    .getByRole('button', { name: 'Рикошет за 84 золота', exact: true })
+    .getByRole('button', { name: 'Рикошет за 98 золота', exact: true })
     .tap({ timeout: 5000 })
   const undoDiscounted = page
     .getByRole('dialog', { name: 'Башня: Лучник IV', exact: true })
-    .getByRole('button', { name: 'Отменить аспект — вернуть 84', exact: true })
+    .getByRole('button', { name: 'Отменить аспект — вернуть 98', exact: true })
   const paidAspect = (await readGameSnapshot(page)).gold === 0
   await undoDiscounted.tap({ timeout: 5000 })
   check(
-    '320×568: «Рикошет» со скидкой стоит 84, при отмене возвращаются те же 84',
-    paidAspect && (await readGameSnapshot(page)).gold === 84,
+    '320×568: «Рикошет» со скидкой стоит 98, при отмене возвращаются те же 98',
+    paidAspect && (await readGameSnapshot(page)).gold === 98,
   )
   await page.keyboard.press('Escape')
 
@@ -2650,13 +2683,13 @@ async function phone(page, url) {
   await blessedRate.getByRole('button').tap()
   check(
     '320×568: карточка Лучника III показывает силу набора и скорость от благословения, поле на месте',
-    (await blessedDamage.getByRole('button').innerText()) === '25,27' &&
+    (await blessedDamage.getByRole('button').innerText()) === '26,03' &&
       !initialStats.includes('Без усилений') &&
       !initialStats.includes('Гнев стражи') &&
-      damageBonuses.includes('Заточенные клинки +18%') &&
+      damageBonuses.includes('Заточенные клинки +22%') &&
       damageBonuses.includes('Гнев стражи +15%') &&
       (await blessedDamage.getByRole('button').getAttribute('aria-expanded')) === 'false' &&
-      (await blessedRate.locator('.tower-stat-bonus').innerText()) === 'Быстрые приказы +15%' &&
+      (await blessedRate.locator('.tower-stat-bonus').innerText()) === 'Быстрые приказы +20%' &&
       !(await discountedArcher.getByRole('columnheader').count()) &&
       (await samePhoneLayout()),
     initialStats,

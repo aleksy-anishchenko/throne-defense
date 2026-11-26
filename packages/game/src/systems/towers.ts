@@ -12,6 +12,7 @@ import type {
   TowerStats,
   World,
 } from '../types.ts'
+import { hasCompetingBurn } from './burning.ts'
 import { effectiveTowerStats, rewardStats } from './rewards.ts'
 
 export function towerStats(
@@ -121,8 +122,8 @@ function findTarget(world: World, tower: Tower, stats: TowerStats): Enemy | null
   for (const enemy of world.state.enemies) {
     if (enemy.isDead || distanceSquared(tower, enemy) > rangeSquared) continue
     if (best && tower.def.preferUnburning) {
-      const candidateBurns = enemy.burnTimeLeft > 0
-      const bestBurns = best.burnTimeLeft > 0
+      const candidateBurns = hasCompetingBurn(enemy, tower.aspectId)
+      const bestBurns = hasCompetingBurn(best, tower.aspectId)
       if (candidateBurns !== bestBurns) {
         if (!candidateBurns) best = enemy
         continue
