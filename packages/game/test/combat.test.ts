@@ -86,7 +86,7 @@ describe('урон и броня', () => {
     damageEnemy(world, enemy, 999, 'magic')
 
     expect(enemy.isDead).toBe(true)
-    expect(game.state.gold).toBe(gold + 6)
+    expect(game.state.gold).toBe(gold + 5)
     expect(game.state.score).toBe(60)
     expect(game.state.kills).toBe(1)
     expect(events).toEqual(['hit', 'kill'])

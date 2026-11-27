@@ -150,6 +150,8 @@ export interface EnemyDef {
   armor: number
   /** Золото за убийство */
   reward: number
+  /** Очки за убийство */
+  killScore: number
   /** Сколько жизней трона отнимает, если дошёл */
   throneDamage: number
   /** Радиус врага, клеток */

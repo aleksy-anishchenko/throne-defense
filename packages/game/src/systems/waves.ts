@@ -64,9 +64,8 @@ export function finishWave(world: World): void {
 /** Очки за врага, если убить и его, и всех, на кого он распадается (Горыныч → змеёныши) */
 function maxScoreForEnemy(enemyId: string): number {
   const def = ENEMIES[enemyId]
-  const own = def.reward * SCORE.perGold
-  if (!def.splitInto) return own
-  return own + def.splitInto.count * maxScoreForEnemy(def.splitInto.enemyId)
+  if (!def.splitInto) return def.killScore
+  return def.killScore + def.splitInto.count * maxScoreForEnemy(def.splitInto.enemyId)
 }
 
 /**

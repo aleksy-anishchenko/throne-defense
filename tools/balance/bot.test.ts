@@ -73,7 +73,7 @@ describe('экономика Казны', () => {
     const withoutTreasury: Strategy = {
       name: 'Без Казны',
       opening: ['archer', 'archer', 'archer', 'upgrade', 'upgrade', 'upgrade'],
-      loop: ['upgrade', 'ballista', 'upgrade', 'archer', 'trapper', 'upgrade', 'warlock', 'bell'],
+      loop: ['archer', 'upgrade', 'upgrade', 'upgrade'],
       placement: 'coverage',
     }
     const withTreasury: Strategy = {

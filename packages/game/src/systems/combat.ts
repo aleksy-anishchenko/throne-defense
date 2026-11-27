@@ -1,7 +1,7 @@
 // Урон, снаряды и «выстрелы-ауры». Башни (data/towers.ts) собираются из этих кирпичиков.
 
 import { rollCombatChance } from '../core/random.ts'
-import { BOILING_OIL, SCORE } from '../data/balance.ts'
+import { BOILING_OIL } from '../data/balance.ts'
 import { ICE_NEEDLES } from '../data/rewards.ts'
 import type {
   DamageKind,
@@ -132,7 +132,7 @@ function loseHp(world: World, enemy: Enemy, amount: number): void {
     const rewards = rewardStats(state)
     enemy.isDead = true
     state.gold += enemy.def.reward + rewards.killGoldBonus
-    state.score += enemy.def.reward * SCORE.perGold
+    state.score += enemy.def.killScore
     state.kills++
     queueSplit(world, enemy)
     world.emit('kill', enemy)
