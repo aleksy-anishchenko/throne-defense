@@ -2,7 +2,7 @@
 
 import { BOILING_OIL, MIN_ENEMY_SPEED_SHARE, hpMultiplier } from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
-import type { Enemy, World } from '../types.ts'
+import type { Enemy, Tower, World } from '../types.ts'
 import { burnTimeRemaining } from './burning.ts'
 import { rewardStats } from './rewards.ts'
 
@@ -83,6 +83,29 @@ export function enemyStepDistance(enemy: Enemy, dt: number, enemySpeedMultiplier
   return enemy.def.speed * travelTime
 }
 
+/** Срок удара общий для боя и рисунка: замах заканчивается в момент потери прочности. */
+function strikeWall(
+  enemy: Enemy,
+  wall: NonNullable<Tower['barricade']>,
+  contactTime: number,
+  now: number,
+): void {
+  const interval = enemy.def.isGiant ? 1 : 0.7
+  const attack = (enemy.wallAttack ??= {
+    nextHitAt: contactTime + interval * (0.4 + (enemy.id % 4) * 0.045),
+    interval,
+    angle: wall.angle - Math.PI / 2,
+  })
+  if (now < attack.nextHitAt) return
+  const hits = 1 + Math.floor((now - attack.nextHitAt) / interval)
+  attack.lastHitAt = attack.nextHitAt + (hits - 1) * interval
+  attack.nextHitAt += hits * interval
+  wall.lastHitAt = Math.max(wall.lastHitAt ?? 0, attack.lastHitAt)
+  // Урон трону у финального босса равен 20. Против стен его сила ограничена.
+  const damage = 10 * Math.min(6, enemy.def.throneDamage) * interval
+  wall.hp = Math.max(0, wall.hp - hits * damage)
+}
+
 /**
  * Сдвинуть всех врагов на dt секунд.
  * Возвращает true, если трон устоял (можно продолжать бой),
@@ -99,15 +122,20 @@ export function moveEnemies(world: World, dt: number): boolean {
     const distance = enemyStepDistance(enemy, dt, enemySpeedMultiplier)
     if (enemy.slowTimeLeft > 0) enemy.slowTimeLeft -= dt
     tickStatusTimers(world, enemy, dt)
+    const contactDistance = wall ? Math.max(0, wall.distance - enemy.def.radius) : 0
     if (
       wall &&
       wall.hp > 0 &&
       enemy.pathDistance <= wall.distance &&
-      enemy.pathDistance + distance >= wall.distance
+      enemy.pathDistance + distance >= contactDistance
     ) {
-      enemy.pathDistance = wall.distance
-      wall.hp = Math.max(0, wall.hp - dt * 10 * enemy.def.throneDamage)
+      // Остановить у щита передний край фигуры. Возникшего рядом змеёныша назад не сдвигаем.
+      const approach = Math.max(0, contactDistance - enemy.pathDistance)
+      const travelTime = distance > 0 ? dt * (approach / distance) : 0
+      strikeWall(enemy, wall, state.time - dt + travelTime, state.time)
+      enemy.pathDistance += approach
     } else {
+      if (enemy.wallAttack) delete enemy.wallAttack
       enemy.pathDistance += distance
     }
 

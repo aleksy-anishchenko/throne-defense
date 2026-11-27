@@ -296,6 +296,14 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       }
       // Кольцо выбора лежит под фигуркой, оставляя свободными углы клетки.
       if (tower === selectedTower) drawSelectionRing()
+      const wall = tower.barricade
+      if (wall?.lastHitAt !== undefined && !prefersReducedMotion) {
+        const progress = (time - wall.lastHitAt) / 0.22
+        if (progress >= 0 && progress < 1) {
+          const recoil = 0.085 * (1 - progress) * Math.cos(progress * Math.PI * 2)
+          ctx.translate(Math.sin(wall.angle) * recoil, -Math.cos(wall.angle) * recoil)
+        }
+      }
       const isReady = tower.cooldownLeft < towerStats(tower).cooldown * READY_COOLDOWN_SHARE
       drawTower(
         ctx,

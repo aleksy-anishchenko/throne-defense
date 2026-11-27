@@ -405,9 +405,9 @@ const outpost: TowerDef = {
   cost: 75,
   upgradeCosts: [60, 100],
   tiers: [
-    { shieldHealth: 60, damage: 5, cooldown: 0.8, range: 1.5 },
-    { shieldHealth: 100, damage: 9, cooldown: 0.8, range: 1.5 },
-    { shieldHealth: 160, damage: 15, cooldown: 0.8, range: 1.5 },
+    { shieldHealth: 70, damage: 5, cooldown: 0.8, range: 1.5 },
+    { shieldHealth: 120, damage: 9, cooldown: 0.8, range: 1.5 },
+    { shieldHealth: 200, damage: 15, cooldown: 0.8, range: 1.5 },
   ],
   displayStats: ['shieldHealth', 'damage', 'attackRate', 'range'],
   defaultTargetMode: 'first',

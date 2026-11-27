@@ -672,8 +672,27 @@ export function drawEnemy(
   // кольца у ног — под телом, оттенок и знаки — поверх
   drawStatusRings(ctx, enemy, radius, time + bobPhase)
 
+  ctx.save()
+  const attack = enemy.wallAttack
+  if (attack && !prefersReducedMotion) {
+    const remaining = (attack.nextHitAt - time) / attack.interval
+    const tip = 0.16
+    // Плавный отвод корпуса, короткий выпад и возврат после попадания.
+    let reach = 0
+    if (attack.lastHitAt !== undefined && time - attack.lastHitAt < 0.16) {
+      reach = tip * (1 - (time - attack.lastHitAt) / 0.16)
+    } else if (remaining <= 0.1) {
+      reach = tip - (0.27 * remaining) / 0.1
+    } else if (remaining < 0.4) {
+      reach = (-0.11 * (0.4 - remaining)) / 0.3
+    }
+    const dx = Math.cos(attack.angle)
+    ctx.translate(dx * reach, Math.sin(attack.angle) * reach)
+    ctx.rotate(dx * reach * 0.85)
+  }
   ctx.lineWidth = 0.035
   if (!drawEnemySprite(ctx, enemy, path, stride)) art.body(ctx, radius)
+  ctx.restore()
 
   drawStatusMarks(ctx, enemy, radius, time + bobPhase)
   if (isFlashing) {
