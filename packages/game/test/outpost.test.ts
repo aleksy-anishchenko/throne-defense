@@ -36,8 +36,19 @@ it('гарнизон стреляет, держит огра до разруше
   expect(wall.hp).toBeLessThan(wall.maxHp)
   expect(game.state.enemies[0].pathDistance).toBe(wall.distance)
   expect(shots).toBeGreaterThan(0)
+  game.state.gold = 160
+  const damageTaken = wall.maxHp - wall.hp
+  expect(game.upgrade(col, row)).toBe(true)
+  expect(wall.maxHp).toBe(100)
+  expect(wall.hp).toBeCloseTo(100 - damageTaken)
+  expect(game.state.gold).toBe(100)
   while (wall.hp > 0 && game.state.time < 20) game.step(SIMULATION_STEP)
   expect(wall.hp).toBe(0)
+  expect(game.upgrade(col, row)).toBe(true)
+  expect(wall.hp).toBe(0)
+  expect(wall.maxHp).toBe(160)
+  expect(game.state.gold).toBe(0)
+  expect(game.upgrade(col, row)).toBe(false)
   const shotsBefore = shots
   game.step(SIMULATION_STEP)
   expect(game.state.enemies[0].pathDistance).toBeGreaterThan(wall.distance)
@@ -45,5 +56,5 @@ it('гарнизон стреляет, держит огра до разруше
   expect(shots).toBe(shotsBefore)
   expect(game.state.phase).toBe('build')
   expect(wall.hp).toBe(wall.maxHp)
-  expect(game.sell(col, row)).toBe(75)
+  expect(game.sell(col, row)).toBe(235)
 })

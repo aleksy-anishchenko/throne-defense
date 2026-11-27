@@ -403,9 +403,13 @@ const outpost: TowerDef = {
   description:
     'Одна на зал. Ставится на ковёр между волнами. Лучники стреляют, пока враги ломают щит. После волны щит восстанавливается.',
   cost: 75,
-  upgradeCosts: [],
-  tiers: [{ damage: 5, cooldown: 0.8, range: 1.5 }],
-  displayStats: ['damage', 'attackRate', 'range'],
+  upgradeCosts: [60, 100],
+  tiers: [
+    { shieldHealth: 60, damage: 5, cooldown: 0.8, range: 1.5 },
+    { shieldHealth: 100, damage: 9, cooldown: 0.8, range: 1.5 },
+    { shieldHealth: 160, damage: 15, cooldown: 0.8, range: 1.5 },
+  ],
+  displayStats: ['shieldHealth', 'damage', 'attackRate', 'range'],
   defaultTargetMode: 'first',
   canChooseTarget: false,
   takesFireRateBonus: true,

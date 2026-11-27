@@ -843,6 +843,11 @@ export function drawTower(
       if (healthShare === 0) ctx.fillRect(0.28, y, 0.17, 0.1)
     }
     if (healthShare > 0) {
+      if (tier >= TIER_II) {
+        ctx.fillStyle = tier >= TIER_III ? GOLD : '#a6b6c7'
+        for (const x of [-0.43, 0.36]) ctx.fillRect(x, -0.04, 0.07, 0.32)
+        if (tier >= TIER_III) ctx.fillRect(-0.42, -0.04, 0.84, 0.045)
+      }
       ctx.fillStyle = '#32303a'
       for (const x of [-0.29, 0.19]) ctx.fillRect(x, 0.06, 0.1, 0.06)
       ctx.fillStyle = '#a52c41'

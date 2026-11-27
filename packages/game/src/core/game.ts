@@ -240,9 +240,10 @@ export function createGame(levelDef: LevelDef): Game {
         hunterStacks: 0,
         shotsSinceDouble: 0,
       }
-      if (towerId === 'outpost') {
+      const maxHp = def.tiers[0].shieldHealth
+      if (maxHp !== undefined) {
         const site = level.outpostSites.get(cellKey(col, row))!
-        tower.barricade = { ...site, hp: 60, maxHp: 60 }
+        tower.barricade = { ...site, hp: maxHp, maxHp }
       }
       state.towers.push(tower)
       state.towersByCell.set(cellKey(col, row), tower)
@@ -259,6 +260,13 @@ export function createGame(levelDef: LevelDef): Game {
       if (state.phase === 'build') tower.goldSinceLastWave += cost
       tower.upgradeGoldPaid += cost
       tower.tier++
+      const wall = tower.barricade
+      const maxHp = tower.def.tiers[tower.tier].shieldHealth
+      if (wall && maxHp !== undefined) {
+        // Уцелевший щит получает добавочную прочность. Разрушенный восстановится после волны.
+        if (wall.hp > 0) wall.hp += maxHp - wall.maxHp
+        wall.maxHp = maxHp
+      }
       events.emit('upgrade', tower)
       return true
     },

@@ -2041,6 +2041,19 @@ async function phone(page, url) {
     placedOutpost.towers.includes('outpost0@3,9') && placedOutpost.gold === 75,
   )
   await tapTile(3, 9)
+  const outpostCard = page.getByRole('dialog', { name: 'Башня: Застава I', exact: true })
+  const outpostStats = await readStatRows(outpostCard)
+  check(
+    'карточка Заставы показывает усиление щита и стрел',
+    outpostStats.includes('Прочность щита 60 / 100') && outpostStats.includes('Урон 5 / 9'),
+    outpostStats,
+  )
+  await outpostCard.getByRole('button', { name: /Улучшить/ }).tap()
+  const upgradedOutpost = await readGameSnapshot(page)
+  check(
+    'покупка II ступени Заставы списывает 60 золота',
+    upgradedOutpost.gold === 15 && upgradedOutpost.towers.includes('outpost1@3,9'),
+  )
   await page.getByRole('button', { name: /Вернуть/ }).tap()
 
   // Высота игровой области iPhone 12 при открытых панелях браузера.

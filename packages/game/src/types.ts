@@ -13,6 +13,8 @@ export type DamageKind = 'physical' | 'magic' | 'piercing'
 
 /** Характеристики башни на одной ступени улучшения */
 export interface TowerStats {
+  /** Сколько урона выдерживает целый щит Заставы */
+  shieldHealth?: number
   /** Урон за одно попадание, единиц здоровья */
   damage: number
   /** Пауза между выстрелами, секунд */
@@ -45,6 +47,7 @@ export interface TowerStats {
 
 /** Какие характеристики можно показать в панели башни */
 export type StatKey =
+  | 'shieldHealth'
   | 'damage'
   /** Число атак за секунду игрового времени. */
   | 'attackRate'

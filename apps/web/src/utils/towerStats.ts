@@ -16,6 +16,7 @@ interface StatDisplay {
 
 /** Как подписывать и показывать каждую характеристику */
 export const STAT_DISPLAY: Record<StatKey, StatDisplay> = {
+  shieldHealth: { label: 'Прочность щита', format: String },
   damage: { label: 'Урон', format: formatDecimal },
   attackRate: { label: 'Скорость атаки', format: formatDecimal, unit: () => 'атак/с' },
   range: { label: 'Дальность атаки', format: formatDecimal, unit: cellUnit },
