@@ -122,7 +122,7 @@
  * 72 — враги приносят примерно на 17% меньше золота за кампанию.
  * 73 — восстановлены награды золотом за убийства из баланса v71.
  */
-export const BALANCE_VERSION = 77
+export const BALANCE_VERSION = 78
 
 export const WALL_HIT_LIMIT = 25
 export const WALL_RESIN = { cooldown: 5, duration: 3, damageBonus: 0.2 } as const

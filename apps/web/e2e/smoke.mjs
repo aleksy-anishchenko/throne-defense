@@ -2045,7 +2045,7 @@ async function phone(page, url) {
   const outpostStats = await readStatRows(outpostCard)
   check(
     'карточка Заставы показывает усиление щита и стрел',
-    outpostStats.includes('Прочность щита 70 / 120') && outpostStats.includes('Урон 5 / 9'),
+    outpostStats.includes('Прочность щита 75 / 130') && outpostStats.includes('Урон 5 / 9'),
     outpostStats,
   )
   await outpostCard.getByRole('button', { name: /Улучшить/ }).tap()

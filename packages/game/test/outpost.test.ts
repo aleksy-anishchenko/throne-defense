@@ -37,7 +37,7 @@ it('гарнизон стреляет, держит огра до разруше
   game.startWave()
   while (!game.state.enemies[0]?.wallAttack && game.state.time < 10) game.step(SIMULATION_STEP)
   expect(game.state.enemies[0].wallAttack!.nextHitAt).toBeGreaterThan(game.state.time)
-  expect(wall.hp).toBe(70)
+  expect(wall.hp).toBe(75)
   while (wall.hp === wall.maxHp && game.state.time < 10) game.step(SIMULATION_STEP)
   expect(wall.hp).toBe(wall.maxHp - 40)
   expect(wall.lastHitAt).toBe(game.state.enemies[0].wallAttack!.lastHitAt)
@@ -47,14 +47,14 @@ it('гарнизон стреляет, держит огра до разруше
   game.state.gold = 160
   const damageTaken = wall.maxHp - wall.hp
   expect(game.upgrade(col, row)).toBe(true)
-  expect(wall.maxHp).toBe(120)
-  expect(wall.hp).toBeCloseTo(120 - damageTaken)
+  expect(wall.maxHp).toBe(130)
+  expect(wall.hp).toBeCloseTo(130 - damageTaken)
   expect(game.state.gold).toBe(100)
   while (wall.hp > 0 && game.state.time < 20) game.step(SIMULATION_STEP)
   expect(wall.hp).toBe(0)
   expect(game.upgrade(col, row)).toBe(true)
   expect(wall.hp).toBe(0)
-  expect(wall.maxHp).toBe(200)
+  expect(wall.maxHp).toBe(220)
   expect(game.state.gold).toBe(0)
   expect(game.upgrade(col, row)).toBe(false)
   const shotsBefore = shots
@@ -90,7 +90,7 @@ it('ограничивает каждый удар отдельно, даже е
   game.step(SIMULATION_STEP)
   for (const enemy of enemies) enemy.wallAttack!.nextHitAt = game.state.time + SIMULATION_STEP
   game.step(SIMULATION_STEP)
-  expect(wall.hp).toBe(200 - 25 - 25 - 7)
+  expect(wall.hp).toBe(220 - 25 - 25 - 7)
 })
 
 it('котёл срабатывает от удара, обливает только атакующих и снова готов через пять секунд', () => {
@@ -100,7 +100,7 @@ it('котёл срабатывает от удара, обливает толь
   const distant = placeEnemy(game, 'ogre', 0)
   game.step(SIMULATION_STEP)
   expect(first.resinTimeLeft).toBeUndefined()
-  stepUntil(game, () => wall.hp < 200, 2)
+  stepUntil(game, () => wall.hp < wall.maxHp, 2)
   const pouredAt = wall.lastPourAt!
   expect([first.resinTimeLeft, second.resinTimeLeft, distant.resinTimeLeft]).toEqual([
     3,
