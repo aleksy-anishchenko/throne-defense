@@ -88,7 +88,8 @@ export function refundFor(
   const invested = towerInvestedGold(tower)
   if (
     state?.phase === 'build' &&
-    state.selectedRewards.some(({ rewardId }) => REWARDS[rewardId]?.effect.kind === 'buyback')
+    (tower.barricade ||
+      state.selectedRewards.some(({ rewardId }) => REWARDS[rewardId]?.effect.kind === 'buyback'))
   ) {
     return invested
   }
@@ -248,7 +249,7 @@ export function updateTowers(world: World, dt: number): void {
   for (const tower of towers) {
     // Звонарь и Казна не стреляют
     const fire = tower.def.fire
-    if (!fire) continue
+    if (!fire || tower.barricade?.hp === 0) continue
 
     const bonus = fireRateBonusFor(tower, bells, rewards.secondBellShare)
     tower.cooldownLeft -= reloadProgress(dt, bonus, rewards.fireRateMultiplier)

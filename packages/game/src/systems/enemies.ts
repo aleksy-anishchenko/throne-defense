@@ -93,12 +93,23 @@ export function moveEnemies(world: World, dt: number): boolean {
   const { path } = world.level
   const { enemySpeedMultiplier } = rewardStats(state)
 
+  const wall = state.towers.find((tower) => tower.barricade)?.barricade
   for (const enemy of state.enemies) {
     if (enemy.isDead) continue
     const distance = enemyStepDistance(enemy, dt, enemySpeedMultiplier)
     if (enemy.slowTimeLeft > 0) enemy.slowTimeLeft -= dt
     tickStatusTimers(world, enemy, dt)
-    enemy.pathDistance += distance
+    if (
+      wall &&
+      wall.hp > 0 &&
+      enemy.pathDistance <= wall.distance &&
+      enemy.pathDistance + distance >= wall.distance
+    ) {
+      enemy.pathDistance = wall.distance
+      wall.hp = Math.max(0, wall.hp - dt * 10 * enemy.def.throneDamage)
+    } else {
+      enemy.pathDistance += distance
+    }
 
     if (enemy.pathDistance >= path.length) {
       // Дошёл до трона

@@ -396,6 +396,29 @@ const treasury: TowerDef = {
   takesFireRateBonus: false,
 }
 
+const outpost: TowerDef = {
+  id: 'outpost',
+  name: 'Застава',
+  shortDescription: 'Держит ковёр',
+  description:
+    'Одна на зал. Ставится на ковёр между волнами. Лучники стреляют, пока враги ломают щит. После волны щит восстанавливается.',
+  cost: 75,
+  upgradeCosts: [],
+  tiers: [{ damage: 5, cooldown: 0.8, range: 1.5 }],
+  displayStats: ['damage', 'attackRate', 'range'],
+  defaultTargetMode: 'first',
+  canChooseTarget: false,
+  takesFireRateBonus: true,
+  fire(world, tower, target, stats) {
+    shootHoming(world, tower, target, {
+      look: 'arrow',
+      speed: 13,
+      damageKind: 'physical',
+      damage: stats.damage,
+    })
+  },
+}
+
 /** Башни в порядке магазина (клавиши 1, 2, 3…) */
 export const TOWER_LIST: readonly TowerDef[] = [
   archer,
@@ -407,6 +430,7 @@ export const TOWER_LIST: readonly TowerDef[] = [
   warlock,
   bell,
   treasury,
+  outpost,
 ]
 
 /** Все башни по id */

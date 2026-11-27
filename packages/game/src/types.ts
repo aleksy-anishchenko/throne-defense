@@ -347,6 +347,7 @@ export interface Level {
   def: LevelDef
   path: Path
   /** Клетки, где нельзя строить, в виде ключей "столбец,строка" */
+  outpostSites: ReadonlyMap<string, { distance: number; angle: number }>
   blockedCellKeys: ReadonlySet<string>
   /** Сколько всего волн в уровне (без бесконечного режима) */
   waveCount: number
@@ -356,6 +357,7 @@ export interface Level {
 
 /** Башня, стоящая на поле */
 export interface Tower {
+  barricade?: { hp: number; maxHp: number; distance: number; angle: number }
   /** Порядковый номер именно этой башни в партии (не путать с def.id — видом, например 'archer') */
   id: number
   def: TowerDef

@@ -821,7 +821,52 @@ export function drawTower(
   isReady: boolean,
   aspectId: string | null = null,
   recoil = 0,
+  wallAngle = 0,
+  healthShare = 1,
 ) {
+  if (towerId === 'outpost') {
+    ctx.save()
+    ctx.rotate(wallAngle)
+    if (healthShare > 0) {
+      for (const x of [-0.24, 0.24]) {
+        ctx.fillStyle = '#27354c'
+        circle(ctx, x, -0.15, 0.13)
+        ctx.fill()
+        ctx.fillStyle = '#a6b6c7'
+        circle(ctx, x, -0.19, 0.095)
+        ctx.fill()
+      }
+    }
+    for (const y of [-0.035, 0.075, 0.18]) {
+      ctx.fillStyle = y === 0.075 ? '#87552f' : '#b57a42'
+      ctx.fillRect(-0.45, y, healthShare > 0 ? 0.9 : 0.24, 0.1)
+      if (healthShare === 0) ctx.fillRect(0.28, y, 0.17, 0.1)
+    }
+    if (healthShare > 0) {
+      ctx.fillStyle = '#32303a'
+      for (const x of [-0.29, 0.19]) ctx.fillRect(x, 0.06, 0.1, 0.06)
+      ctx.fillStyle = '#a52c41'
+      ctx.strokeStyle = GOLD
+      ctx.lineWidth = 0.025
+      ctx.beginPath()
+      ctx.moveTo(-0.1, 0)
+      ctx.lineTo(0.1, 0)
+      ctx.lineTo(0.085, 0.16)
+      ctx.lineTo(0, 0.23)
+      ctx.lineTo(-0.085, 0.16)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+    }
+    ctx.restore()
+    if (healthShare > 0 && healthShare < 1) {
+      ctx.fillStyle = '#302832'
+      ctx.fillRect(-0.31, -0.4, 0.62, 0.065)
+      ctx.fillStyle = '#a6bb54'
+      ctx.fillRect(-0.31, -0.4, 0.62 * healthShare, 0.065)
+    }
+    return
+  }
   ctx.fillStyle = 'rgba(8,9,18,.45)'
   circle(ctx, 0, 0.05, 0.39)
   ctx.fill()

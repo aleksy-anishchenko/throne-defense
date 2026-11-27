@@ -215,19 +215,20 @@ describe('показ бонусов Звонаря', () => {
 describe('предпросмотр башни-получателя', () => {
   it.each(TOWER_LIST)('$name: будущий бонус совпадает с бонусом после постройки', (def) => {
     const game = newGame()
-    const bell = game.build('bell', 1, 1)!
+    const col = def.id === 'outpost' ? 6 : 0
+    const bell = game.build('bell', Math.abs(col - 1), 1)!
     const gold = game.state.gold
-    const preview = towerPlacementBellPreview(game.state.towers, def.id, 0, 0)
+    const preview = towerPlacementBellPreview(game.state.towers, def.id, col, 0)
     expect(game.state.gold).toBe(gold)
     expect(game.state.towers).toEqual([bell])
     if (def.takesFireRateBonus) {
       expect(preview?.sources).toEqual([bell])
-      expect(preview?.tower).toEqual({ def, x: 0.5, y: 0.5 })
+      expect(preview?.tower).toEqual({ def, x: col + 0.5, y: 0.5 })
       expect(preview?.bonus).toBe(0.2)
     } else {
       expect(preview).toBeNull()
     }
-    const built = game.build(def.id, 0, 0)!
+    const built = game.build(def.id, col, 0)!
     expect(fireRateBonusOf(game.state.towers, built)).toBe(preview?.bonus ?? 0)
   })
 

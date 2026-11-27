@@ -44,7 +44,7 @@ export interface Game {
   /** Лежит ли клетка (столбец, строка) внутри поля. Дробные столбец и строка — не клетка */
   isInsideField(col: number, row: number): boolean
   /** Можно ли поставить башню на клетку (без учёта золота) */
-  isCellFree(col: number, row: number): boolean
+  isCellFree(col: number, row: number, towerId?: string | null): boolean
   /** Башня на клетке или undefined, если там пусто */
   towerAt(col: number, row: number): Tower | undefined
   /** Поставить башню. null — если нельзя (клетка занята, не хватает золота, партия не идёт) */
@@ -135,10 +135,18 @@ export function createGame(levelDef: LevelDef): Game {
   const isPlaying = () => state.phase === 'build' || state.phase === 'wave'
   const isInsideField = (col: number, row: number) => isLevelCell(level.def, col, row)
 
-  const isCellFree = (col: number, row: number) =>
-    isInsideField(col, row) &&
-    !level.blockedCellKeys.has(cellKey(col, row)) &&
-    !state.towersByCell.has(cellKey(col, row))
+  const isCellFree = (col: number, row: number, towerId?: string | null) => {
+    const key = cellKey(col, row)
+    if (!isInsideField(col, row) || state.towersByCell.has(key)) return false
+    if (towerId === 'outpost') {
+      return (
+        state.phase === 'build' &&
+        level.outpostSites.has(key) &&
+        !state.towers.some((tower) => tower.barricade)
+      )
+    }
+    return !level.blockedCellKeys.has(key)
+  }
 
   // Сначала — настоящая ли это клетка: ключ — строка, и без проверки '0' нашёл бы башню на 0
   const towerAt = (col: number, row: number) =>
@@ -209,7 +217,7 @@ export function createGame(levelDef: LevelDef): Game {
       // typeof: Object.hasOwn превратил бы и массив ['archer'] в строку 'archer'
       if (typeof towerId !== 'string' || !Object.hasOwn(TOWERS, towerId)) return null
       const def = TOWERS[towerId]
-      if (!isPlaying() || !isCellFree(col, row) || state.gold < def.cost) return null
+      if (!isPlaying() || !isCellFree(col, row, towerId) || state.gold < def.cost) return null
       state.gold -= def.cost
       const tower: Tower = {
         id: state.nextId++,
@@ -231,6 +239,10 @@ export function createGame(levelDef: LevelDef): Game {
         hunterTargetId: null,
         hunterStacks: 0,
         shotsSinceDouble: 0,
+      }
+      if (towerId === 'outpost') {
+        const site = level.outpostSites.get(cellKey(col, row))!
+        tower.barricade = { ...site, hp: 60, maxHp: 60 }
       }
       state.towers.push(tower)
       state.towersByCell.set(cellKey(col, row), tower)

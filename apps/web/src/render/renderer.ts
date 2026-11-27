@@ -259,11 +259,20 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
   }
 
   /** Точки на свободных плитах, когда выбираем, куда ставить */
-  function drawFreeCellDots() {
+  function drawFreeCellDots(towerId: string) {
     ctx.fillStyle = 'rgba(227,178,74,.3)'
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        if (!game.isCellFree(col, row)) continue
+        if (!game.isCellFree(col, row, towerId)) continue
+        if (towerId === 'outpost') {
+          const site = game.level.outpostSites.get(`${col},${row}`)!
+          ctx.save()
+          ctx.translate(col + CELL_CENTER, row + CELL_CENTER)
+          ctx.rotate(site.angle)
+          ctx.fillRect(-0.32, -0.045, 0.64, 0.09)
+          ctx.restore()
+          continue
+        }
         circle(ctx, col + CELL_CENTER, row + CELL_CENTER, 0.05)
         ctx.fill()
       }
@@ -297,6 +306,8 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         isReady,
         tower.aspectId,
         effects.towerRecoil(tower),
+        tower.barricade?.angle,
+        tower.barricade ? tower.barricade.hp / tower.barricade.maxHp : 1,
       )
       ctx.restore()
       // Значок закреплён в углу клетки и не увеличивается при улучшении стража.
@@ -347,7 +358,8 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
 
   function placementPreview(view: BoardView, secondBellShare: number) {
     const cell = view.placementCell
-    if (!view.armedTowerId || !cell || !game.isCellFree(cell.col, cell.row)) return null
+    if (!view.armedTowerId || !cell || !game.isCellFree(cell.col, cell.row, view.armedTowerId))
+      return null
     const def = TOWERS[view.armedTowerId]
     const { col, row } = cell
     const towers = game.state.towers
@@ -378,7 +390,17 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     else if (!isTouchPlacement) ctx.globalAlpha = 0.7
     if (receivingBellPreview && canAfford) drawBuffRing(ctx, time)
     if (isTouchPlacement) drawSelectionRing()
-    drawTower(ctx, def.id, 0, TOWER_IDLE_AIM_ANGLE, time, true)
+    drawTower(
+      ctx,
+      def.id,
+      0,
+      TOWER_IDLE_AIM_ANGLE,
+      time,
+      true,
+      null,
+      0,
+      game.level.outpostSites.get(`${cell.col},${cell.row}`)?.angle,
+    )
     ctx.restore()
     if (treasuryPreview) {
       drawTreasuryBonus(ctx, position, treasuryPreview.bonus, cellCssPx, true, canAfford)
@@ -480,7 +502,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       const { secondBellShare } = rewards
       const preview = isPlaying ? placementPreview(boardView, secondBellShare) : null
       if (isPlaying && boardView.armedTowerId && !(preview && boardView.isTouchPlacement))
-        drawFreeCellDots()
+        drawFreeCellDots(boardView.armedTowerId)
       const selectedTower =
         boardView.selectedTowerCell &&
         game.towerAt(boardView.selectedTowerCell.col, boardView.selectedTowerCell.row)

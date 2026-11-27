@@ -58,7 +58,7 @@ describe('характеристики выбранного стража', () =>
   })
 
   it('показывает скорость атаки у стреляющих стражей и время перезарядки у Ловчего', () => {
-    const showsAttackRate = ['archer', 'ballista', 'cannon', 'mage']
+    const showsAttackRate = ['archer', 'ballista', 'cannon', 'mage', 'outpost']
     for (const def of TOWER_LIST) {
       expect(Boolean(rows(def.id)['attackRate']), def.name).toBe(showsAttackRate.includes(def.id))
     }

@@ -325,10 +325,10 @@ async function watchPhoneLayout(page) {
   }
 }
 
-/** Все девять карточек видны без прокрутки боковой панели. */
+/** Все десять карточек видны без прокрутки боковой панели. */
 async function checkShopCardsVisible(page) {
   const { width, height } = page.viewportSize()
-  // Телефон в вертикальной раскладке: кнопка на экране, а девять стражей — в меню
+  // Телефон в вертикальной раскладке: кнопка на экране, а десять стражей — в меню
   if (await page.locator('.shop-toggle').isVisible()) {
     const toggle = await page.locator('.shop-toggle').boundingBox()
     await page.locator('.shop-toggle').click()
@@ -348,7 +348,7 @@ async function checkShopCardsVisible(page) {
         toggle.x >= 0 &&
         toggle.x + toggle.width <= width &&
         toggle.y + toggle.height <= height &&
-        names.length === 9 &&
+        names.length === 10 &&
         names.every((card) => card.left >= 0 && card.right <= width) &&
         drawerBox.y >= 0 &&
         drawerBox.y + drawerBox.height <= height + 1,
@@ -377,8 +377,8 @@ async function checkShopCardsVisible(page) {
     }
   })
   check(
-    `${width}×${height}: все девять карточек боковой панели видны без прокрутки`,
-    layout.count === 9 && layout.overflow <= 1 && layout.clipped.length === 0,
+    `${width}×${height}: все десять карточек боковой панели видны без прокрутки`,
+    layout.count === 10 && layout.overflow <= 1 && layout.clipped.length === 0,
     JSON.stringify(layout),
   )
 }
@@ -1859,7 +1859,7 @@ async function desktop(page, url) {
   check('«Готово» вернуло в меню', await playButton.isVisible())
   await page.evaluate(() => localStorage.removeItem('throne-best'))
 
-  // Все девять карточек помещаются и на высоком экране, и на ноутбуке.
+  // Все десять карточек помещаются и на высоком экране, и на ноутбуке.
   await page.getByRole('button', { name: 'Играть' }).click()
   await waitForFrames(page)
   await checkShopCardsVisible(page)
@@ -1990,8 +1990,8 @@ async function phone(page, url) {
   const drawer = page.getByRole('dialog', { name: 'Выбор стража' })
   check('кнопка открыла меню стражей', await drawer.isVisible())
   check(
-    '390×844: все девять карточек в меню видны без прокрутки',
-    (await drawer.locator('.drawer-card').count()) === 9 &&
+    '390×844: все десять карточек в меню видны без прокрутки',
+    (await drawer.locator('.drawer-card').count()) === 10 &&
       (await drawer
         .locator('.shop-drawer-list')
         .evaluate((list) => list.scrollHeight <= list.clientHeight + 1)),
@@ -2027,6 +2027,21 @@ async function phone(page, url) {
   await shopToggle.tap()
   await page.locator('.shop-drawer-backdrop').tap({ position: { x: 10, y: 10 } })
   check('нажатие мимо меню закрыло его', (await page.getByRole('dialog').count()) === 0)
+
+  await shopToggle.tap()
+  await drawer.getByRole('button', { name: /^Застава/ }).tap()
+  await tapTile(4, 9)
+  const confirmOutpost = page.getByRole('button', { name: 'Да', exact: true })
+  check('Заставу нельзя подтвердить на каменной плите', await confirmOutpost.isHidden())
+  await tapTile(3, 9)
+  await confirmOutpost.tap()
+  const placedOutpost = await readGameSnapshot(page)
+  check(
+    'Застава из магазина стоит на ковре, списано 75 золота',
+    placedOutpost.towers.includes('outpost0@3,9') && placedOutpost.gold === 75,
+  )
+  await tapTile(3, 9)
+  await page.getByRole('button', { name: /Вернуть/ }).tap()
 
   // Высота игровой области iPhone 12 при открытых панелях браузера.
   await page.setViewportSize({ width: 390, height: 664 })

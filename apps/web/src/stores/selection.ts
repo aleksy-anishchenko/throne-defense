@@ -120,7 +120,7 @@ export const useSelectionStore = defineStore('selection', () => {
 
   function describePlacement(cell: Cell | null, secondBellShare: number): string {
     const towerId = armedTowerId.value
-    if (!towerId || !cell || !game.isCellFree(cell.col, cell.row)) return ''
+    if (!towerId || !cell || !game.isCellFree(cell.col, cell.row, armedTowerId.value)) return ''
     const towers = game.state.towers
     const { col, row } = cell
     if (towerId === 'bell') {
@@ -204,7 +204,7 @@ export const useSelectionStore = defineStore('selection', () => {
 
     const hover = hoverCell.value
     const pending = touchPlacement.value?.cell
-    if (pending && !game.isCellFree(pending.col, pending.row)) {
+    if (pending && !game.isCellFree(pending.col, pending.row, armedTowerId.value)) {
       touchPlacement.value = { cell: null }
     }
     placementEffect.value = describePlacement(placementCell.value, secondBellShare)
@@ -213,7 +213,7 @@ export const useSelectionStore = defineStore('selection', () => {
       gameStore.isPlaying() &&
       game.isInsideField(hover.col, hover.row) &&
       (game.towerAt(hover.col, hover.row) !== undefined ||
-        (armedTowerId.value !== null && game.isCellFree(hover.col, hover.row)))
+        (armedTowerId.value !== null && game.isCellFree(hover.col, hover.row, armedTowerId.value)))
   }
 
   /** Для рисования поля */
@@ -308,6 +308,18 @@ export const useSelectionStore = defineStore('selection', () => {
       clearSelection()
       return
     }
+    if (towerId === 'outpost') {
+      if (game.state.phase !== 'build') {
+        gameStore.rejectAction('Заставу ставят между волнами')
+        return
+      }
+      if (game.state.towers.some((tower) => tower.barricade)) {
+        gameStore.rejectAction(
+          'Застава уже стоит. Чтобы перенести её, продайте между волнами за полную цену.',
+        )
+        return
+      }
+    }
     const towerDef = TOWERS[towerId]
     if (game.state.gold < towerDef.cost) {
       gameStore.rejectAction(`Не хватает золота: ${towerDef.name} стоит ${towerDef.cost}`)
@@ -345,11 +357,13 @@ export const useSelectionStore = defineStore('selection', () => {
     selectedTowerCell.value = null
     if (!armedTowerId.value) return
     if (previewOnly) {
-      touchPlacement.value = { cell: game.isCellFree(col, row) ? { col, row } : null }
+      touchPlacement.value = {
+        cell: game.isCellFree(col, row, armedTowerId.value) ? { col, row } : null,
+      }
       sync()
       return
     }
-    if (game.isCellFree(col, row)) buildArmedTower(col, row, keepArmed)
+    if (game.isCellFree(col, row, armedTowerId.value)) buildArmedTower(col, row, keepArmed)
   }
 
   function buildArmedTower(col: number, row: number, keepArmed = false) {
@@ -360,7 +374,7 @@ export const useSelectionStore = defineStore('selection', () => {
   function confirmPlacement() {
     const cell = touchPlacement.value?.cell
     if (!cell || !gameStore.isPlaying() || gameStore.screen || openMenu.value) return
-    if (game.isCellFree(cell.col, cell.row)) buildArmedTower(cell.col, cell.row)
+    if (game.isCellFree(cell.col, cell.row, armedTowerId.value)) buildArmedTower(cell.col, cell.row)
   }
 
   // Проверка «партия идёт» — как в chooseShopTower и tapCell: кнопки под экраном итогов
@@ -421,7 +435,9 @@ export const useSelectionStore = defineStore('selection', () => {
     }
     cursorCell.value = cell
     if (touchPlacement.value) {
-      touchPlacement.value.cell = game.isCellFree(cell.col, cell.row) ? cell : null
+      touchPlacement.value.cell = game.isCellFree(cell.col, cell.row, armedTowerId.value)
+        ? cell
+        : null
       sync()
     }
   }
@@ -450,6 +466,7 @@ export const useSelectionStore = defineStore('selection', () => {
     const hud = gameStore.hud
     if (selected.towerId) return ''
     if (armedTowerId.value) {
+      if (armedTowerId.value === 'outpost') return 'Выберите подсвеченную клетку ковра.'
       if (placementEffect.value) return placementEffect.value
       if (touchPlacement.value?.cell) return 'Можно выбрать другую плиту.'
       if (touchPlacement.value) return 'Выберите свободную плиту.'

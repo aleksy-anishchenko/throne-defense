@@ -39,6 +39,9 @@ export function spawnDueEnemies(world: World, dt: number): void {
 /** Волна отбита: бонус, очки и либо следующая волна, либо победа */
 export function finishWave(world: World): void {
   const state = world.state
+  for (const tower of state.towers) {
+    if (tower.barricade) tower.barricade.hp = tower.barricade.maxHp
+  }
   const bonus = Math.floor(waveBonus(state.wave) * rewardStats(state).waveGoldMultiplier)
   state.gold += bonus
   state.score += SCORE.perWave * state.wave
