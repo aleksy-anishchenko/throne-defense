@@ -495,7 +495,7 @@ describe('благословения после волн', () => {
     const trapper = control.build('trapper', 3, 11)!
     expect(
       effectiveTowerStats(control.state, frost, TOWERS['frost'].tiers[0]).slowAmount,
-    ).toBeCloseTo(0.5)
+    ).toBeCloseTo(0.4)
     expect(
       effectiveTowerStats(control.state, trapper, TOWERS['trapper'].tiers[0]).rootDuration,
     ).toBeCloseTo(1.8 * 1.2)

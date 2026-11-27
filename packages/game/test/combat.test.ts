@@ -117,7 +117,11 @@ it.each([false, true])('болт бьёт по порядку касания п�
 })
 
 describe('Морозко', () => {
-  it.each([1, 2, 3])('на ступени %i выпускает волну холода раз в секунду', (level) => {
+  it.each([
+    { level: 1, slow: 0.3 },
+    { level: 2, slow: 0.4 },
+    { level: 3, slow: 0.5 },
+  ])('на ступени $level выпускает волну холода раз в секунду', ({ level, slow }) => {
     const game = newGame()
     game.state.gold = 1000
     const tower = game.build('frost', 5, 11)!
@@ -125,7 +129,7 @@ describe('Морозко', () => {
     const enemy = placeEnemy(game, 'rebel', 1.5)
     const world = worldOf(game)
     updateTowers(world, SIMULATION_STEP)
-    expect(enemy.slowFactor).toBe(towerStats(tower).slowAmount)
+    expect(enemy.slowFactor).toBeCloseTo(slow)
     expect(tower.cooldownLeft).toBe(1)
     updateTowers(world, 0.75)
     expect(tower.cooldownLeft).toBe(0.25)
@@ -138,7 +142,7 @@ describe('Морозко', () => {
     game.build('frost', 5, 11)
     const enemy = placeEnemy(game, 'rebel', 1.5) // у двери, рядом с башней
     game.step(SIMULATION_STEP)
-    expect(enemy.slowFactor).toBeCloseTo(0.4)
+    expect(enemy.slowFactor).toBeCloseTo(0.3)
     expect(enemy.slowTimeLeft).toBeGreaterThan(0)
   })
 
@@ -147,7 +151,7 @@ describe('Морозко', () => {
     game.build('frost', 5, 11)
     const boss = placeEnemy(game, 'boss', 1.5)
     game.step(SIMULATION_STEP)
-    expect(boss.slowFactor).toBeCloseTo(0.2)
+    expect(boss.slowFactor).toBeCloseTo(0.15)
   })
 
   it('слабый мороз дожидается окончания сильного', () => {

@@ -647,9 +647,9 @@ async function desktop(page, url) {
   await waitForFrames(page)
   const frostInfo = page.locator('.tower-info')
   check(
-    'у Морозко замедление 40% → 50% и дальность указаны в характеристиках',
+    'у Морозко замедление 30% → 40% и дальность указаны в характеристиках',
     (await readStatRows(frostInfo)) ===
-      'Замедление 40% / 50% | Дальность 1,7 клетки / 1,9 клетки' &&
+      'Замедление 30% / 40% | Дальность 1,7 клетки / 1,9 клетки' &&
       !(await frostInfo.locator('.tower-description').innerText()).includes('%'),
   )
   await clickCell(page, 5, 9)

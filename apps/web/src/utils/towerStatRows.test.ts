@@ -122,9 +122,14 @@ describe('характеристики выбранного стража', () =>
   })
 
   it('различает силу замедления, длительность сети и урон огня', () => {
-    expect(rows('frost', { rewards: ['control-master'] })['slowAmount']).toMatchObject({
+    expect(rows('frost', { tier: 2 })['slowAmount']).toMatchObject({
       current: '50%',
-      next: '60%',
+      next: null,
+      details: [],
+    })
+    expect(rows('frost', { rewards: ['control-master'] })['slowAmount']).toMatchObject({
+      current: '40%',
+      next: '50%',
       details: ['Мастер контроля +10 процентных пунктов'],
     })
     const trapper = rows('trapper', { rewards: ['control-master'], bellBonus: 0.2, bells: 1 })
