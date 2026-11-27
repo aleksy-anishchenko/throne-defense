@@ -23,47 +23,21 @@ import {
 
 const throneHall = LEVELS.find((level) => level.id === 'throne-hall')!
 const classicLevels = LEVELS.filter((level) => level.id !== 'compact-throne-hall')
-const results = new WeakMap<(typeof LEVELS)[number], Map<string, ReturnType<typeof playBot>>>()
-function result(level: (typeof LEVELS)[number], candidate: Strategy) {
-  let byStrategy = results.get(level)
-  if (!byStrategy) {
-    byStrategy = new Map()
-    results.set(level, byStrategy)
-  }
-  if (!byStrategy.has(candidate.name)) byStrategy.set(candidate.name, playBot(level, candidate))
-  return byStrategy.get(candidate.name)!
-}
 
 // Критерии эффективности v8 вынесены в classic-balance.legacy.ts.
 // Совместимость старых залов и потолок счёта по-прежнему обязательны.
-describe('совместимость классических залов', () => {
-  for (const level of classicLevels) {
-    it(`${level.name}: стратегии не зависают и укладываются в серверный потолок счёта`, () => {
-      const prepared = createLevel(level)
-      for (const candidate of STRATEGIES) {
-        const played = result(level, candidate)
-        expect(played.outcome, candidate.name).not.toBe('stuck')
-        expect(played.score, candidate.name).toBeLessThanOrEqual(
-          maxPossibleScore(prepared, played.wavesCleared),
-        )
-      }
+describe.each([
+  { group: 'совместимость классических залов', levels: classicLevels },
+  { group: 'компактные залы', levels: PLAYABLE_LEVELS },
+])('$group', ({ levels }) => {
+  describe.each(levels)('$name', (level) => {
+    const prepared = createLevel(level)
+    it.each(STRATEGIES)('$name завершает игру в пределах допустимого счёта', (strategy) => {
+      const played = playBot(level, strategy)
+      expect(played.outcome).not.toBe('stuck')
+      expect(played.score).toBeLessThanOrEqual(maxPossibleScore(prepared, played.wavesCleared))
     })
-  }
-})
-
-describe('компактные залы', () => {
-  for (const level of PLAYABLE_LEVELS) {
-    it(`${level.name}: стратегии завершаются и не превышают потолок счёта`, () => {
-      const prepared = createLevel(level)
-      for (const candidate of STRATEGIES) {
-        const played = result(level, candidate)
-        expect(played.outcome, candidate.name).not.toBe('stuck')
-        expect(played.score, candidate.name).toBeLessThanOrEqual(
-          maxPossibleScore(prepared, played.wavesCleared),
-        )
-      }
-    })
-  }
+  })
 })
 
 /** Та же логика выбора мест, что у бота; итоговая расстановка остаётся явными данными. */
