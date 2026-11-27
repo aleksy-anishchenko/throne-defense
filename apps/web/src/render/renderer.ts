@@ -317,6 +317,22 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         tower.barricade?.angle,
         tower.barricade ? tower.barricade.hp / tower.barricade.maxHp : 1,
       )
+      if (wall?.lastPourAt !== undefined && !prefersReducedMotion) {
+        const progress = (time - wall.lastPourAt) / 0.4
+        if (progress >= 0 && progress < 1) {
+          ctx.rotate(wall.angle)
+          ctx.globalAlpha = 1 - progress
+          ctx.lineCap = 'round'
+          ctx.strokeStyle = '#683a23'
+          ctx.lineWidth = 0.065
+          ctx.beginPath()
+          for (const offset of [-0.1, 0, 0.1]) {
+            ctx.moveTo(offset * progress, 0.02 + 0.2 * progress)
+            ctx.quadraticCurveTo(offset, 0.16, offset * 1.8, 0.16 + progress * 0.56)
+          }
+          ctx.stroke()
+        }
+      }
       ctx.restore()
       // Значок закреплён в углу клетки и не увеличивается при улучшении стража.
       drawAspectMark(ctx, tower)

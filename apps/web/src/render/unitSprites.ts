@@ -143,15 +143,18 @@ function drawFrame(
 const outpostFrames: TierFrames = [52, 53, 54]
 const outpostRuins: TierFrames = [55, 51, 51]
 
-export function drawOutpostSprite(ctx: Canvas2D, tier: number, ruined: boolean): boolean {
+export function drawOutpostSprite(
+  ctx: Canvas2D,
+  tier: number,
+  ruined: boolean,
+  aspectId: string | null,
+): boolean {
   if (!atlas) return false
-  drawFrame(
-    ctx,
-    atlas,
-    ruined ? frameAtTier(outpostRuins, tier) : frameAtTier(outpostFrames, tier),
-    1.03,
-    0.5,
-  )
+  const frames = ruined ? outpostRuins : outpostFrames
+  let frame = frameAtTier(frames, tier)
+  if (!ruined && aspectId === 'reinforced-wall') frame = 56
+  if (!ruined && aspectId === 'machicolations') frame = 57
+  drawFrame(ctx, atlas, frame, 1.03, 0.5)
   return true
 }
 

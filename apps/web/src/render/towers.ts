@@ -718,6 +718,8 @@ const TIER_RING_WIDTH = 0.028
 const TIER_RING_GAP_WIDTH = 0.05
 
 const ASPECT_COLORS: Readonly<Record<string, string>> = {
+  'reinforced-wall': '#bdcfe4',
+  machicolations: '#efab52',
   'giant-slayer': '#f6a665',
   'armor-breaker': '#91dbef',
   'hunter-mark': '#9bd36a',
@@ -757,7 +759,14 @@ export function drawAspectMark(ctx: Canvas2D, { x, y, aspectId }: Tower) {
   ctx.lineWidth = 0.022
   ctx.lineJoin = 'round'
   ctx.beginPath()
-  if (aspectId === 'giant-slayer') {
+  if (aspectId === 'reinforced-wall') {
+    ctx.moveTo(-0.055, -0.05)
+    ctx.lineTo(0.055, -0.05)
+    ctx.lineTo(0.045, 0.026)
+    ctx.lineTo(0, 0.068)
+    ctx.lineTo(-0.045, 0.026)
+    ctx.closePath()
+  } else if (aspectId === 'giant-slayer') {
     ctx.moveTo(0, 0.075)
     ctx.lineTo(0, -0.065)
     ctx.moveTo(-0.045, -0.005)
@@ -774,7 +783,7 @@ export function drawAspectMark(ctx: Canvas2D, { x, y, aspectId }: Tower) {
     ctx.lineTo(-0.02, 0)
     ctx.lineTo(0.02, 0.015)
     ctx.lineTo(0, 0.06)
-  } else if (aspectId === 'boiling-oil') {
+  } else if (aspectId === 'boiling-oil' || aspectId === 'machicolations') {
     ctx.moveTo(0.01, -0.085)
     ctx.bezierCurveTo(0.02, -0.03, 0.07, 0.01, 0.055, 0.045)
     ctx.bezierCurveTo(0.035, 0.1, -0.075, 0.075, -0.055, 0.01)
@@ -827,7 +836,7 @@ export function drawTower(
   if (towerId === 'outpost') {
     ctx.save()
     ctx.rotate(wallAngle)
-    if (!drawOutpostSprite(ctx, tier, healthShare === 0)) {
+    if (!drawOutpostSprite(ctx, tier, healthShare === 0, aspectId)) {
       // Деревянный щит до загрузки общего атласа.
       ctx.fillStyle = '#a87047'
       ctx.fillRect(-0.45, -0.03, healthShare > 0 ? 0.9 : 0.22, 0.24)

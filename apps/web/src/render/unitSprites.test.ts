@@ -58,7 +58,7 @@ beforeAll(async () => {
     'Image',
     class {
       naturalWidth = 768
-      naturalHeight = 2688
+      naturalHeight = 2880
       onload?: () => void
       set src(_value: string) {
         this.onload?.()
@@ -76,12 +76,15 @@ describe('SVG-облики стражей', () => {
       'outpost-stone',
       'outpost-royal',
     ])
+    for (const aspect of ['reinforced-wall', 'machicolations']) {
+      expect(drawSprites('outpost', 2, aspect).frames).toEqual([aspect])
+    }
   })
 
   it('переводит атлас в пиксели один раз перед отрисовкой повёрнутых спрайтов', async () => {
     expect(await loadUnitSprites()).toBe(true)
     expect(atlasPaints).toEqual([[expect.any(Image), 0, 0]])
-    expect([bitmap.width, bitmap.height]).toEqual([768, 2688])
+    expect([bitmap.width, bitmap.height]).toEqual([768, 2880])
   })
 
   const stages = {

@@ -2,7 +2,7 @@ import type { Path } from '../core/path.ts'
 import { SIMULATION_STEP } from '../data/balance.ts'
 import type { Enemy, OilPuddle, RewardStats } from '../types.ts'
 import { advanceBurning, burnTimeRemaining, pendingBurnDamage } from './burning.ts'
-import { coatFromPuddle, withinOilReach } from './combat.ts'
+import { coatFromPuddle, incomingDamageMultiplier, withinOilReach } from './combat.ts'
 import { enemySpeedShare, enemyStepDistance } from './enemies.ts'
 
 /** Сколько снимет уже наложенный огонь до его конца или прорыва к трону, без новых атак. */
@@ -29,10 +29,10 @@ export function forecastBurnDamage(
     if (
       !canReachThrone &&
       curseIsStable &&
+      (!projected.resinTimeLeft || projected.resinTimeLeft > left + dt) &&
       (elapsed >= lastPuddleEnd || projected.oilTimeLeft >= left)
     ) {
-      const curse = projected.curseTimeLeft > 0 ? 1 + projected.curseAmount : 1
-      damage += pendingBurnDamage(projected, left) * curse
+      damage += pendingBurnDamage(projected, left) * incomingDamageMultiplier(projected)
       break
     }
 
@@ -48,8 +48,8 @@ export function forecastBurnDamage(
     projected.rootTimeLeft -= dt
     projected.slowTimeLeft -= dt
     projected.curseTimeLeft -= dt
-    const curse = projected.curseTimeLeft > 0 ? 1 + projected.curseAmount : 1
-    damage += advanceBurning(projected, dt) * curse
+    if (projected.resinTimeLeft) projected.resinTimeLeft = Math.max(0, projected.resinTimeLeft - dt)
+    damage += advanceBurning(projected, dt) * incomingDamageMultiplier(projected)
   }
   return damage * rewards.damageMultiplier
 }

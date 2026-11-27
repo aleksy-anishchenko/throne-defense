@@ -360,7 +360,14 @@ export interface Level {
 
 /** Башня, стоящая на поле */
 export interface Tower {
-  barricade?: { hp: number; maxHp: number; distance: number; angle: number; lastHitAt?: number }
+  barricade?: {
+    hp: number
+    maxHp: number
+    distance: number
+    angle: number
+    lastHitAt?: number
+    lastPourAt?: number
+  }
   /** Порядковый номер именно этой башни в партии (не путать с def.id — видом, например 'archer') */
   id: number
   def: TowerDef
@@ -409,6 +416,7 @@ export interface Burn {
 
 /** Враг, идущий по ковру. Основной поджог оставляет обычный или синий огонь. */
 export interface Enemy extends Burn {
+  resinTimeLeft?: number
   wallAttack?: { nextHitAt: number; interval: number; angle: number; lastHitAt?: number }
   /** Порядковый номер именно этого врага в партии (не путать с def.id — видом, например 'ogre') */
   id: number

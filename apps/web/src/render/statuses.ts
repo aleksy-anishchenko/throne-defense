@@ -102,6 +102,28 @@ const STATUS_LOOKS: readonly StatusLook[] = [
     drawMark: (ctx, radius) => drawBrokenArmor(ctx, radius),
   },
   {
+    isActive: (enemy) => (enemy.resinTimeLeft ?? 0) > 0,
+    rgb: '99,54,24',
+    hasTint: true,
+    drawMark(ctx, radius) {
+      ctx.save()
+      ctx.scale(radius, radius)
+      ctx.fillStyle = '#513021'
+      ctx.strokeStyle = '#efb467'
+      ctx.lineWidth = 0.08
+      ctx.beginPath()
+      ctx.moveTo(-0.54, -0.4)
+      ctx.quadraticCurveTo(0, -0.62, 0.46, -0.42)
+      ctx.quadraticCurveTo(0.36, 0.58, 0.14, -0.12)
+      ctx.quadraticCurveTo(-0.12, -0.22, -0.14, 0.28)
+      ctx.quadraticCurveTo(-0.36, 0.72, -0.41, -0.22)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      ctx.restore()
+    },
+  },
+  {
     isActive: (enemy) => enemy.oilTimeLeft > 0,
     rgb: '192,144,84',
     hasTint: false,

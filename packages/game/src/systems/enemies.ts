@@ -1,6 +1,12 @@
 // Враги: появление, движение по ковру, прорыв к трону, лечение и распад на части.
 
-import { BOILING_OIL, MIN_ENEMY_SPEED_SHARE, hpMultiplier } from '../data/balance.ts'
+import {
+  BOILING_OIL,
+  MIN_ENEMY_SPEED_SHARE,
+  WALL_HIT_LIMIT,
+  WALL_RESIN,
+  hpMultiplier,
+} from '../data/balance.ts'
 import { ENEMIES } from '../data/enemies.ts'
 import type { Enemy, Tower, World } from '../types.ts'
 import { burnTimeRemaining } from './burning.ts'
@@ -87,6 +93,7 @@ export function enemyStepDistance(enemy: Enemy, dt: number, enemySpeedMultiplier
 function strikeWall(
   enemy: Enemy,
   wall: NonNullable<Tower['barricade']>,
+  hitLimit: number,
   contactTime: number,
   now: number,
 ): void {
@@ -103,7 +110,7 @@ function strikeWall(
   wall.lastHitAt = Math.max(wall.lastHitAt ?? 0, attack.lastHitAt)
   // Урон трону у финального босса равен 20. Против стен его сила ограничена.
   const damage = 10 * Math.min(6, enemy.def.throneDamage) * interval
-  wall.hp = Math.max(0, wall.hp - hits * damage)
+  wall.hp = Math.max(0, wall.hp - hits * Math.min(hitLimit, damage))
 }
 
 /**
@@ -116,7 +123,16 @@ export function moveEnemies(world: World, dt: number): boolean {
   const { path } = world.level
   const { enemySpeedMultiplier } = rewardStats(state)
 
-  const wall = state.towers.find((tower) => tower.barricade)?.barricade
+  const outpost = state.towers.find((tower) => tower.barricade)
+  const wall = outpost?.barricade
+  const hitLimit = outpost?.aspectId === 'reinforced-wall' ? WALL_HIT_LIMIT : Infinity
+  const previousHit = wall?.lastHitAt
+  const potReady =
+    wall &&
+    wall.hp > 0 &&
+    outpost?.aspectId === 'machicolations' &&
+    (wall.lastPourAt === undefined || state.time - wall.lastPourAt >= WALL_RESIN.cooldown)
+  const attackers: Enemy[] | undefined = potReady ? [] : undefined
   for (const enemy of state.enemies) {
     if (enemy.isDead) continue
     const distance = enemyStepDistance(enemy, dt, enemySpeedMultiplier)
@@ -132,10 +148,15 @@ export function moveEnemies(world: World, dt: number): boolean {
       // Остановить у щита передний край фигуры. Возникшего рядом змеёныша назад не сдвигаем.
       const approach = Math.max(0, contactDistance - enemy.pathDistance)
       const travelTime = distance > 0 ? dt * (approach / distance) : 0
-      strikeWall(enemy, wall, state.time - dt + travelTime, state.time)
+      attackers?.push(enemy)
+      strikeWall(enemy, wall, hitLimit, state.time - dt + travelTime, state.time)
       enemy.pathDistance += approach
     } else {
-      if (enemy.wallAttack) delete enemy.wallAttack
+      if (enemy.wallAttack) {
+        // Гарнизон успевает опрокинуть готовый котёл и при разрушающем ударе.
+        if (wall?.hp === 0) attackers?.push(enemy)
+        delete enemy.wallAttack
+      }
       enemy.pathDistance += distance
     }
 
@@ -157,6 +178,10 @@ export function moveEnemies(world: World, dt: number): boolean {
     enemy.x = x
     enemy.y = y
   }
+  if (attackers && wall && wall.lastHitAt !== previousHit) {
+    wall.lastPourAt = state.time
+    for (const enemy of attackers) enemy.resinTimeLeft = WALL_RESIN.duration
+  }
   return true
 }
 
@@ -165,6 +190,7 @@ export function moveEnemies(world: World, dt: number): boolean {
  * Сеть кончилась на горящем враге — значит, сгорела (событие netBurn для картинки)
  */
 function tickStatusTimers(world: World, enemy: Enemy, dt: number): void {
+  if (enemy.resinTimeLeft) enemy.resinTimeLeft = Math.max(0, enemy.resinTimeLeft - dt)
   const wasRooted = enemy.rootTimeLeft > 0
   enemy.rootTimeLeft = Math.max(0, enemy.rootTimeLeft - dt)
   if (wasRooted && enemy.rootTimeLeft === 0 && burnTimeRemaining(enemy) > 0)

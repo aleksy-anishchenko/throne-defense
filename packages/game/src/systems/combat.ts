@@ -1,7 +1,7 @@
 // Урон, снаряды и «выстрелы-ауры». Башни (data/towers.ts) собираются из этих кирпичиков.
 
 import { rollCombatChance } from '../core/random.ts'
-import { BOILING_OIL } from '../data/balance.ts'
+import { BOILING_OIL, WALL_RESIN } from '../data/balance.ts'
 import { ICE_NEEDLES } from '../data/rewards.ts'
 import type {
   DamageKind,
@@ -119,14 +119,18 @@ export function damageEnemy(
   loseHp(world, enemy, effectiveDamage)
 }
 
+export function incomingDamageMultiplier(enemy: Enemy): number {
+  const curse = enemy.curseTimeLeft > 0 ? 1 + enemy.curseAmount : 1
+  const resin = enemy.resinTimeLeft ? 1 + WALL_RESIN.damageBonus : 1
+  return curse * resin
+}
+
 /**
  * Отнять здоровье без брони и без события hit (его слушает белая вспышка: горение
  * мигало бы врагом каждый кадр). Если враг погиб — награда, распад и событие kill
  */
 function loseHp(world: World, enemy: Enemy, amount: number): void {
-  // Проклятие Колдуна: весь урон — от стрел, огня, пара — больше
-  const curseMultiplier = enemy.curseTimeLeft > 0 ? 1 + enemy.curseAmount : 1
-  enemy.hp -= amount * curseMultiplier
+  enemy.hp -= amount * incomingDamageMultiplier(enemy)
   if (enemy.hp <= 0) {
     const state = world.state
     const rewards = rewardStats(state)

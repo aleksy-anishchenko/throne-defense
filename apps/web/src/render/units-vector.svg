@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="768" height="2688" viewBox="0 0 768 2688" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="2880" viewBox="0 0 768 2880" role="img">
   <title>Стражи и враги «Защиты трона»</title>
   <!-- Ячейки 192×192 в четыре столбца. Индексы ячеек заданы в unitSprites.ts. -->
   <style>
@@ -1089,6 +1089,11 @@
   </g>
   <!-- Застава. Гарнизон носит те же плащи и луки, что и Лучник на плитах зала. -->
   <defs>
+    <g id="wall-buttress">
+      <path class="ink" fill="#647589" d="m14 65 10-3 4 3 6 32 4 5-1 5-27 1-2-5 4-5z"/>
+      <path fill="#aebbc6" d="m15 67 8-2-1 10-8 2zm-2 15 10-2 2 13-14 2z"/>
+      <path fill="#d6ad68" d="m12 95 17-2 2 4-20 3z"/>
+    </g>
     <g id="outpost-company">
       <ellipse fill="#131624" opacity=".48" cx="64" cy="95" rx="61" ry="12"/>
       <use href="#archer" transform="translate(68 12) scale(-.36 .36)"/>
@@ -1139,6 +1144,7 @@
     <use href="#outpost-crest" transform="translate(15 17) scale(.77)"/>
   </g>
   <g id="outpost-royal" transform="translate(384 2496) scale(1.5)">
+    <g id="royal-wall-body">
     <use href="#outpost-company"/>
     <use href="#outpost-curtain"/>
     <path class="ink" fill="#a23f4e" d="M17 16Q11 19 3 15l2 6-3 5q7 4 15 0zm93-4q8-5 15-2l-3 6 3 4q-7-2-15 4z"/>
@@ -1148,6 +1154,23 @@
     <path class="ink" fill="#873344" d="M48 60h33l-2 33-15 11-15-10z"/>
     <path fill="#dbb162" d="m50 89 14 10 13-11v4l-13 10-14-10z"/>
     <use href="#outpost-crest" transform="translate(9 8) scale(.86)"/>
+    </g>
+  </g>
+  <g id="reinforced-wall" transform="translate(0 2688) scale(1.5)">
+    <use href="#royal-wall-body"/>
+    <use href="#wall-buttress"/>
+    <use href="#wall-buttress" transform="translate(128 0) scale(-1 1)"/>
+    <path class="ink" fill="#798797" d="m36 78 13-4 2 7-16 6zm43-4 13 4 1 9-15-6z"/>
+  </g>
+  <g id="machicolations" transform="translate(192 2688) scale(1.5)">
+    <use href="#royal-wall-body"/>
+    <path class="ink" fill="#674731" d="m24 56 4-5 5 1-1 17 9 10-4 3-12-11zm80-2-6-3-4 2 2 15-9 11 4 3 12-12z"/>
+    <path class="ink" fill="#93513d" d="m22 50 12-13 61-2 12 13-7 7-71 2z"/>
+    <path fill="#ca8053" d="m28 49 8-10 25-1-6 9zm33-2 5-9 25-1 6 9z"/>
+    <path class="ink" fill="#3a383d" d="m48 56 30-1-1 10q-1 10-13 12-14-1-15-11z"/>
+    <ellipse class="ink" fill="#a57145" cx="63" cy="56" rx="16" ry="4"/>
+    <ellipse fill="#432c29" cx="63" cy="56" rx="12" ry="2"/>
+    <path class="line" stroke="#dbad66" stroke-width="2.4" d="m52 64 2 5 4 2"/>
   </g>
   <g id="outpost-rubble" transform="translate(576 2304) scale(1.5)">
     <ellipse fill="#191722" opacity=".45" cx="64" cy="93" rx="56" ry="11"/>

@@ -12,7 +12,7 @@ import { cursePulse, frostPulse, shootHoming, shootLine } from '../systems/comba
 import { rewardStats } from '../systems/rewards.ts'
 import { towerAspect } from '../systems/towers.ts'
 import type { Enemy, TowerDef } from '../types.ts'
-import { BOILING_OIL, MAGE_BURN } from './balance.ts'
+import { BOILING_OIL, MAGE_BURN, WALL_HIT_LIMIT, WALL_RESIN } from './balance.ts'
 import { DOUBLE_SHOT_INTERVAL } from './rewards.ts'
 
 /** Болт баллисты летит дальше её радиуса обстрела: дальность полёта = range × 1.15 (множитель) */
@@ -404,6 +404,20 @@ const outpost: TowerDef = {
     'Одна на зал. Ставится на ковёр между волнами. Лучники стреляют, пока враги ломают щит. После волны щит восстанавливается.',
   cost: 75,
   upgradeCosts: [60, 100],
+  aspects: [
+    {
+      id: 'reinforced-wall',
+      name: 'Укреплённая стена',
+      cost: 140,
+      description: `За один удар стена теряет не больше ${WALL_HIT_LIMIT} прочности.`,
+    },
+    {
+      id: 'machicolations',
+      name: 'Навесные бойницы',
+      cost: 140,
+      description: `При ударе по стене гарнизон обливает смолой всех атакующих. На ${WALL_RESIN.duration} секунды они получают на ${WALL_RESIN.damageBonus * 100}% больше урона от всех защитников. Котёл снова готов через ${WALL_RESIN.cooldown} секунд.`,
+    },
+  ],
   tiers: [
     { shieldHealth: 70, damage: 5, cooldown: 0.8, range: 1.5 },
     { shieldHealth: 120, damage: 9, cooldown: 0.8, range: 1.5 },
