@@ -902,12 +902,22 @@ const ICON_CENTER_X = 48
 const ICON_CENTER_Y = 46
 
 /** Иконка башни для карточки магазина (canvas 96×96) */
-export function drawTowerIcon(canvas: HTMLCanvasElement, towerId: string): void {
+export function drawTowerIcon(
+  canvas: HTMLCanvasElement,
+  towerId: string,
+  tier = 0,
+  aspectId: string | null = null,
+): void {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  const scale = unitSpriteSize(towerId) === undefined ? ICON_SCALE : ICON_SPRITE_SCALE
+  const scale =
+    towerId === 'outpost' && aspectId
+      ? 94
+      : unitSpriteSize(towerId) === undefined
+        ? ICON_SCALE
+        : ICON_SPRITE_SCALE
   ctx.setTransform(scale, 0, 0, scale, ICON_CENTER_X, ICON_CENTER_Y)
-  drawTower(ctx, towerId, 0, TOWER_IDLE_AIM_ANGLE, 0, true)
+  drawTower(ctx, towerId, tier, TOWER_IDLE_AIM_ANGLE, 0, true, aspectId)
 }

@@ -1160,17 +1160,23 @@
     <use href="#royal-wall-body"/>
     <use href="#wall-buttress"/>
     <use href="#wall-buttress" transform="translate(128 0) scale(-1 1)"/>
-    <path class="ink" fill="#798797" d="m36 78 13-4 2 7-16 6zm43-4 13 4 1 9-15-6z"/>
+    <!-- Широкая стальная облицовка и щит остаются различимыми на одной клетке. -->
+    <path class="ink" fill="#8196ab" d="m9 67 17-5 19 15-6 10L17 75l-6 20-8 1zm110-2-17-5-19 15 6 10 22-12 6 20 8 1z"/>
+    <path class="ink" fill="#5b7189" d="m40 48 23-8 25 7-2 28q-3 17-23 29-19-10-22-25z"/>
+    <path fill="#d9e5ec" d="m44 51 19-7 21 6-2 22-5 12 2-29-16-5-14 5-1 20z"/>
+    <path fill="#a8bccb" d="m63 54 14 5-2 18q-2 9-12 17z"/>
   </g>
   <g id="machicolations" transform="translate(192 2688) scale(1.5)">
     <use href="#royal-wall-body"/>
-    <path class="ink" fill="#674731" d="m24 56 4-5 5 1-1 17 9 10-4 3-12-11zm80-2-6-3-4 2 2 15-9 11 4 3 12-12z"/>
-    <path class="ink" fill="#93513d" d="m22 50 12-13 61-2 12 13-7 7-71 2z"/>
-    <path fill="#ca8053" d="m28 49 8-10 25-1-6 9zm33-2 5-9 25-1 6 9z"/>
-    <path class="ink" fill="#3a383d" d="m48 56 30-1-1 10q-1 10-13 12-14-1-15-11z"/>
-    <ellipse class="ink" fill="#a57145" cx="63" cy="56" rx="16" ry="4"/>
-    <ellipse fill="#432c29" cx="63" cy="56" rx="12" ry="2"/>
-    <path class="line" stroke="#dbad66" stroke-width="2.4" d="m52 64 2 5 4 2"/>
+    <path class="ink" fill="#70442e" d="m14 53 9-4 5 4 1 27 15 12-6 6-20-14zm100-2-10-4-5 4-1 28-15 12 6 6 20-14z"/>
+    <path class="ink" fill="#9e4931" d="m8 50 19-24 72-2 21 24-9 9-92 3z"/>
+    <path fill="#de8c4e" d="m17 48 13-18 28-1-10 17zm40-2 7-17 29-1 13 16z"/>
+    <path class="line" stroke="#ffc47a" stroke-width="3" d="m18 52 92-3"/>
+    <path class="ink" fill="#85492f" d="m34 61 60-1-3 18q-4 18-26 22-25-1-29-20z"/>
+    <path fill="#ca8249" d="m39 69 9 1q1 16 11 22-18-1-20-23z"/>
+    <ellipse class="ink" fill="#e5aa64" cx="64" cy="61" rx="31" ry="8"/>
+    <ellipse fill="#3d2526" cx="64" cy="61" rx="24" ry="4"/>
+    <path fill="#382629" d="m66 62 16-1-2 13q-3 10-5 0l-2-8-2 14q-4 8-5-3z"/>
   </g>
   <g id="outpost-rubble" transform="translate(576 2304) scale(1.5)">
     <ellipse fill="#191722" opacity=".45" cx="64" cy="93" rx="56" ry="11"/>

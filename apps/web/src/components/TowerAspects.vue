@@ -3,6 +3,8 @@
 import { useSelectedTowerInfo } from '@/composables/useSelectedTowerInfo'
 import { useSelectionStore } from '@/stores/selection'
 
+import TowerIcon from './TowerIcon.vue'
+
 const info = useSelectedTowerInfo()
 const selection = useSelectionStore()
 </script>
@@ -10,6 +12,13 @@ const selection = useSelectionStore()
 <template>
   <section v-if="info?.hasAspects" class="tower-aspects" aria-label="Специализация IV ступени">
     <template v-if="info.aspect">
+      <TowerIcon
+        v-if="selection.selected.towerId === 'outpost'"
+        class="outpost-aspect-icon"
+        tower-id="outpost"
+        :tier="2"
+        :aspect-id="info.aspect.id"
+      />
       <h3>{{ info.aspect.name }}</h3>
       <p class="aspect-description">{{ info.aspect.description }}</p>
       <button
@@ -39,6 +48,13 @@ const selection = useSelectionStore()
         :aria-label="`${aspect.name} за ${aspect.cost} золота`"
         @click="selection.specializeSelected(aspect.id)"
       >
+        <TowerIcon
+          v-if="selection.selected.towerId === 'outpost'"
+          class="outpost-aspect-icon"
+          tower-id="outpost"
+          :tier="2"
+          :aspect-id="aspect.id"
+        />
         <span class="aspect-heading">
           <strong>{{ aspect.name }}</strong>
           <span class="aspect-cost">за {{ aspect.cost }}</span>

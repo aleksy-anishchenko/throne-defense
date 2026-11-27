@@ -4,10 +4,10 @@ import { onMounted, useTemplateRef, watchEffect } from 'vue'
 import { drawTowerIcon } from '@/render/towers'
 import { loadUnitSprites, unitSpritesLoaded } from '@/render/unitSprites'
 
-const props = defineProps<{ towerId: string }>()
+const props = defineProps<{ towerId: string; tier?: number; aspectId?: string }>()
 const iconCanvas = useTemplateRef('iconCanvas')
 function draw() {
-  if (iconCanvas.value) drawTowerIcon(iconCanvas.value, props.towerId)
+  if (iconCanvas.value) drawTowerIcon(iconCanvas.value, props.towerId, props.tier, props.aspectId)
 }
 watchEffect(draw)
 onMounted(async () => {

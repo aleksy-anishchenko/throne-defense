@@ -519,6 +519,22 @@
   white-space: normal;
   text-align: left;
 }
+.outpost-aspect-icon {
+  width: 76px;
+  height: 76px;
+}
+.aspect-option:has(.outpost-aspect-icon) {
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+}
+.aspect-option .outpost-aspect-icon {
+  grid-column: 1;
+  grid-row: 1;
+}
+.aspect-option:has(.outpost-aspect-icon) .aspect-description,
+.aspect-option:has(.outpost-aspect-icon) .aspect-hint {
+  grid-column: 1 / -1;
+}
 .aspect-heading {
   display: flex;
   flex-wrap: wrap;
