@@ -1168,15 +1168,11 @@
   </g>
   <g id="machicolations" transform="translate(192 2688) scale(1.5)">
     <use href="#royal-wall-body"/>
-    <path class="ink" fill="#70442e" d="m14 53 9-4 5 4 1 27 15 12-6 6-20-14zm100-2-10-4-5 4-1 28-15 12 6 6 20-14z"/>
-    <path class="ink" fill="#9e4931" d="m8 50 19-24 72-2 21 24-9 9-92 3z"/>
-    <path fill="#de8c4e" d="m17 48 13-18 28-1-10 17zm40-2 7-17 29-1 13 16z"/>
-    <path class="line" stroke="#ffc47a" stroke-width="3" d="m18 52 92-3"/>
-    <path class="ink" fill="#85492f" d="m34 61 60-1-3 18q-4 18-26 22-25-1-29-20z"/>
-    <path fill="#ca8249" d="m39 69 9 1q1 16 11 22-18-1-20-23z"/>
-    <ellipse class="ink" fill="#e5aa64" cx="64" cy="61" rx="31" ry="8"/>
-    <ellipse fill="#3d2526" cx="64" cy="61" rx="24" ry="4"/>
-    <path fill="#382629" d="m66 62 16-1-2 13q-3 10-5 0l-2-8-2 14q-4 8-5-3z"/>
+    <!-- Три открытых снизу бойницы в выступающем каменном парапете. -->
+    <path class="ink" fill="#677583" d="M25 58h78v12l-6 5v9l-5 4-5-4v-9H69v9l-5 4-5-4v-9H41v9l-5 4-5-4v-9l-6-5z"/>
+    <path class="ink" fill="#a7b2ba" d="m23 56 6-6h70l6 6-3 8H26z"/>
+    <path fill="#cbd2d5" d="m28 55 4-3h65l4 3z"/>
+    <path fill="#252a31" d="M33 65h14v7H33zm24 0h14v7H57zm24 0h14v7H81z"/>
   </g>
   <g id="outpost-rubble" transform="translate(576 2304) scale(1.5)">
     <ellipse fill="#191722" opacity=".45" cx="64" cy="93" rx="56" ry="11"/>

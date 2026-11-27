@@ -317,26 +317,37 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         tower.barricade?.angle,
         tower.barricade ? tower.barricade.hp / tower.barricade.maxHp : 1,
       )
-      if (wall?.lastPourAt !== undefined && !prefersReducedMotion) {
-        const progress = (time - wall.lastPourAt) / 0.4
-        if (progress >= 0 && progress < 1) {
-          ctx.rotate(wall.angle)
-          ctx.globalAlpha = 1 - progress
-          ctx.lineCap = 'round'
-          ctx.strokeStyle = '#683a23'
-          ctx.lineWidth = 0.065
-          ctx.beginPath()
-          for (const offset of [-0.1, 0, 0.1]) {
-            ctx.moveTo(offset * progress, 0.02 + 0.2 * progress)
-            ctx.quadraticCurveTo(offset, 0.16, offset * 1.8, 0.16 + progress * 0.56)
-          }
-          ctx.stroke()
-        }
-      }
       ctx.restore()
       // Значок закреплён в углу клетки и не увеличивается при улучшении стража.
       drawAspectMark(ctx, tower)
     }
+  }
+
+  /** Смола льётся поверх фигур у стены. Полоски здоровья остаются сверху. */
+  function drawResinPour(time: number) {
+    if (prefersReducedMotion) return
+    const tower = game.state.towers.find((tower) => tower.barricade?.lastPourAt !== undefined)
+    const wall = tower?.barricade
+    if (!tower || !wall || wall.lastPourAt === undefined) return
+    const progress = (time - wall.lastPourAt) / 0.5
+    if (progress < 0 || progress >= 1) return
+    ctx.save()
+    ctx.translate(tower.x, tower.y)
+    ctx.rotate(wall.angle)
+    ctx.globalAlpha = Math.min(1, (1 - progress) * 3)
+    ctx.lineCap = 'round'
+    ctx.strokeStyle = '#492c21'
+    ctx.lineWidth = 0.065
+    ctx.beginPath()
+    for (const x of [-0.193, 0, 0.193]) {
+      ctx.moveTo(x, 0.04)
+      ctx.quadraticCurveTo(x, 0.2, x * 1.2, 0.07 + progress * 0.66)
+    }
+    ctx.stroke()
+    ctx.strokeStyle = '#bb8248'
+    ctx.lineWidth = 0.017
+    ctx.stroke()
+    ctx.restore()
   }
 
   /** Сначала обычные враги, потом большие — чтобы те были сверху */
@@ -553,6 +564,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       drawBellConnections(ctx, focusedSupport)
       drawTowers(time, selectedTower, boosted)
       drawEnemies(time)
+      drawResinPour(time)
 
       for (const shot of state.shots) drawShot(ctx, shot)
       effects.draw(ctx)

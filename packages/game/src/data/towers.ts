@@ -415,7 +415,7 @@ const outpost: TowerDef = {
       id: 'machicolations',
       name: 'Навесные бойницы',
       cost: 140,
-      description: `При ударе по стене гарнизон обливает смолой всех атакующих. На ${WALL_RESIN.duration} секунды они получают на ${WALL_RESIN.damageBonus * 100}% больше урона от всех защитников. Котёл снова готов через ${WALL_RESIN.cooldown} секунд.`,
+      description: `При ударе по стене из бойниц льётся смола на всех атакующих. На ${WALL_RESIN.duration} секунды они получают на ${WALL_RESIN.damageBonus * 100}% больше урона от всех защитников. Следующий разлив через ${WALL_RESIN.cooldown} секунд.`,
     },
   ],
   tiers: [
