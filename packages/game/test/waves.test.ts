@@ -56,7 +56,7 @@ describe('волны', () => {
     stepUntil(game, () => game.state.phase !== 'wave')
 
     // Стартовое золото − два Лучника + награды за убийства и волну
-    expect(game.state.gold).toBe(150 - 2 * TOWERS['archer'].cost + 8 * 5 + waveBonus(1))
+    expect(game.state.gold).toBe(150 - 2 * TOWERS['archer'].cost + 8 * 6 + waveBonus(1))
     expect(game.state.score).toBe(8 * 60 + 100)
   })
 
