@@ -263,18 +263,19 @@ describe('два аспекта Огневика', () => {
   })
 
   it.each([
-    { tier: 1, rewards: [], rebelSpeed: 0.35, bossSpeed: 0.675 },
+    { tier: 1, rewards: [], rebelSpeed: 0.4, bossSpeed: 0.7 },
+    { tier: 2, rewards: ['rasputitsa'], rebelSpeed: 0.225, bossSpeed: 0.4875 },
     {
       tier: 3,
       rewards: ['rasputitsa', 'empty-vials', 'field-medic'],
-      rebelSpeed: 0.10125,
-      bossSpeed: 0.388125,
+      rebelSpeed: 0.2,
+      bossSpeed: 0.405,
     },
     {
       tier: 3,
       rewards: ['rasputitsa', 'control-master', 'field-medic'],
-      rebelSpeed: 0.1,
-      bossSpeed: 0.354375,
+      rebelSpeed: 0.2,
+      bossSpeed: 0.37125,
     },
   ] as const)(
     'масло и Морозко $tier оставляют бунтовщику долю скорости $rebelSpeed с учётом благословений',
@@ -298,15 +299,15 @@ describe('два аспекта Огневика', () => {
   )
 
   it.each([
-    { frostTime: 0.25, oilTime: 0.75, distance: 0.25 * 0.1 + 0.5 * 0.6 + 0.25 * 0.75 },
-    { frostTime: 0.75, oilTime: 0.25, distance: 0.25 * 0.1 + 0.5 * 0.1875 + 0.25 * 0.75 },
+    { frostTime: 0.25, oilTime: 0.75, distance: 0.25 * 0.2 + 0.5 * 0.6 + 0.25 * 0.75 },
+    { frostTime: 0.75, oilTime: 0.25, distance: 0.25 * 0.2 + 0.5 * 0.225 + 0.25 * 0.75 },
   ])(
     'учитывает предел замедления и сроки холода ($frostTime с) и масла ($oilTime с)',
     ({ frostTime, oilTime, distance }) => {
       const game = newGame()
       game.state.selectedRewards = [{ rewardId: 'rasputitsa', wave: 5 }]
       const rebel = placeEnemy(game, 'rebel', 2)
-      Object.assign(rebel, { slowFactor: 0.75, slowTimeLeft: frostTime, oilTimeLeft: oilTime })
+      Object.assign(rebel, { slowFactor: 0.7, slowTimeLeft: frostTime, oilTimeLeft: oilTime })
       game.step(1)
       expect(rebel.pathDistance - 2).toBeCloseTo(distance, 8)
     },
@@ -377,7 +378,7 @@ describe('прогноз горения на полосе здоровья', () 
       burnDamageLeft: wildfireBurn,
       oilTimeLeft: 2,
       slowTimeLeft: 2,
-      slowFactor: 0.75,
+      slowFactor: 0.7,
     })
     const fullBurn = pendingBurnDamage(enemy)
     const forecast = compareWithBattle(game, enemy)

@@ -138,7 +138,7 @@ describe('Морозко', () => {
     game.build('frost', 5, 11)
     const enemy = placeEnemy(game, 'rebel', 1.5) // у двери, рядом с башней
     game.step(SIMULATION_STEP)
-    expect(enemy.slowFactor).toBeCloseTo(0.45)
+    expect(enemy.slowFactor).toBeCloseTo(0.4)
     expect(enemy.slowTimeLeft).toBeGreaterThan(0)
   })
 
@@ -147,7 +147,7 @@ describe('Морозко', () => {
     game.build('frost', 5, 11)
     const boss = placeEnemy(game, 'boss', 1.5)
     game.step(SIMULATION_STEP)
-    expect(boss.slowFactor).toBeCloseTo(0.225)
+    expect(boss.slowFactor).toBeCloseTo(0.2)
   })
 
   it('слабый мороз дожидается окончания сильного', () => {
@@ -156,9 +156,10 @@ describe('Морозко', () => {
     const enemy = placeEnemy(game, 'rebel', 1.5)
     const world = worldOf(game)
     const weak = towerStats(tower)
-    frostPulse(world, tower, { ...weak, slowAmount: 0.65, slowDuration: 0.1 })
+    const strong = { ...tower.def.tiers[2], slowDuration: 0.1 }
+    frostPulse(world, tower, strong)
     frostPulse(world, tower, weak)
-    expect(enemy.slowFactor).toBe(0.65)
+    expect(enemy.slowFactor).toBe(strong.slowAmount)
     expect(enemy.slowTimeLeft).toBe(0.1)
     moveEnemies(world, 0.1)
     frostPulse(world, tower, weak)
