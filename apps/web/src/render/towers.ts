@@ -18,7 +18,7 @@ import {
 import type { Canvas2D } from './shapes'
 import { TWIN_BOLT_OFFSET } from './shots'
 import { BELL_SWING_SPEED } from './statuses'
-import { drawTowerSprite, unitSpriteSize } from './unitSprites'
+import { drawOutpostSprite, drawTowerSprite, unitSpriteSize } from './unitSprites'
 
 export interface TowerArt {
   /**
@@ -827,41 +827,11 @@ export function drawTower(
   if (towerId === 'outpost') {
     ctx.save()
     ctx.rotate(wallAngle)
-    if (healthShare > 0) {
-      for (const x of [-0.24, 0.24]) {
-        ctx.fillStyle = '#27354c'
-        circle(ctx, x, -0.15, 0.13)
-        ctx.fill()
-        ctx.fillStyle = '#a6b6c7'
-        circle(ctx, x, -0.19, 0.095)
-        ctx.fill()
-      }
-    }
-    for (const y of [-0.035, 0.075, 0.18]) {
-      ctx.fillStyle = y === 0.075 ? '#87552f' : '#b57a42'
-      ctx.fillRect(-0.45, y, healthShare > 0 ? 0.9 : 0.24, 0.1)
-      if (healthShare === 0) ctx.fillRect(0.28, y, 0.17, 0.1)
-    }
-    if (healthShare > 0) {
-      if (tier >= TIER_II) {
-        ctx.fillStyle = tier >= TIER_III ? GOLD : '#a6b6c7'
-        for (const x of [-0.43, 0.36]) ctx.fillRect(x, -0.04, 0.07, 0.32)
-        if (tier >= TIER_III) ctx.fillRect(-0.42, -0.04, 0.84, 0.045)
-      }
-      ctx.fillStyle = '#32303a'
-      for (const x of [-0.29, 0.19]) ctx.fillRect(x, 0.06, 0.1, 0.06)
-      ctx.fillStyle = '#a52c41'
-      ctx.strokeStyle = GOLD
-      ctx.lineWidth = 0.025
-      ctx.beginPath()
-      ctx.moveTo(-0.1, 0)
-      ctx.lineTo(0.1, 0)
-      ctx.lineTo(0.085, 0.16)
-      ctx.lineTo(0, 0.23)
-      ctx.lineTo(-0.085, 0.16)
-      ctx.closePath()
-      ctx.fill()
-      ctx.stroke()
+    if (!drawOutpostSprite(ctx, tier, healthShare === 0)) {
+      // Деревянный щит до загрузки общего атласа.
+      ctx.fillStyle = '#a87047'
+      ctx.fillRect(-0.45, -0.03, healthShare > 0 ? 0.9 : 0.22, 0.24)
+      if (healthShare === 0) ctx.fillRect(0.26, -0.03, 0.19, 0.24)
     }
     ctx.restore()
     if (healthShare > 0 && healthShare < 1) {

@@ -58,7 +58,7 @@ beforeAll(async () => {
     'Image',
     class {
       naturalWidth = 768
-      naturalHeight = 2496
+      naturalHeight = 2688
       onload?: () => void
       set src(_value: string) {
         this.onload?.()
@@ -70,10 +70,18 @@ beforeAll(async () => {
 afterAll(() => vi.unstubAllGlobals())
 
 describe('SVG-облики стражей', () => {
+  it('рисует каждую ступень Заставы своим кадром', () => {
+    expect([0, 1, 2].map((tier) => drawSprites('outpost', tier).frames[0])).toEqual([
+      'outpost',
+      'outpost-stone',
+      'outpost-royal',
+    ])
+  })
+
   it('переводит атлас в пиксели один раз перед отрисовкой повёрнутых спрайтов', async () => {
     expect(await loadUnitSprites()).toBe(true)
     expect(atlasPaints).toEqual([[expect.any(Image), 0, 0]])
-    expect([bitmap.width, bitmap.height]).toEqual([768, 2496])
+    expect([bitmap.width, bitmap.height]).toEqual([768, 2688])
   })
 
   const stages = {

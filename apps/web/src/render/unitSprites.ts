@@ -140,6 +140,21 @@ function drawFrame(
   )
 }
 
+const outpostFrames: TierFrames = [52, 53, 54]
+const outpostRuins: TierFrames = [55, 51, 51]
+
+export function drawOutpostSprite(ctx: Canvas2D, tier: number, ruined: boolean): boolean {
+  if (!atlas) return false
+  drawFrame(
+    ctx,
+    atlas,
+    ruined ? frameAtTier(outpostRuins, tier) : frameAtTier(outpostFrames, tier),
+    1.03,
+    0.5,
+  )
+  return true
+}
+
 function drawCannon(
   ctx: Canvas2D,
   image: HTMLCanvasElement,
