@@ -329,24 +329,71 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     const tower = game.state.towers.find((tower) => tower.barricade?.lastPourAt !== undefined)
     const wall = tower?.barricade
     if (!tower || !wall || wall.lastPourAt === undefined) return
-    const progress = (time - wall.lastPourAt) / 0.5
+    const progress = (time - wall.lastPourAt) / 0.72
     if (progress < 0 || progress >= 1) return
     ctx.save()
     ctx.translate(tower.x, tower.y)
     ctx.rotate(wall.angle)
-    ctx.globalAlpha = Math.min(1, (1 - progress) * 3)
-    ctx.lineCap = 'round'
-    ctx.strokeStyle = '#492c21'
-    ctx.lineWidth = 0.065
-    ctx.beginPath()
-    for (const x of [-0.193, 0, 0.193]) {
-      ctx.moveTo(x, 0.04)
-      ctx.quadraticCurveTo(x, 0.2, x * 1.2, 0.07 + progress * 0.66)
+    for (const [index, x] of [-0.193, 0, 0.193].entries()) {
+      const phase = progress - index * 0.045
+      if (phase <= 0) continue
+      const reach = index === 1 ? 0.58 : 0.46
+      const length = Math.min(1, phase / 0.48) * reach
+      const neck = Math.max(0, 1 - Math.max(0, phase - 0.48) * 4.5)
+      const width = 0.066 * Math.min(1, phase * 16) * neck
+      const bend = Math.sin(phase * 9 + index) * 0.031
+      ctx.save()
+      ctx.translate(x, 0.04)
+      ctx.fillStyle = '#54301e'
+      ctx.strokeStyle = '#35232a'
+      ctx.lineWidth = 0.014
+      if (width > 0) {
+        ctx.beginPath()
+        ctx.moveTo(-width, 0)
+        ctx.bezierCurveTo(
+          -width * 1.45,
+          length * 0.24,
+          bend - width * 0.36,
+          length * 0.55,
+          bend - width,
+          length * 0.84,
+        )
+        ctx.bezierCurveTo(
+          bend - width * 1.9,
+          length + width,
+          bend + width * 1.6,
+          length + width,
+          bend + width,
+          length * 0.84,
+        )
+        ctx.bezierCurveTo(bend + width * 0.4, length * 0.56, width * 1.45, length * 0.34, width, 0)
+        ctx.closePath()
+        ctx.fill()
+        ctx.stroke()
+        ctx.fillStyle = '#b97d43'
+        ctx.beginPath()
+        ctx.ellipse(
+          bend - width * 0.35,
+          length * 0.85,
+          width * 0.25,
+          width * 0.42,
+          0.35,
+          0,
+          Math.PI * 2,
+        )
+        ctx.fill()
+      }
+      if (phase > 0.59) {
+        const fall = (phase - 0.59) / 0.39
+        ctx.globalAlpha = Math.max(0, 1 - fall * fall)
+        ctx.fillStyle = '#704227'
+        ctx.beginPath()
+        ctx.ellipse(bend, reach + 0.06 + fall * fall * 0.19, 0.043, 0.061, 0.1, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+      }
+      ctx.restore()
     }
-    ctx.stroke()
-    ctx.strokeStyle = '#bb8248'
-    ctx.lineWidth = 0.017
-    ctx.stroke()
     ctx.restore()
   }
 
