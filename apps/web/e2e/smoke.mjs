@@ -2033,6 +2033,8 @@ async function phone(page, url) {
   await tapTile(4, 9)
   const confirmOutpost = page.getByRole('button', { name: 'Да', exact: true })
   check('Заставу нельзя подтвердить на каменной плите', await confirmOutpost.isHidden())
+  await tapTile(2, 8)
+  check('На поперечном участке ковра Застава боком не ставится', await confirmOutpost.isHidden())
   await tapTile(3, 9)
   await confirmOutpost.tap()
   const placedOutpost = await readGameSnapshot(page)

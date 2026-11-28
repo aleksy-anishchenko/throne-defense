@@ -22,6 +22,16 @@ it.each(PLAYABLE_LEVELS)('Застава занимает только ковё�
   expect(game.build('outpost', other[0], other[1])).toBeTruthy()
 })
 
+it('на повороте место для Заставы зависит от направления входа в клетку', () => {
+  const game = createGame(PLAYABLE_LEVELS[0])
+  game.reset()
+  // На ряд 8 враги входят снизу, затем поворачивают налево и уходят вверх на столбце 1.
+  expect(game.isCellFree(3, 8, 'outpost')).toBe(true)
+  expect(game.build('outpost', 2, 8)).toBeNull()
+  expect(game.build('outpost', 1, 8)).toBeNull()
+  expect(game.isCellFree(1, 7, 'outpost')).toBe(true)
+})
+
 it('гарнизон стреляет, держит огра до разрушения и восстанавливается после волны', () => {
   const game = createGame({
     ...PLAYABLE_LEVELS[0],

@@ -466,7 +466,7 @@ export const useSelectionStore = defineStore('selection', () => {
     const hud = gameStore.hud
     if (selected.towerId) return ''
     if (armedTowerId.value) {
-      if (armedTowerId.value === 'outpost') return 'Выберите подсвеченную клетку ковра.'
+      if (armedTowerId.value === 'outpost') return 'Выберите подсвеченное место поперёк ковра.'
       if (placementEffect.value) return placementEffect.value
       if (touchPlacement.value?.cell) return 'Можно выбрать другую плиту.'
       if (touchPlacement.value) return 'Выберите свободную плиту.'

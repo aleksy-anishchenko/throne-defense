@@ -314,7 +314,6 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         isReady,
         tower.aspectId,
         effects.towerRecoil(tower),
-        tower.barricade?.angle,
         tower.barricade ? tower.barricade.hp / tower.barricade.maxHp : 1,
       )
       ctx.restore()
@@ -472,17 +471,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     else if (!isTouchPlacement) ctx.globalAlpha = 0.7
     if (receivingBellPreview && canAfford) drawBuffRing(ctx, time)
     if (isTouchPlacement) drawSelectionRing()
-    drawTower(
-      ctx,
-      def.id,
-      0,
-      TOWER_IDLE_AIM_ANGLE,
-      time,
-      true,
-      null,
-      0,
-      game.level.outpostSites.get(`${cell.col},${cell.row}`)?.angle,
-    )
+    drawTower(ctx, def.id, 0, TOWER_IDLE_AIM_ANGLE, time, true)
     ctx.restore()
     if (treasuryPreview) {
       drawTreasuryBonus(ctx, position, treasuryPreview.bonus, cellCssPx, true, canAfford)

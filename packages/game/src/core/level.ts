@@ -122,8 +122,7 @@ export function createLevel(def: LevelDef): Level {
   const blockedCellKeys = new Set(def.blockedCells.map(([col, row]) => cellKey(col, row)))
   const propCellKeys = new Set((def.props ?? []).map(({ cell }) => cellKey(cell[0], cell[1])))
   const outpostSites = new Map<string, { distance: number; angle: number }>()
-  const reserved = new Set(blockedCellKeys)
-  reserved.add(cellKey(Math.floor(def.throne[0]), Math.floor(def.throne[1])))
+  const throneKey = cellKey(Math.floor(def.throne[0]), Math.floor(def.throne[1]))
   // Все клетки, по которым проходит ковёр
   for (let distance = 0; distance <= path.length; distance += CARPET_SAMPLE_STEP) {
     const [x, y] = path.positionAt(distance)
@@ -134,13 +133,13 @@ export function createLevel(def: LevelDef): Level {
     if (propCellKeys.has(cellKey(col, row)))
       fail(def, `препятствие на ковре, клетка (${col},${row})`)
     const key = cellKey(col, row)
-    if (!reserved.has(key) && !outpostSites.has(key)) {
+    // На повороте важен вход в клетку: стена должна перекрывать путь горизонтально.
+    if (key !== throneKey && !blockedCellKeys.has(key)) {
       const [prevX, prevY] = path.positionAt(Math.max(0, distance - CARPET_SAMPLE_STEP))
       const [nextX, nextY] = path.positionAt(distance + CARPET_SAMPLE_STEP)
-      outpostSites.set(key, {
-        distance: distance + 0.16,
-        angle: Math.atan2(nextY - prevY, nextX - prevX) + Math.PI / 2,
-      })
+      if (Math.abs(nextX - prevX) < 1e-8 && nextY !== prevY) {
+        outpostSites.set(key, { distance: distance + 0.16, angle: nextY > prevY ? Math.PI : 0 })
+      }
     }
     blockedCellKeys.add(key)
   }
