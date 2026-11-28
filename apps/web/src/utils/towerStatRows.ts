@@ -87,7 +87,10 @@ export function towerStatRows(
       ...stats,
       damage: stats.damage * effects.damageMultiplier,
       burnDamage: (stats.burnDamage ?? 0) * effects.damageMultiplier,
-      cooldown: stats.cooldown / reloadProgress(1, local.fireRateBonus, effects.fireRateMultiplier),
+      cooldown:
+        def.id === 'spike-plate'
+          ? stats.cooldown
+          : stats.cooldown / reloadProgress(1, local.fireRateBonus, effects.fireRateMultiplier),
       goldPerWave:
         base.goldPerWave === undefined
           ? undefined

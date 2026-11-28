@@ -121,6 +121,7 @@ export function createLevel(def: LevelDef): Level {
   const path = createPath(def.pathPoints)
   const blockedCellKeys = new Set(def.blockedCells.map(([col, row]) => cellKey(col, row)))
   const propCellKeys = new Set((def.props ?? []).map(({ cell }) => cellKey(cell[0], cell[1])))
+  const plateSites = new Set<string>()
   const outpostSites = new Map<string, { distance: number; angle: number }>()
   const throneKey = cellKey(Math.floor(def.throne[0]), Math.floor(def.throne[1]))
   // Все клетки, по которым проходит ковёр
@@ -135,6 +136,7 @@ export function createLevel(def: LevelDef): Level {
     const key = cellKey(col, row)
     // Горизонтальная стена перекрывает вертикальный участок ковра.
     if (key !== throneKey && !blockedCellKeys.has(key)) {
+      plateSites.add(key)
       const [prevX, prevY] = path.positionAt(Math.max(0, distance - CARPET_SAMPLE_STEP))
       const [nextX, nextY] = path.positionAt(distance + CARPET_SAMPLE_STEP)
       if (Math.abs(nextX - prevX) < 1e-8 && nextY !== prevY) {
@@ -154,5 +156,5 @@ export function createLevel(def: LevelDef): Level {
   }
   for (const key of propCellKeys) blockedCellKeys.add(key)
 
-  return { def, path, outpostSites, blockedCellKeys, waveCount: def.waves.length }
+  return { def, path, plateSites, outpostSites, blockedCellKeys, waveCount: def.waves.length }
 }

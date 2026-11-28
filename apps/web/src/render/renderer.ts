@@ -237,6 +237,10 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       isPreview?: boolean
     },
   ) {
+    if (def.id === 'spike-plate') {
+      drawSupportCell(cell, { fill: 'rgba(227,178,74,.1)', line: isAllowed ? GOLD : '#f0866a' })
+      return
+    }
     if (def.id === 'treasury') {
       drawTreasuryCells(cell, isAllowed, isPreview)
       return
@@ -304,6 +308,17 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
           ctx.translate(Math.sin(wall.angle) * recoil, -Math.cos(wall.angle) * recoil)
         }
       }
+      const strike = tower.spikeStrike
+      const spikeHeight = strike
+        ? Math.max(
+            0,
+            Math.min(
+              1,
+              (time - strike.at + 0.025) / 0.09,
+              (Math.max(strike.at + 0.18, strike.raisedUntil) + 0.2 - time) / 0.2,
+            ),
+          )
+        : 0
       const isReady = tower.cooldownLeft < towerStats(tower).cooldown * READY_COOLDOWN_SHARE
       drawTower(
         ctx,
@@ -315,6 +330,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         tower.aspectId,
         effects.towerRecoil(tower),
         tower.barricade ? tower.barricade.hp / tower.barricade.maxHp : 1,
+        spikeHeight,
       )
       ctx.restore()
       // Значок закреплён в углу клетки и не увеличивается при улучшении стража.

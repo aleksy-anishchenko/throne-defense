@@ -14,6 +14,8 @@ export type DamageKind = 'physical' | 'magic' | 'piercing'
 /** Характеристики башни на одной ступени улучшения */
 export interface TowerStats {
   /** Сколько урона выдерживает целый щит Заставы */
+  bleedShare?: number
+  bossBleedShare?: number
   shieldHealth?: number
   /** Урон за одно попадание, единиц здоровья */
   damage: number
@@ -47,6 +49,8 @@ export interface TowerStats {
 
 /** Какие характеристики можно показать в панели башни */
 export type StatKey =
+  | 'bleedShare'
+  | 'bossBleedShare'
   | 'shieldHealth'
   | 'damage'
   /** Число атак за секунду игрового времени. */
@@ -103,6 +107,7 @@ export interface TowerAspectDef {
 
 /** Описание типа башни. Новая башня = новый объект TowerDef + рисунок в apps/web */
 export interface TowerDef {
+  carpetFortification?: boolean
   id: string
   name: string
   /** Краткая роль стража в магазине */
@@ -350,6 +355,7 @@ export interface Level {
   def: LevelDef
   path: Path
   /** Клетки, где нельзя строить, в виде ключей "столбец,строка" */
+  plateSites: ReadonlySet<string>
   outpostSites: ReadonlyMap<string, { distance: number; angle: number }>
   blockedCellKeys: ReadonlySet<string>
   /** Сколько всего волн в уровне (без бесконечного режима) */
@@ -360,6 +366,7 @@ export interface Level {
 
 /** Башня, стоящая на поле */
 export interface Tower {
+  spikeStrike?: { at: number; raisedUntil: number; hitIds: Set<number> }
   barricade?: {
     hp: number
     maxHp: number
@@ -416,6 +423,7 @@ export interface Burn {
 
 /** Враг, идущий по ковру. Основной поджог оставляет обычный или синий огонь. */
 export interface Enemy extends Burn {
+  bleeding?: { secondsLeft: number; damagePerSecond: number }
   resinTimeLeft?: number
   wallAttack?: { nextHitAt: number; interval: number; angle: number; lastHitAt?: number }
   /** Порядковый номер именно этого врага в партии (не путать с def.id — видом, например 'ogre') */

@@ -40,6 +40,10 @@ export function spawnDueEnemies(world: World, dt: number): void {
 export function finishWave(world: World): void {
   const state = world.state
   for (const tower of state.towers) {
+    if (tower.def.id === 'spike-plate') {
+      delete tower.spikeStrike
+      tower.cooldownLeft = 0
+    }
     if (tower.barricade) {
       tower.barricade.hp = tower.barricade.maxHp
       delete tower.barricade.lastPourAt

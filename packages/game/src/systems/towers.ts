@@ -19,6 +19,7 @@ export function towerStats(
   tower: Pick<Tower, 'def' | 'tier'> & { aspectId?: string | null },
 ): TowerStats {
   const base = tower.def.tiers[tower.tier]
+  if (tower.aspectId === 'giant-stakes') return { ...base, damage: base.damage * 2 }
   const burn = tower.aspectId && towerAspect(tower)?.intenseBurn
   if (!burn || base.burnDamage === undefined) return base
   return {
@@ -88,7 +89,7 @@ export function refundFor(
   const invested = towerInvestedGold(tower)
   if (
     state?.phase === 'build' &&
-    (tower.barricade ||
+    (tower.def.carpetFortification ||
       state.selectedRewards.some(({ rewardId }) => REWARDS[rewardId]?.effect.kind === 'buyback'))
   ) {
     return invested

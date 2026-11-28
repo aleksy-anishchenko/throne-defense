@@ -325,10 +325,10 @@ async function watchPhoneLayout(page) {
   }
 }
 
-/** Все десять карточек видны без прокрутки боковой панели. */
+/** Все одиннадцать карточек видны без прокрутки боковой панели. */
 async function checkShopCardsVisible(page) {
   const { width, height } = page.viewportSize()
-  // Телефон в вертикальной раскладке: кнопка на экране, а десять стражей — в меню
+  // Телефон в вертикальной раскладке: кнопка на экране, а одиннадцать стражей — в меню
   if (await page.locator('.shop-toggle').isVisible()) {
     const toggle = await page.locator('.shop-toggle').boundingBox()
     await page.locator('.shop-toggle').click()
@@ -348,7 +348,7 @@ async function checkShopCardsVisible(page) {
         toggle.x >= 0 &&
         toggle.x + toggle.width <= width &&
         toggle.y + toggle.height <= height &&
-        names.length === 10 &&
+        names.length === 11 &&
         names.every((card) => card.left >= 0 && card.right <= width) &&
         drawerBox.y >= 0 &&
         drawerBox.y + drawerBox.height <= height + 1,
@@ -377,8 +377,8 @@ async function checkShopCardsVisible(page) {
     }
   })
   check(
-    `${width}×${height}: все десять карточек боковой панели видны без прокрутки`,
-    layout.count === 10 && layout.overflow <= 1 && layout.clipped.length === 0,
+    `${width}×${height}: все одиннадцать карточек боковой панели видны без прокрутки`,
+    layout.count === 11 && layout.overflow <= 1 && layout.clipped.length === 0,
     JSON.stringify(layout),
   )
 }
@@ -1859,7 +1859,7 @@ async function desktop(page, url) {
   check('«Готово» вернуло в меню', await playButton.isVisible())
   await page.evaluate(() => localStorage.removeItem('throne-best'))
 
-  // Все десять карточек помещаются и на высоком экране, и на ноутбуке.
+  // Все одиннадцать карточек помещаются и на высоком экране, и на ноутбуке.
   await page.getByRole('button', { name: 'Играть' }).click()
   await waitForFrames(page)
   await checkShopCardsVisible(page)
@@ -1990,8 +1990,8 @@ async function phone(page, url) {
   const drawer = page.getByRole('dialog', { name: 'Выбор стража' })
   check('кнопка открыла меню стражей', await drawer.isVisible())
   check(
-    '390×844: все десять карточек в меню видны без прокрутки',
-    (await drawer.locator('.drawer-card').count()) === 10 &&
+    '390×844: все одиннадцать карточек в меню видны без прокрутки',
+    (await drawer.locator('.drawer-card').count()) === 11 &&
       (await drawer
         .locator('.shop-drawer-list')
         .evaluate((list) => list.scrollHeight <= list.clientHeight + 1)),
@@ -2028,6 +2028,16 @@ async function phone(page, url) {
   await page.locator('.shop-drawer-backdrop').tap({ position: { x: 10, y: 10 } })
   check('нажатие мимо меню закрыло его', (await page.getByRole('dialog').count()) === 0)
 
+  await shopToggle.tap()
+  await drawer.getByRole('button', { name: /^Плита с шипами/ }).tap()
+  await tapTile(3, 8)
+  await page.getByRole('button', { name: 'Да', exact: true }).tap()
+  check(
+    'Плита ставится на поворот ковра',
+    (await readGameSnapshot(page)).towers.includes('spike-plate0@3,8'),
+  )
+  await tapTile(3, 8)
+  await page.getByRole('button', { name: /Вернуть/ }).tap()
   await shopToggle.tap()
   await drawer.getByRole('button', { name: /^Застава/ }).tap()
   await tapTile(4, 9)

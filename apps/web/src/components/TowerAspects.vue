@@ -13,9 +13,11 @@ const selection = useSelectionStore()
   <section v-if="info?.hasAspects" class="tower-aspects" aria-label="Специализация IV ступени">
     <template v-if="info.aspect">
       <TowerIcon
-        v-if="selection.selected.towerId === 'outpost'"
+        v-if="
+          selection.selected.towerId === 'outpost' || selection.selected.towerId === 'spike-plate'
+        "
         class="outpost-aspect-icon"
-        tower-id="outpost"
+        :tower-id="selection.selected.towerId"
         :tier="2"
         :aspect-id="info.aspect.id"
       />
@@ -49,9 +51,11 @@ const selection = useSelectionStore()
         @click="selection.specializeSelected(aspect.id)"
       >
         <TowerIcon
-          v-if="selection.selected.towerId === 'outpost'"
+          v-if="
+            selection.selected.towerId === 'outpost' || selection.selected.towerId === 'spike-plate'
+          "
           class="outpost-aspect-icon"
-          tower-id="outpost"
+          :tower-id="selection.selected.towerId"
           :tier="2"
           :aspect-id="aspect.id"
         />

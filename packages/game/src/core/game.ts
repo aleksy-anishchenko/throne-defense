@@ -15,7 +15,12 @@ import {
   upgradeCost,
 } from '../systems/towers.ts'
 import { buildSpawnQueue, finishWave, getWaveGroups, spawnDueEnemies } from '../systems/waves.ts'
-import { updateBurning, updateOilPuddles, updateShots } from '../systems/combat.ts'
+import {
+  updateSpikePlates,
+  updateBurning,
+  updateOilPuddles,
+  updateShots,
+} from '../systems/combat.ts'
 import { applyReward, rerollReward, rewardStats } from '../systems/rewards.ts'
 import type {
   GameEvents,
@@ -138,11 +143,11 @@ export function createGame(levelDef: LevelDef): Game {
   const isCellFree = (col: number, row: number, towerId?: string | null) => {
     const key = cellKey(col, row)
     if (!isInsideField(col, row) || state.towersByCell.has(key)) return false
-    if (towerId === 'outpost') {
+    if (towerId && TOWERS[towerId]?.carpetFortification) {
       return (
         state.phase === 'build' &&
-        level.outpostSites.has(key) &&
-        !state.towers.some((tower) => tower.barricade)
+        (towerId === 'outpost' ? level.outpostSites : level.plateSites).has(key) &&
+        !state.towers.some((tower) => tower.def.carpetFortification)
       )
     }
     return !level.blockedCellKeys.has(key)
@@ -168,6 +173,7 @@ export function createGame(levelDef: LevelDef): Game {
     }
     updateHealers(world, dt)
     updateBurning(world, dt)
+    updateSpikePlates(world, dt)
     updateTowers(world, dt)
     updateShots(world, dt)
     spawnSplits(world)

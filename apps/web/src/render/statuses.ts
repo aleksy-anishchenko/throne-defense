@@ -80,6 +80,26 @@ const flicker = (speed: number, depth: number) => (time: number) =>
  */
 const STATUS_LOOKS: readonly StatusLook[] = [
   {
+    isActive: (enemy) => !!enemy.bleeding,
+    rgb: '214,62,79',
+    hasTint: false,
+    drawMark(ctx, radius) {
+      ctx.save()
+      ctx.translate(radius * 0.8, -radius * 0.55)
+      ctx.scale(radius, radius)
+      ctx.beginPath()
+      ctx.moveTo(0, -0.55)
+      ctx.quadraticCurveTo(0.55, 0.12, 0.17, 0.25)
+      ctx.quadraticCurveTo(-0.38, 0.43, 0, -0.55)
+      ctx.fillStyle = '#ed5263'
+      ctx.fill()
+      ctx.strokeStyle = '#532535'
+      ctx.lineWidth = 0.07
+      ctx.stroke()
+      ctx.restore()
+    },
+  },
+  {
     // Мороз: ровное голубое кольцо со свечением, голубой оттенок, иней на макушке
     isActive: (enemy) => enemy.slowTimeLeft > 0,
     rgb: FROST_RGB,

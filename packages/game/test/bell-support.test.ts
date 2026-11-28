@@ -27,7 +27,7 @@ function newGame() {
 describe('источник ускорения Звонаря', () => {
   it.each(TOWER_LIST)('$name: источник и покрытие соответствуют takesFireRateBonus', (def) => {
     const game = newGame()
-    const col = def.id === 'outpost' ? 6 : 0
+    const col = def.carpetFortification ? 6 : 0
     const bell = game.build('bell', Math.abs(col - 1), 1)!
     const tower = game.build(def.id, col, 0)!
     expect(fireRateSourceOf(game.state.towers, tower)).toBe(def.takesFireRateBonus ? bell : null)

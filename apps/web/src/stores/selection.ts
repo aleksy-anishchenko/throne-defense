@@ -308,14 +308,15 @@ export const useSelectionStore = defineStore('selection', () => {
       clearSelection()
       return
     }
-    if (towerId === 'outpost') {
+    if (TOWERS[towerId]?.carpetFortification) {
       if (game.state.phase !== 'build') {
-        gameStore.rejectAction('Заставу ставят между волнами')
+        gameStore.rejectAction('Укрепления ставят между волнами')
         return
       }
-      if (game.state.towers.some((tower) => tower.barricade)) {
+      const existing = game.state.towers.find((tower) => tower.def.carpetFortification)
+      if (existing) {
         gameStore.rejectAction(
-          'Застава уже стоит. Чтобы перенести её, продайте между волнами за полную цену.',
+          `На ковре уже стоит ${existing.def.name.toLowerCase()}. Между волнами её можно продать за полную цену.`,
         )
         return
       }
@@ -466,6 +467,7 @@ export const useSelectionStore = defineStore('selection', () => {
     const hud = gameStore.hud
     if (selected.towerId) return ''
     if (armedTowerId.value) {
+      if (armedTowerId.value === 'spike-plate') return 'Выберите подсвеченную клетку ковра.'
       if (armedTowerId.value === 'outpost') return 'Выберите подсвеченное место поперёк ковра.'
       if (placementEffect.value) return placementEffect.value
       if (touchPlacement.value?.cell) return 'Можно выбрать другую плиту.'

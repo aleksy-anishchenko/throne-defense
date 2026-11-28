@@ -398,10 +398,11 @@ const treasury: TowerDef = {
 
 const outpost: TowerDef = {
   id: 'outpost',
+  carpetFortification: true,
   name: 'Застава',
   shortDescription: 'Держит ковёр',
   description:
-    'Одна на зал. Ставится между волнами на прямой вертикальный участок ковра. Лучники стреляют, пока враги ломают щит. После волны щит восстанавливается.',
+    'Занимает единственное место для укрепления наравне с плитой с шипами. Ставится между волнами на прямой вертикальный участок ковра. Лучники стреляют, пока враги ломают щит. После волны щит восстанавливается.',
   cost: 75,
   upgradeCosts: [60, 100],
   aspects: [
@@ -449,6 +450,43 @@ export const TOWER_LIST: readonly TowerDef[] = [
   bell,
   treasury,
   outpost,
+  {
+    id: 'spike-plate',
+    carpetFortification: true,
+    name: 'Плита с шипами',
+    shortDescription: 'Ранит врагов на ковре',
+    description:
+      'Шипы бьют всех на клетке. Раненые теряют долю максимального здоровья за 3 секунды, даже сойдя с плиты.',
+    interactionHint:
+      'На зал одно укрепление: плита или застава. Между волнами его можно заменить за полную цену.',
+    cost: 75,
+    upgradeCosts: [60, 100],
+    tiers: [
+      { damage: 35, cooldown: 3, range: 0, bleedShare: 0.09, bossBleedShare: 0.03 },
+      { damage: 65, cooldown: 3, range: 0, bleedShare: 0.12, bossBleedShare: 0.05 },
+      { damage: 100, cooldown: 3, range: 0, bleedShare: 0.15, bossBleedShare: 0.08 },
+    ],
+    aspects: [
+      {
+        id: 'spiked-floor',
+        name: 'Шипастый настил',
+        cost: 140,
+        description:
+          'Шипы подняты 1 секунду. Каждый враг на плите получает удар и кровотечение один раз за срабатывание.',
+      },
+      {
+        id: 'giant-stakes',
+        name: 'Колья на великана',
+        cost: 140,
+        description:
+          'Только огр, Горыныч, генерал или Узурпатор запускает плиту. Все враги на ней получают 200 урона и обычное кровотечение.',
+      },
+    ],
+    displayStats: ['damage', 'cooldown', 'bleedShare', 'bossBleedShare'],
+    defaultTargetMode: 'first',
+    canChooseTarget: false,
+    takesFireRateBonus: false,
+  },
 ]
 
 /** Все башни по id */

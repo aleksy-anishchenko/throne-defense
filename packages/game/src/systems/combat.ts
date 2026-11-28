@@ -15,7 +15,8 @@ import type {
 } from '../types.ts'
 import { advanceBurning, applyBurn, burnTimeRemaining } from './burning.ts'
 import { bannerArmorOf, queueSplit } from './enemies.ts'
-import { rewardStats } from './rewards.ts'
+import { towerStats } from './towers.ts'
+import { effectiveTowerStats, rewardStats } from './rewards.ts'
 
 /** Какая доля брони врага всё ещё режет пробивающий урон (0.5 = половина брони; физический урон режется всей бронёй, магический — не режется вовсе) */
 const PIERCING_ARMOR_FACTOR = 0.5
@@ -140,6 +141,48 @@ function loseHp(world: World, enemy: Enemy, amount: number): void {
     state.kills++
     queueSplit(world, enemy)
     world.emit('kill', enemy)
+  }
+}
+
+/** Плита бьёт в своей клетке. Кровотечение остаётся на враге даже после продажи плиты. */
+export function updateSpikePlates(world: World, dt: number): void {
+  const { enemies, towers, time } = world.state
+  for (const enemy of enemies) {
+    const bleed = enemy.bleeding
+    if (!bleed || enemy.isDead) continue
+    const elapsed = Math.min(dt, bleed.secondsLeft)
+    loseHp(world, enemy, elapsed * bleed.damagePerSecond)
+    bleed.secondsLeft -= elapsed
+    if (bleed.secondsLeft <= 0) delete enemy.bleeding
+  }
+
+  const tower = towers.find((candidate) => candidate.def.id === 'spike-plate')
+  if (!tower) return
+  tower.cooldownLeft = Math.max(0, tower.cooldownLeft - dt)
+  let strike = tower.spikeStrike
+  if (tower.cooldownLeft > 1e-8 && (!strike || time >= strike.raisedUntil)) return
+  const targets = enemies.filter(
+    (enemy) =>
+      !enemy.isDead && Math.floor(enemy.x) === tower.col && Math.floor(enemy.y) === tower.row,
+  )
+  if (!targets.length) return
+  const stats = effectiveTowerStats(world.state, tower, towerStats(tower))
+  if (tower.cooldownLeft <= 1e-8) {
+    if (tower.aspectId === 'giant-stakes' && !targets.some((enemy) => enemy.def.isGiant)) return
+    const duration = tower.aspectId === 'spiked-floor' ? 1 : 0
+    strike = { at: time, raisedUntil: time + duration, hitIds: new Set() }
+    tower.spikeStrike = strike
+    tower.cooldownLeft = stats.cooldown
+    world.emit('fire', { tower, stats })
+  }
+  if (!strike) return
+  for (const enemy of targets) {
+    if (strike.hitIds.has(enemy.id)) continue
+    strike.hitIds.add(enemy.id)
+    damageEnemy(world, enemy, stats.damage, 'physical')
+    if (enemy.isDead) continue
+    const share = enemy.def.id === 'boss' ? stats.bossBleedShare! : stats.bleedShare!
+    enemy.bleeding = { secondsLeft: 3, damagePerSecond: (enemy.maxHp * share) / 3 }
   }
 }
 

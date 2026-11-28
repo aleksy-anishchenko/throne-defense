@@ -16,6 +16,8 @@ interface StatDisplay {
 
 /** Как подписывать и показывать каждую характеристику */
 export const STAT_DISPLAY: Record<StatKey, StatDisplay> = {
+  bleedShare: { label: 'Кровотечение за 3 с', format: formatPercent },
+  bossBleedShare: { label: 'По Узурпатору за 3 с', format: formatPercent },
   shieldHealth: { label: 'Прочность щита', format: String },
   damage: { label: 'Урон', format: formatDecimal },
   attackRate: { label: 'Скорость атаки', format: formatDecimal, unit: () => 'атак/с' },
@@ -57,6 +59,7 @@ export function cellsInReach(range: number): number {
 /** Зона действия до покупки, в тех же единицах, что и подсветка на поле. */
 export function placementReach(def: TowerDef): string {
   const stats = def.tiers[0]
+  if (def.id === 'spike-plate') return 'Одна клетка ковра'
   if (def.id === 'treasury') return 'По стороне и диагонали'
   if (isAuraTower(stats)) return `До ${cellsInReach(stats.range)} соседних клеток`
   return `Радиус ${formatDecimal(stats.range)} ${cellUnit(stats.range)}`

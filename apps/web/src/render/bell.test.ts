@@ -215,7 +215,7 @@ describe('показ бонусов Звонаря', () => {
 describe('предпросмотр башни-получателя', () => {
   it.each(TOWER_LIST)('$name: будущий бонус совпадает с бонусом после постройки', (def) => {
     const game = newGame()
-    const col = def.id === 'outpost' ? 6 : 0
+    const col = def.carpetFortification ? 6 : 0
     const bell = game.build('bell', Math.abs(col - 1), 1)!
     const gold = game.state.gold
     const preview = towerPlacementBellPreview(game.state.towers, def.id, col, 0)

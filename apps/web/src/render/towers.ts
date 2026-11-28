@@ -2,6 +2,7 @@
 // Без рисунка башня тоже будет работать — нарисуется простым кружком.
 
 import type { Tower, TowerStats } from '@throne/game'
+import { drawSpikePlate } from './spikePlate'
 import type { EffectSink } from './effects'
 import {
   GOLD,
@@ -720,6 +721,8 @@ const TIER_RING_GAP_WIDTH = 0.05
 const ASPECT_COLORS: Readonly<Record<string, string>> = {
   'reinforced-wall': '#bdcfe4',
   machicolations: '#efab52',
+  'spiked-floor': '#d6ddd8',
+  'giant-stakes': '#e4b167',
   'giant-slayer': '#f6a665',
   'armor-breaker': '#91dbef',
   'hunter-mark': '#9bd36a',
@@ -766,7 +769,13 @@ export function drawAspectMark(ctx: Canvas2D, { x, y, aspectId }: Tower) {
     ctx.lineTo(0, 0.068)
     ctx.lineTo(-0.045, 0.026)
     ctx.closePath()
-  } else if (aspectId === 'giant-slayer') {
+  } else if (aspectId === 'spiked-floor') {
+    for (const x of [-0.046, 0.046]) {
+      ctx.moveTo(x - 0.023, 0.045)
+      ctx.lineTo(x, -0.048)
+      ctx.lineTo(x + 0.023, 0.045)
+    }
+  } else if (aspectId === 'giant-stakes' || aspectId === 'giant-slayer') {
     ctx.moveTo(0, 0.075)
     ctx.lineTo(0, -0.065)
     ctx.moveTo(-0.045, -0.005)
@@ -831,7 +840,12 @@ export function drawTower(
   aspectId: string | null = null,
   recoil = 0,
   healthShare = 1,
+  spikeHeight = 0,
 ) {
+  if (towerId === 'spike-plate') {
+    drawSpikePlate(ctx, tier, spikeHeight, aspectId)
+    return
+  }
   if (towerId === 'outpost') {
     ctx.save()
     if (!drawOutpostSprite(ctx, tier, healthShare === 0, aspectId)) {
@@ -917,5 +931,5 @@ export function drawTowerIcon(
         ? ICON_SCALE
         : ICON_SPRITE_SCALE
   ctx.setTransform(scale, 0, 0, scale, ICON_CENTER_X, ICON_CENTER_Y)
-  drawTower(ctx, towerId, tier, TOWER_IDLE_AIM_ANGLE, 0, true, aspectId)
+  drawTower(ctx, towerId, tier, TOWER_IDLE_AIM_ANGLE, 0, true, aspectId, 0, 1, 1)
 }
