@@ -15,6 +15,7 @@ import {
   MAX_SPEED,
   REWARDS,
   REWARD_SETS,
+  REWARD_LIST,
   REWARD_SET_SIZE,
   TOWERS,
   TOWER_LIST,
@@ -159,7 +160,10 @@ export const useGameStore = defineStore('game', () => {
     rewards.kind = pending?.kind ?? null
     rewards.options = pending ? [...pending.options] : []
     rewards.rerollCost =
-      pending?.kind === 'wave' ? rewardRerollCost(pending.wave, pending.rerolls) : null
+      pending?.kind === 'wave' &&
+      pending.options.length + state.selectedRewards.length < REWARD_LIST.length
+        ? rewardRerollCost(pending.wave, pending.rerolls)
+        : null
     rewards.selected = state.selectedRewards.map((reward) => ({ ...reward }))
   }
 

@@ -66,7 +66,7 @@ export function finishWave(world: World): void {
   const wave = state.wave
   state.wave++
   state.phase = 'build'
-  if (state.isEndless || !isRewardWave(wave)) return
+  if (!isRewardWave(wave) || (state.isEndless && wave < 35)) return
   const reward = offerReward(state, wave, world.level.def.id)
   if (reward) world.emit('rewardOffered', reward)
 }

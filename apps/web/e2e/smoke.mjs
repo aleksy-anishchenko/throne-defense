@@ -1868,6 +1868,33 @@ async function desktop(page, url) {
   await checkStartButtonVisible(page)
   await checkShopCardsVisible(page)
 
+  // Семь карт уже получены в кампании. Восьмая открывает компактный список на компьютере.
+  await page.evaluate(() => {
+    const { state } = window.__throne.game
+    state.isEndless = true
+    state.selectedRewards = [
+      'war-chest',
+      'bounty',
+      'royal-tax',
+      'wildfire',
+      'rapid-orders',
+      'field-medic',
+      'ice-needles',
+    ].map((rewardId) => ({ wave: 5, rewardId }))
+  })
+  await finishRewardWave(page, 35, 1)
+  await page.locator('.reward-card').first().click()
+  const collection = page.getByRole('button', { name: 'Благословения, получено 8' })
+  await collection.click()
+  check(
+    'После 35-й волны все восемь благословений доступны в списке',
+    (await page.locator('.reward-drawer-entry').count()) === 8,
+  )
+  await page
+    .getByRole('dialog', { name: 'Благословения', exact: true })
+    .getByRole('button', { name: 'Закрыть' })
+    .click()
+
   // Сдаться можно только после подтверждения
   await page.getByRole('button', { name: 'Меню' }).click()
   await page.getByRole('dialog', { name: 'Пауза' }).getByRole('button', { name: 'Сдаться' }).click()

@@ -55,7 +55,11 @@ function takeReward(pool: RewardId[], seed: number): RewardId {
 }
 
 export function isRewardWave(wave: number): boolean {
-  return REWARD_WAVES.includes(wave)
+  return REWARD_WAVES.includes(wave) || isEndlessRewardWave(wave)
+}
+
+function isEndlessRewardWave(wave: number): boolean {
+  return wave >= 35 && wave % 5 === 0
 }
 
 function availableRewards(picks: readonly RewardPick[]) {
@@ -123,10 +127,20 @@ export function rollRewardOptions(
     if (options.length < REWARD_OPTION_COUNT) options.push(guard)
     else if (slot >= 0) options[slot] = guard
   }
+  // В конце коллекции случайная редкость иногда оставила бы рубеж пустым.
+  if (!options.length && available.length && isEndlessRewardWave(wave)) {
+    options.push(
+      takeReward(
+        available.map(({ id }) => id),
+        nextRandom(seed),
+      ),
+    )
+  }
   return options
 }
 
 function rewardCheckpoint(wave: number) {
+  if (isEndlessRewardWave(wave)) return REWARD_CHECKPOINTS[REWARD_CHECKPOINTS.length - 1]
   const checkpoint = REWARD_CHECKPOINTS.find((entry) => entry.wave === wave)
   if (!checkpoint) throw new RangeError(`После волны ${wave} нет рубежа благословений`)
   return checkpoint
@@ -152,7 +166,11 @@ export function rerollReward(state: GameState, levelId: string): PendingReward |
   const cost = rewardRerollCost(pending.wave, pending.rerolls)
   if (state.gold < cost) return null
   const options = rollRewardOptions(state, pending.wave, levelId, pending)
-  if (options.length < REWARD_OPTION_COUNT) return null
+  if (
+    !options.length ||
+    (!isEndlessRewardWave(pending.wave) && options.length < REWARD_OPTION_COUNT)
+  )
+    return null
 
   const next = { ...pending, options, rerolls: pending.rerolls + 1 }
   state.gold -= cost

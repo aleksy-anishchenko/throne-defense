@@ -130,7 +130,7 @@ describe('благословения после волн', () => {
     expect(game.state.pendingReward).toBeNull()
   })
 
-  it.each([19, 28, 31, 35])('после %i-й волны нет рубежа с наградой', (wave) => {
+  it.each([19, 28, 31, 34, 36])('после %i-й волны нет рубежа с наградой', (wave) => {
     const game = newGame()
     game.state.isEndless = wave > game.level.waveCount
     finishWave(game, wave)
@@ -882,3 +882,44 @@ it('карта открывает бесплатные Шипы только в 
   game.reset()
   expect(game.build('spike-plate', col, row)).toBeNull()
 })
+
+it('после победы выдаёт каждые пять волн до последней карты, затем продолжает без окна', () => {
+  const game = newGame()
+  finishWave(game, 30)
+  expect(game.state.phase).toBe('won')
+  game.continueEndless()
+  expect(game.state.wave).toBe(31)
+  for (let wave = 31; wave < 150; wave++) {
+    const before = game.state.selectedRewards.length
+    finishWave(game, wave)
+    if (wave % 5 !== 0 || before === REWARD_LIST.length) {
+      expect(game.state.phase).toBe('build')
+      continue
+    }
+    expect(waveOffer(game).wave).toBe(wave)
+    do {
+      expect(game.chooseReward(game.state.pendingReward!.options[0])).toBe(true)
+    } while (game.state.pendingReward)
+  }
+  expect(game.state.selectedRewards).toHaveLength(REWARD_LIST.length)
+})
+
+it.each(['outpost', 'sharpened-steel', 'war-chest'] as const)(
+  'последняя карта %s гарантирована, пустое обновление бесплатно',
+  (last) => {
+    const game = newGame()
+    game.state.isEndless = true
+    game.state.selectedRewards = REWARD_LIST.filter(({ id }) => id !== last).map(({ id }) => ({
+      rewardId: id,
+      wave: 5,
+    }))
+    finishWave(game, 100)
+    expect(waveOffer(game).options).toEqual([last])
+    const gold = game.state.gold
+    expect(game.rerollRewards()).toBe(false)
+    expect(game.state.gold).toBe(gold)
+    expect(game.chooseReward(last)).toBe(true)
+    expect(game.state.gold).toBe(gold + (last === 'war-chest' ? 560 : 0))
+    expect(rewardRerollCost(100, 0)).toBe(160)
+  },
+)

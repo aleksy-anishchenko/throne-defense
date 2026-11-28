@@ -54,6 +54,12 @@
     .reward-inventory {
       display: grid;
     }
+    #app:has(.reward-inventory-entry:nth-child(8)) .reward-inventory {
+      display: none;
+    }
+    #app:has(.reward-inventory-entry:nth-child(8)) .hud-reward-toggle {
+      display: inline-flex;
+    }
     #hint,
     .keys {
       display: block;
