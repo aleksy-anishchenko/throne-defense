@@ -30,7 +30,6 @@ function drawSprites(
   isReady = true,
   aimAngle = 0,
   recoil = 0,
-  wallAngle = 0,
 ) {
   const drawImage = vi.fn((source: unknown, x: number, y: number) =>
     source === bitmap ? spriteAt.get(`${x},${y}`) : undefined,
@@ -38,7 +37,6 @@ function drawSprites(
   const transforms = { translate: vi.fn(), rotate: vi.fn(), scale: vi.fn() }
   const ctx = {
     drawImage,
-    transform: vi.fn(),
     save: vi.fn(),
     restore: vi.fn(),
     ...transforms,
@@ -50,7 +48,7 @@ function drawSprites(
     fill: vi.fn(),
     stroke: vi.fn(),
   } as unknown as Canvas2D
-  drawTower(ctx, id, tier, aimAngle, 0, isReady, aspectId, recoil, 1, wallAngle)
+  drawTower(ctx, id, tier, aimAngle, 0, isReady, aspectId, recoil)
   return { frames: drawImage.mock.results.map(({ value }) => value), ...transforms }
 }
 
@@ -60,7 +58,7 @@ beforeAll(async () => {
     'Image',
     class {
       naturalWidth = 768
-      naturalHeight = 3264
+      naturalHeight = 2880
       onload?: () => void
       set src(_value: string) {
         this.onload?.()
@@ -83,26 +81,10 @@ describe('SVG-облики стражей', () => {
     }
   })
 
-  it.each([-Math.PI / 4, Math.PI / 4])(
-    'на повороте использует боковую фигуру без наклона лучников (%s)',
-    (angle) => {
-      const drawing = drawSprites('outpost', 0, null, true, 0, 0, angle)
-      expect(drawing.frames).toEqual(['archer', 'archer', 'diagonal-outpost'])
-      expect(drawing.rotate).not.toHaveBeenCalled()
-      for (const aspect of ['reinforced-wall', 'machicolations']) {
-        expect(drawSprites('outpost', 2, aspect, true, 0, 0, angle).frames).toEqual([
-          'archer',
-          'archer',
-          'diagonal-' + aspect,
-        ])
-      }
-    },
-  )
-
   it('переводит атлас в пиксели один раз перед отрисовкой повёрнутых спрайтов', async () => {
     expect(await loadUnitSprites()).toBe(true)
     expect(atlasPaints).toEqual([[expect.any(Image), 0, 0]])
-    expect([bitmap.width, bitmap.height]).toEqual([768, 3264])
+    expect([bitmap.width, bitmap.height]).toEqual([768, 2880])
   })
 
   const stages = {

@@ -22,17 +22,14 @@ it.each(PLAYABLE_LEVELS)('Застава занимает только ковё�
   expect(game.build('outpost', other[0], other[1])).toBeTruthy()
 })
 
-it('Застава перекрывает оба поворота по диагонали и сохраняет прямой проход между ними', () => {
+it('Застава занимает только прямые вертикальные участки, оба края поворота закрыты', () => {
   const game = createGame(PLAYABLE_LEVELS[0])
   game.reset()
   // На ряд 8 враги входят снизу, затем поворачивают налево и уходят вверх на столбце 1.
-  expect(game.build('outpost', 3, 8)?.barricade?.angle).toBe(-Math.PI / 4)
-  game.sell(3, 8)
+  expect(game.build('outpost', 3, 8)).toBeNull()
   expect(game.isCellFree(3, 9, 'outpost')).toBe(true)
   expect(game.build('outpost', 2, 8)).toBeNull()
-  expect(game.build('outpost', 1, 8)?.barricade?.angle).toBe(-Math.PI / 4)
-  game.sell(1, 8)
-  expect(game.level.outpostSites.get('1,6')?.angle).toBe(Math.PI / 4)
+  expect(game.build('outpost', 1, 8)).toBeNull()
   expect(game.isCellFree(1, 7, 'outpost')).toBe(true)
 })
 

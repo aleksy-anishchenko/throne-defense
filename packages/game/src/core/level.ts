@@ -122,7 +122,6 @@ export function createLevel(def: LevelDef): Level {
   const blockedCellKeys = new Set(def.blockedCells.map(([col, row]) => cellKey(col, row)))
   const propCellKeys = new Set((def.props ?? []).map(({ cell }) => cellKey(cell[0], cell[1])))
   const outpostSites = new Map<string, { distance: number; angle: number }>()
-  const reserved = new Set(blockedCellKeys)
   const throneKey = cellKey(Math.floor(def.throne[0]), Math.floor(def.throne[1]))
   // Все клетки, по которым проходит ковёр
   for (let distance = 0; distance <= path.length; distance += CARPET_SAMPLE_STEP) {
@@ -144,25 +143,13 @@ export function createLevel(def: LevelDef): Level {
     }
     blockedCellKeys.add(key)
   }
-  // На прямоугольном повороте стена идёт по биссектрисе между краями ковра.
-  let cornerDistance = 0
+  // У входа в клетку путь может быть вертикальным, а внутри уже поворачивать.
   for (let i = 1; i < path.points.length - 1; i++) {
     const [x, y] = path.points[i]
     const [prevX, prevY] = path.points[i - 1]
     const [nextX, nextY] = path.points[i + 1]
-    cornerDistance += Math.hypot(x - prevX, y - prevY)
-    const col = Math.floor(x)
-    const row = Math.floor(y)
-    const key = cellKey(col, row)
-    if (key === throneKey || reserved.has(key) || !isInsideLevelField(def, col, row)) continue
-    const horizontalEntry = prevY === y && prevX !== x && nextX === x && nextY !== y
-    const horizontalExit = prevX === x && prevY !== y && nextY === y && nextX !== x
-    if (horizontalEntry || horizontalExit) {
-      const dx = Math.sign(x - prevX) + Math.sign(nextX - x)
-      const dy = Math.sign(y - prevY) + Math.sign(nextY - y)
-      outpostSites.set(key, { distance: cornerDistance, angle: Math.atan2(dx, -dy) })
-    } else if (prevX !== x || nextX !== x || (y - prevY) * (nextY - y) <= 0) {
-      outpostSites.delete(key)
+    if (prevX !== x || nextX !== x || (y - prevY) * (nextY - y) <= 0) {
+      outpostSites.delete(cellKey(Math.floor(x), Math.floor(y)))
     }
   }
   for (const key of propCellKeys) blockedCellKeys.add(key)

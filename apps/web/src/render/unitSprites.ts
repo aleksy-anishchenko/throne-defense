@@ -141,7 +141,6 @@ function drawFrame(
 }
 
 const outpostFrames: TierFrames = [52, 53, 54]
-const diagonalFrames: TierFrames = [60, 61, 62]
 const outpostRuins: TierFrames = [55, 51, 51]
 
 export function drawOutpostSprite(
@@ -149,37 +148,13 @@ export function drawOutpostSprite(
   tier: number,
   ruined: boolean,
   aspectId: string | null,
-  wallAngle: number,
 ): boolean {
   if (!atlas) return false
-  const diagonal = Math.abs(Math.sin(wallAngle)) > 0.5
-  const intactFrames = diagonal ? diagonalFrames : outpostFrames
-  let frame = frameAtTier(ruined ? outpostRuins : intactFrames, tier)
-  if (!ruined && aspectId === 'reinforced-wall') frame = diagonal ? 63 : 56
-  if (!ruined && aspectId === 'machicolations') frame = diagonal ? 64 : 57
-  if (!diagonal) {
-    drawFrame(ctx, atlas, frame, 1.03, 0.5)
-    return true
-  }
-
-  const slope = Math.sign(Math.sin(wallAngle) * Math.cos(wallAngle))
-  if (!ruined) {
-    for (const offset of [-0.25, 0.25]) {
-      ctx.save()
-      ctx.translate(
-        offset + 0.16 * Math.sin(wallAngle),
-        offset * slope - 0.16 * Math.cos(wallAngle),
-      )
-      ctx.scale(-Math.sign(Math.sin(wallAngle)), 1)
-      drawFrame(ctx, atlas, 0, 0.49, FEET)
-      ctx.restore()
-    }
-  }
-  // Проецируем длину стены вдоль диагонали. Башенки, зубцы и фигуры сохраняют вертикаль.
-  ctx.save()
-  ctx.transform(1.04, 1.04 * slope, 0, 0.72, 0, 0)
-  drawFrame(ctx, atlas, frame, 1, 0.67)
-  ctx.restore()
+  const frames = ruined ? outpostRuins : outpostFrames
+  let frame = frameAtTier(frames, tier)
+  if (!ruined && aspectId === 'reinforced-wall') frame = 56
+  if (!ruined && aspectId === 'machicolations') frame = 57
+  drawFrame(ctx, atlas, frame, 1.03, 0.5)
   return true
 }
 

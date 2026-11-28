@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="768" height="3264" viewBox="0 0 768 3264" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="2880" viewBox="0 0 768 2880" role="img">
   <title>Стражи и враги «Защиты трона»</title>
   <!-- Ячейки 192×192 в четыре столбца. Индексы ячеек заданы в unitSprites.ts. -->
   <style>
@@ -1146,7 +1146,6 @@
   <g id="outpost-royal" transform="translate(384 2496) scale(1.5)">
     <g id="royal-wall-body">
     <use href="#outpost-company"/>
-    <g id="royal-wall-masonry">
     <use href="#outpost-curtain"/>
     <path class="ink" fill="#a23f4e" d="M17 16Q11 19 3 15l2 6-3 5q7 4 15 0zm93-4q8-5 15-2l-3 6 3 4q-7-2-15 4z"/>
     <path class="line" stroke="#edc678" stroke-width="2.8" d="M17 39V14m93 25V10"/>
@@ -1157,10 +1156,8 @@
     <use href="#outpost-crest" transform="translate(9 8) scale(.86)"/>
     </g>
   </g>
-  </g>
   <g id="reinforced-wall" transform="translate(0 2688) scale(1.5)">
     <use href="#royal-wall-body"/>
-    <g id="reinforced-wall-facing">
     <use href="#wall-buttress"/>
     <use href="#wall-buttress" transform="translate(128 0) scale(-1 1)"/>
     <!-- Широкая стальная облицовка и щит остаются различимыми на одной клетке. -->
@@ -1168,17 +1165,14 @@
     <path class="ink" fill="#5b7189" d="m40 48 23-8 25 7-2 28q-3 17-23 29-19-10-22-25z"/>
     <path fill="#d9e5ec" d="m44 51 19-7 21 6-2 22-5 12 2-29-16-5-14 5-1 20z"/>
     <path fill="#a8bccb" d="m63 54 14 5-2 18q-2 9-12 17z"/>
-    </g>
   </g>
   <g id="machicolations" transform="translate(192 2688) scale(1.5)">
     <use href="#royal-wall-body"/>
-    <g id="machicolations-facing">
     <!-- Три открытых снизу бойницы в выступающем каменном парапете. -->
     <path class="ink" fill="#677583" d="M25 58h78v12l-6 5v9l-5 4-5-4v-9H69v9l-5 4-5-4v-9H41v9l-5 4-5-4v-9l-6-5z"/>
     <path class="ink" fill="#a7b2ba" d="m23 56 6-6h70l6 6-3 8H26z"/>
     <path fill="#cbd2d5" d="m28 55 4-3h65l4 3z"/>
     <path fill="#252a31" d="M33 65h14v7H33zm24 0h14v7H57zm24 0h14v7H81z"/>
-    </g>
   </g>
   <g id="outpost-rubble" transform="translate(576 2304) scale(1.5)">
     <ellipse fill="#191722" opacity=".45" cx="64" cy="93" rx="56" ry="11"/>
@@ -1190,20 +1184,5 @@
     <path class="ink" fill="#85573f" d="m8 92 1-28 6 7 6-11-1 17 9-2-5 19zm93-9 5-13 4 3 9-12-2 32-16 1zM30 94l12-11 18 2-9 4 13 1-7 6z"/>
     <path class="ink" fill="#9b6d4a" d="m68 89 11-8 11 3-7 4 11 3-10 5z"/>
     <use href="#outpost-crest" transform="translate(-14 70) rotate(-18 65 79) scale(.61 .30)"/>
-  </g>
-  <g id="diagonal-outpost" transform="translate(0 2880) scale(1.5)">
-    <use href="#outpost-timber"/><use href="#outpost-crest" transform="translate(14 16) scale(.78)"/>
-  </g>
-  <g id="diagonal-stone" transform="translate(192 2880) scale(1.5)">
-    <use href="#outpost-curtain"/><use href="#outpost-crest" transform="translate(15 17) scale(.77)"/>
-  </g>
-  <g id="diagonal-royal" transform="translate(384 2880) scale(1.5)">
-    <use href="#royal-wall-masonry"/>
-  </g>
-  <g id="diagonal-reinforced-wall" transform="translate(576 2880) scale(1.5)">
-    <use href="#royal-wall-masonry"/><use href="#reinforced-wall-facing"/>
-  </g>
-  <g id="diagonal-machicolations" transform="translate(0 3072) scale(1.5)">
-    <use href="#royal-wall-masonry"/><use href="#machicolations-facing"/>
   </g>
 </svg>
