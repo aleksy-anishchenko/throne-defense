@@ -22,11 +22,12 @@ it.each(PLAYABLE_LEVELS)('Застава занимает только ковё�
   expect(game.build('outpost', other[0], other[1])).toBeTruthy()
 })
 
-it('на повороте место для Заставы зависит от направления входа в клетку', () => {
+it('Застава занимает только прямые вертикальные участки, оба края поворота закрыты', () => {
   const game = createGame(PLAYABLE_LEVELS[0])
   game.reset()
   // На ряд 8 враги входят снизу, затем поворачивают налево и уходят вверх на столбце 1.
-  expect(game.isCellFree(3, 8, 'outpost')).toBe(true)
+  expect(game.build('outpost', 3, 8)).toBeNull()
+  expect(game.isCellFree(3, 9, 'outpost')).toBe(true)
   expect(game.build('outpost', 2, 8)).toBeNull()
   expect(game.build('outpost', 1, 8)).toBeNull()
   expect(game.isCellFree(1, 7, 'outpost')).toBe(true)
@@ -81,7 +82,7 @@ function outpostWithAspect(id: string) {
   const game = createGame(PLAYABLE_LEVELS[0])
   game.reset()
   game.state.gold = 375
-  const [col, row] = [...game.level.outpostSites.keys()][8].split(',').map(Number)
+  const [col, row] = [...game.level.outpostSites.keys()].at(-1)!.split(',').map(Number)
   const tower = game.build('outpost', col, row)!
   expect(game.specialize(col, row, id)).toBe(false)
   game.upgrade(col, row)

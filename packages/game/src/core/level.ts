@@ -133,7 +133,7 @@ export function createLevel(def: LevelDef): Level {
     if (propCellKeys.has(cellKey(col, row)))
       fail(def, `препятствие на ковре, клетка (${col},${row})`)
     const key = cellKey(col, row)
-    // На повороте важен вход в клетку: стена должна перекрывать путь горизонтально.
+    // Горизонтальная стена перекрывает вертикальный участок ковра.
     if (key !== throneKey && !blockedCellKeys.has(key)) {
       const [prevX, prevY] = path.positionAt(Math.max(0, distance - CARPET_SAMPLE_STEP))
       const [nextX, nextY] = path.positionAt(distance + CARPET_SAMPLE_STEP)
@@ -142,6 +142,15 @@ export function createLevel(def: LevelDef): Level {
       }
     }
     blockedCellKeys.add(key)
+  }
+  // У входа в клетку путь может быть вертикальным, а внутри уже поворачивать.
+  for (let i = 1; i < path.points.length - 1; i++) {
+    const [x, y] = path.points[i]
+    const [prevX, prevY] = path.points[i - 1]
+    const [nextX, nextY] = path.points[i + 1]
+    if (prevX !== x || nextX !== x || (y - prevY) * (nextY - y) <= 0) {
+      outpostSites.delete(cellKey(Math.floor(x), Math.floor(y)))
+    }
   }
   for (const key of propCellKeys) blockedCellKeys.add(key)
 
