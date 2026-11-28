@@ -144,7 +144,7 @@ export function createLevel(def: LevelDef): Level {
     }
     blockedCellKeys.add(key)
   }
-  // На прямоугольном повороте боковая стена перекрывает горизонтальное плечо.
+  // На прямоугольном повороте стена идёт по биссектрисе между краями ковра.
   let cornerDistance = 0
   for (let i = 1; i < path.points.length - 1; i++) {
     const [x, y] = path.points[i]
@@ -158,11 +158,9 @@ export function createLevel(def: LevelDef): Level {
     const horizontalEntry = prevY === y && prevX !== x && nextX === x && nextY !== y
     const horizontalExit = prevX === x && prevY !== y && nextY === y && nextX !== x
     if (horizontalEntry || horizontalExit) {
-      const dx = horizontalEntry ? x - prevX : nextX - x
-      outpostSites.set(key, {
-        distance: cornerDistance + (horizontalExit ? 0.25 : 0),
-        angle: (Math.sign(dx) * Math.PI) / 2,
-      })
+      const dx = Math.sign(x - prevX) + Math.sign(nextX - x)
+      const dy = Math.sign(y - prevY) + Math.sign(nextY - y)
+      outpostSites.set(key, { distance: cornerDistance, angle: Math.atan2(dx, -dy) })
     } else if (prevX !== x || nextX !== x || (y - prevY) * (nextY - y) <= 0) {
       outpostSites.delete(key)
     }

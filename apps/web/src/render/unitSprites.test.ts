@@ -38,6 +38,7 @@ function drawSprites(
   const transforms = { translate: vi.fn(), rotate: vi.fn(), scale: vi.fn() }
   const ctx = {
     drawImage,
+    transform: vi.fn(),
     save: vi.fn(),
     restore: vi.fn(),
     ...transforms,
@@ -82,15 +83,17 @@ describe('SVG-облики стражей', () => {
     }
   })
 
-  it.each([-Math.PI / 2, Math.PI / 2])(
+  it.each([-Math.PI / 4, Math.PI / 4])(
     'на повороте использует боковую фигуру без наклона лучников (%s)',
     (angle) => {
       const drawing = drawSprites('outpost', 0, null, true, 0, 0, angle)
-      expect(drawing.frames).toEqual(['flank-outpost'])
+      expect(drawing.frames).toEqual(['archer', 'archer', 'diagonal-outpost'])
       expect(drawing.rotate).not.toHaveBeenCalled()
       for (const aspect of ['reinforced-wall', 'machicolations']) {
         expect(drawSprites('outpost', 2, aspect, true, 0, 0, angle).frames).toEqual([
-          'flank-' + aspect,
+          'archer',
+          'archer',
+          'diagonal-' + aspect,
         ])
       }
     },

@@ -333,6 +333,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     if (progress < 0 || progress >= 1) return
     ctx.save()
     ctx.translate(tower.x, tower.y)
+    if (Math.abs(Math.sin(wall.angle)) > 0.5) ctx.translate(0, -0.1)
     ctx.rotate(wall.angle)
     for (const [index, x] of [-0.193, 0, 0.193].entries()) {
       const phase = progress - index * 0.045
@@ -343,7 +344,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       const width = 0.066 * Math.min(1, phase * 16) * neck
       const bend = Math.sin(phase * 9 + index) * 0.031
       ctx.save()
-      ctx.translate(x, Math.abs(wall.angle) === Math.PI / 2 ? 0.11 : 0.04)
+      ctx.translate(Math.abs(Math.sin(wall.angle)) > 0.5 ? x * 1.47 : x, 0.04)
       ctx.fillStyle = '#54301e'
       ctx.strokeStyle = '#35232a'
       ctx.lineWidth = 0.014
