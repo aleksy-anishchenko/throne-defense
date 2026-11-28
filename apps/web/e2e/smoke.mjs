@@ -2029,14 +2029,19 @@ async function phone(page, url) {
   check('нажатие мимо меню закрыло его', (await page.getByRole('dialog').count()) === 0)
 
   await shopToggle.tap()
-  await drawer.getByRole('button', { name: /^Плита с шипами/ }).tap()
+  await drawer.getByRole('button', { name: /^Шипы/ }).tap()
   await tapTile(3, 8)
+  check(
+    'На повороте шипы поставить нельзя',
+    await page.getByRole('button', { name: 'Да', exact: true }).isHidden(),
+  )
+  await tapTile(2, 8)
   await page.getByRole('button', { name: 'Да', exact: true }).tap()
   check(
-    'Плита ставится на поворот ковра',
-    (await readGameSnapshot(page)).towers.includes('spike-plate0@3,8'),
+    'Шипы ставятся на прямой участок ковра',
+    (await readGameSnapshot(page)).towers.includes('spike-plate0@2,8'),
   )
-  await tapTile(3, 8)
+  await tapTile(2, 8)
   await page.getByRole('button', { name: /Вернуть/ }).tap()
   await shopToggle.tap()
   await drawer.getByRole('button', { name: /^Застава/ }).tap()

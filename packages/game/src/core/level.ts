@@ -150,9 +150,11 @@ export function createLevel(def: LevelDef): Level {
     const [x, y] = path.points[i]
     const [prevX, prevY] = path.points[i - 1]
     const [nextX, nextY] = path.points[i + 1]
-    if (prevX !== x || nextX !== x || (y - prevY) * (nextY - y) <= 0) {
-      outpostSites.delete(cellKey(Math.floor(x), Math.floor(y)))
-    }
+    const key = cellKey(Math.floor(x), Math.floor(y))
+    const straightVertical = prevX === x && nextX === x && (y - prevY) * (nextY - y) > 0
+    const straightHorizontal = prevY === y && nextY === y && (x - prevX) * (nextX - x) > 0
+    if (!straightVertical) outpostSites.delete(key)
+    if (!straightHorizontal && !straightVertical) plateSites.delete(key)
   }
   for (const key of propCellKeys) blockedCellKeys.add(key)
 

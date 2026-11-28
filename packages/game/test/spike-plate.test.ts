@@ -7,10 +7,10 @@ function setup(aspect?: string) {
   const game = createGame(PLAYABLE_LEVELS[0])
   game.reset()
   game.state.gold = 1000
-  const tower = game.build('spike-plate', 3, 8)!
-  game.upgrade(3, 8)
-  game.upgrade(3, 8)
-  if (aspect) expect(game.specialize(3, 8, aspect)).toBe(true)
+  const tower = game.build('spike-plate', 2, 8)!
+  game.upgrade(2, 8)
+  game.upgrade(2, 8)
+  if (aspect) expect(game.specialize(2, 8, aspect)).toBe(true)
   function enter(id: string) {
     const enemy = placeEnemy(game, id)
     Object.assign(enemy, { x: tower.x, y: tower.y, hp: 2000, maxHp: 2000 })
@@ -26,9 +26,9 @@ function setup(aspect?: string) {
 it('продажа освобождает единственное место укрепления в обоих направлениях', () => {
   const { game } = setup()
   expect(game.build('outpost', 3, 9)).toBeNull()
-  game.sell(3, 8)
+  game.sell(2, 8)
   expect(game.build('outpost', 3, 9)).toBeTruthy()
-  expect(game.build('spike-plate', 3, 8)).toBeNull()
+  expect(game.build('spike-plate', 2, 8)).toBeNull()
 })
 
 it('кровотечение за три секунды следует за врагом и зависит от полного здоровья', () => {
@@ -72,4 +72,13 @@ it('колья ждут великана и бьют также стоящих �
   expect(rebel.hp).toBe(1800)
   expect(ogre.hp).toBe(1800)
   expect(ogre.bleeding?.damagePerSecond).toBe(100)
+})
+
+it('на обоих поворотах шипы закрыты, между ними и на вертикальной прямой разрешены', () => {
+  const game = createGame(PLAYABLE_LEVELS[0])
+  game.reset()
+  expect(game.isCellFree(3, 8, 'spike-plate')).toBe(false)
+  expect(game.isCellFree(1, 8, 'spike-plate')).toBe(false)
+  expect(game.isCellFree(2, 8, 'spike-plate')).toBe(true)
+  expect(game.isCellFree(3, 9, 'spike-plate')).toBe(true)
 })

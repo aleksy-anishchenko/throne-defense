@@ -316,7 +316,7 @@ export const useSelectionStore = defineStore('selection', () => {
       const existing = game.state.towers.find((tower) => tower.def.carpetFortification)
       if (existing) {
         gameStore.rejectAction(
-          `На ковре уже стоит ${existing.def.name.toLowerCase()}. Между волнами её можно продать за полную цену.`,
+          `Место занято: «${existing.def.name}». Между волнами укрепление можно продать за полную цену.`,
         )
         return
       }
@@ -467,7 +467,7 @@ export const useSelectionStore = defineStore('selection', () => {
     const hud = gameStore.hud
     if (selected.towerId) return ''
     if (armedTowerId.value) {
-      if (armedTowerId.value === 'spike-plate') return 'Выберите подсвеченную клетку ковра.'
+      if (armedTowerId.value === 'spike-plate') return 'Выберите прямой участок ковра.'
       if (armedTowerId.value === 'outpost') return 'Выберите подсвеченное место поперёк ковра.'
       if (placementEffect.value) return placementEffect.value
       if (touchPlacement.value?.cell) return 'Можно выбрать другую плиту.'
