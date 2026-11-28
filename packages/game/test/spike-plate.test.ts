@@ -6,6 +6,10 @@ import { placeEnemy, worldOf } from './helpers.ts'
 function setup(aspect?: string) {
   const game = createGame(PLAYABLE_LEVELS[0])
   game.reset()
+  game.state.selectedRewards.push(
+    { rewardId: 'outpost', wave: 5 },
+    { rewardId: 'spike-plate', wave: 10 },
+  )
   game.state.gold = 1000
   const tower = game.build('spike-plate', 2, 8)!
   game.upgrade(2, 8)
@@ -77,6 +81,10 @@ it('колья ждут великана и бьют также стоящих �
 it('на обоих поворотах шипы закрыты, между ними и на вертикальной прямой разрешены', () => {
   const game = createGame(PLAYABLE_LEVELS[0])
   game.reset()
+  game.state.selectedRewards.push(
+    { rewardId: 'outpost', wave: 5 },
+    { rewardId: 'spike-plate', wave: 10 },
+  )
   expect(game.isCellFree(3, 8, 'spike-plate')).toBe(false)
   expect(game.isCellFree(1, 8, 'spike-plate')).toBe(false)
   expect(game.isCellFree(2, 8, 'spike-plate')).toBe(true)

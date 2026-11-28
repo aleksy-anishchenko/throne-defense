@@ -26,6 +26,7 @@ export {
   REWARDS,
   REWARD_LIST,
   REWARD_RARITIES,
+  rewardRarityLabel,
   REWARD_SETS,
   REWARD_SET_SIZE,
   REWARD_WAVES,

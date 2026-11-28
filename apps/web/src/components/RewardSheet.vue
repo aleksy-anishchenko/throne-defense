@@ -15,7 +15,7 @@ const groups = computed(() => {
   const setIds = new Set(blessings.map((blessing) => blessing.setId))
   return [...setIds].map((setId) => ({
     setId,
-    count: store.blessingSetCounts[setId],
+    count: setId ? store.blessingSetCounts[setId] : 0,
     blessings: blessings.filter((blessing) => blessing.setId === setId),
   }))
 })
@@ -51,7 +51,7 @@ useMenuFocus(() => selection.isRewardSheetOpen, drawerElement)
         aria-label="Полученные благословения"
         tabindex="0"
       >
-        <div v-for="group in groups" :key="group.setId" class="reward-drawer-group">
+        <div v-for="group in groups" :key="group.setId ?? 'unique'" class="reward-drawer-group">
           <ul class="reward-drawer-rewards">
             <li
               v-for="blessing in group.blessings"
@@ -71,7 +71,7 @@ useMenuFocus(() => selection.isRewardSheetOpen, drawerElement)
               </div>
             </li>
           </ul>
-          <RewardSetStrip :set-id="group.setId" :count="group.count" />
+          <RewardSetStrip v-if="group.setId" :set-id="group.setId" :count="group.count" />
         </div>
       </div>
     </div>

@@ -2,7 +2,6 @@
 // Меню выбора стража на телефоне.
 // После выбора карточки можно примерить стража на свободных плитах.
 // С боковой панелью (компьютер, телефон набок) меню скрыто стилями, там работает ShopPanel
-import { TOWER_LIST } from '@throne/game'
 import { nextTick, useTemplateRef } from 'vue'
 import { useMenuFocus } from '@/composables/useMenuFocus'
 import { useGameStore } from '@/stores/game'
@@ -49,7 +48,7 @@ async function chooseTower(towerId: string, event: MouseEvent) {
         </button>
       </header>
       <ul class="shop-drawer-list">
-        <li v-for="towerDef in TOWER_LIST" :key="towerDef.id">
+        <li v-for="towerDef in store.shopTowers" :key="towerDef.id">
           <button
             type="button"
             class="drawer-card"
@@ -62,10 +61,10 @@ async function chooseTower(towerId: string, event: MouseEvent) {
             <TowerIcon :tower-id="towerDef.id" class="drawer-card-icon" />
             <span class="drawer-card-name">{{ towerDef.name }}</span>
             <span class="drawer-card-cost">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
+              <svg v-if="towerDef.cost" viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" fill="currentColor" />
               </svg>
-              <span class="visually-hidden">цена</span>{{ towerDef.cost }}
+              <span class="visually-hidden">цена</span>{{ towerDef.cost || 'Бесплатно' }}
             </span>
             <span :id="`shop-description-${towerDef.id}`" class="drawer-card-description">{{
               shopPlacementDescription(towerDef)

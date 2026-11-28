@@ -17,6 +17,7 @@ import {
   REWARD_SETS,
   REWARD_SET_SIZE,
   TOWERS,
+  TOWER_LIST,
   createGame,
   rewardRerollCost,
   rewardSetCounts,
@@ -136,6 +137,13 @@ export const useGameStore = defineStore('game', () => {
     rerollCost: null as number | null,
     selected: [] as RewardPick[],
   })
+  const shopTowers = computed(() =>
+    TOWER_LIST.filter(
+      (tower) =>
+        !tower.carpetFortification ||
+        rewards.selected.some(({ rewardId }) => rewardId === tower.id),
+    ),
+  )
   const blessingEffects = computed(() => rewardStats({ selectedRewards: rewards.selected }))
   const blessingSetCounts = computed(() => rewardSetCounts(rewards.selected))
   const receivedBlessings = computed(() =>
@@ -336,6 +344,12 @@ export const useGameStore = defineStore('game', () => {
     syncHud()
     screen.value = null
     const { setId } = REWARDS[rewardId]
+    if (!setId) {
+      void showToast(
+        `Открыт страж «${REWARDS[rewardId].name}». Бесплатная установка в меню стражей.`,
+      )
+      return
+    }
     if (rewardSetCounts(state.selectedRewards)[setId] === REWARD_SET_SIZE) {
       void showToast(`Набор «${REWARD_SETS[setId].name}» собран`)
     }
@@ -499,6 +513,7 @@ export const useGameStore = defineStore('game', () => {
     rewards,
     blessingEffects,
     blessingSetCounts,
+    shopTowers,
     receivedBlessings,
     audioSettings,
     toast,

@@ -185,6 +185,7 @@ export interface EnemyDef {
 
 /** Постоянные и мгновенные эффекты благословений после рубежных волн */
 export type RewardEffect =
+  | { kind: 'uniqueGuard' }
   | { kind: 'gold' }
   | { kind: 'buyback' }
   | { kind: 'healToFull' }
@@ -205,6 +206,8 @@ export type RewardEffect =
   | { kind: 'iceNeedles' }
 
 export type RewardId =
+  | 'outpost'
+  | 'spike-plate'
   | 'war-chest'
   | 'field-medic'
   | 'sharpened-steel'

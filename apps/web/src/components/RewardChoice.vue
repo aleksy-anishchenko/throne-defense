@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { REWARDS, REWARD_RARITIES, rewardDescriptionForWave, rewardSetCounts } from '@throne/game'
+import { REWARDS, rewardRarityLabel, rewardDescriptionForWave, rewardSetCounts } from '@throne/game'
 import { computed, nextTick, useTemplateRef } from 'vue'
 import { useGameStore } from '@/stores/game'
 import RewardIcon from './RewardIcon.vue'
@@ -17,7 +17,7 @@ const cards = computed(() => {
     return {
       ...reward,
       description: rewardDescriptionForWave(rewardId, store.rewards.wave),
-      setCount: counts[reward.setId],
+      setCount: reward.setId ? counts[reward.setId] : 0,
     }
   })
 })
@@ -70,15 +70,14 @@ async function reroll(event: MouseEvent) {
       >
         <span class="reward-emblem">
           <RewardIcon :reward-id="card.id" />
-          <span class="reward-rarity reward-rarity-chip">{{
-            REWARD_RARITIES[card.rarity].label
-          }}</span>
+          <span class="reward-rarity reward-rarity-chip">{{ rewardRarityLabel(card.rarity) }}</span>
         </span>
         <span class="reward-card-copy">
           <strong>{{ card.name }}</strong>
           <span class="reward-description">{{ card.description }}</span>
         </span>
         <RewardSetStrip
+          v-if="card.setId"
           class="reward-card-set"
           :set-id="card.setId"
           :count="card.setCount"

@@ -26,10 +26,10 @@ const emit = defineEmits<{ pick: [] }>()
     <TowerIcon :tower-id="def.id" />
     <span class="card-name">{{ def.name }}</span>
     <span class="cost">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg v-if="def.cost" viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="10" fill="currentColor" />
       </svg>
-      <span class="visually-hidden">цена</span>{{ def.cost }}
+      <span class="visually-hidden">цена</span>{{ def.cost || 'Бесплатно' }}
     </span>
     <span class="card-description">{{ def.shortDescription }}</span>
   </button>

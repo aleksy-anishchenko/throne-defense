@@ -146,6 +146,7 @@ export function createGame(levelDef: LevelDef): Game {
     if (towerId && TOWERS[towerId]?.carpetFortification) {
       return (
         state.phase === 'build' &&
+        state.selectedRewards.some(({ rewardId }) => rewardId === towerId) &&
         (towerId === 'outpost' ? level.outpostSites : level.plateSites).has(key) &&
         !state.towers.some((tower) => tower.def.carpetFortification)
       )

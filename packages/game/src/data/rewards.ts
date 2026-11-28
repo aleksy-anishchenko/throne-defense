@@ -18,7 +18,11 @@ export const REWARD_RARITIES = {
   legendary: { label: 'Легендарное', weight: 15 },
 } as const
 
-export type RewardRarity = keyof typeof REWARD_RARITIES
+export type RewardRarity = keyof typeof REWARD_RARITIES | 'unique'
+
+export function rewardRarityLabel(rarity: RewardRarity): string {
+  return rarity === 'unique' ? 'Уникальный страж' : REWARD_RARITIES[rarity].label
+}
 
 export const REWARD_SET_SIZE = 3
 export const CROWN_GIFT_OPTION_COUNT = 4
@@ -67,11 +71,29 @@ export interface RewardDef {
   name: string
   description: string
   rarity: RewardRarity
-  setId: RewardSetId
+  setId: RewardSetId | null
   effect: RewardEffect
 }
 
 export const REWARD_LIST: readonly RewardDef[] = [
+  {
+    id: 'outpost',
+    name: 'Застава',
+    description:
+      'Открывает бесплатную Заставу на ковре. Щит задерживает врагов под огнём лучников. Улучшения и аспекты за золото.',
+    rarity: 'unique',
+    setId: null,
+    effect: { kind: 'uniqueGuard' },
+  },
+  {
+    id: 'spike-plate',
+    name: 'Шипы',
+    description:
+      'Открывает бесплатные Шипы на ковре. Ранят всех на клетке и вызывают кровотечение. Улучшения и аспекты за золото.',
+    rarity: 'unique',
+    setId: null,
+    effect: { kind: 'uniqueGuard' },
+  },
   {
     id: 'war-chest',
     name: 'Военная казна',

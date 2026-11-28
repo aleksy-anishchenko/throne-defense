@@ -21,7 +21,9 @@ describe('данные башен', () => {
     })
 
     it(`${def.name}: цены — целые положительные числа`, () => {
-      for (const cost of [def.cost, ...def.upgradeCosts]) {
+      expect(Number.isInteger(def.cost)).toBe(true)
+      expect(def.carpetFortification ? def.cost === 0 : def.cost > 0).toBe(true)
+      for (const cost of def.upgradeCosts) {
         expect(Number.isInteger(cost) && cost > 0, String(cost)).toBe(true)
       }
     })

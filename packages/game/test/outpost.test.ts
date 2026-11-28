@@ -7,6 +7,7 @@ import { placeEnemy, stepUntil, worldOf } from './helpers.ts'
 it.each(PLAYABLE_LEVELS)('Застава занимает только ковёр в зале $name', (level) => {
   const game = createGame(level)
   game.reset()
+  game.state.selectedRewards.push({ rewardId: 'outpost', wave: 5 })
   const [site, other] = Array.from(game.level.outpostSites.keys(), (key) =>
     key.split(',').map(Number),
   )
@@ -16,7 +17,7 @@ it.each(PLAYABLE_LEVELS)('Застава занимает только ковё�
   expect(game.build('outpost', 0.5, 0)).toBeNull()
   expect(game.build('outpost', site[0], site[1])).toBeTruthy()
   expect(game.build('outpost', other[0], other[1])).toBeNull()
-  expect(game.state.gold).toBe(gold - 75)
+  expect(game.state.gold).toBe(gold)
   game.sell(site[0], site[1])
   expect(game.state.gold).toBe(gold)
   expect(game.build('outpost', other[0], other[1])).toBeTruthy()
@@ -25,6 +26,7 @@ it.each(PLAYABLE_LEVELS)('Застава занимает только ковё�
 it('Застава занимает только прямые вертикальные участки, оба края поворота закрыты', () => {
   const game = createGame(PLAYABLE_LEVELS[0])
   game.reset()
+  game.state.selectedRewards.push({ rewardId: 'outpost', wave: 5 })
   // На ряд 8 враги входят снизу, затем поворачивают налево и уходят вверх на столбце 1.
   expect(game.build('outpost', 3, 8)).toBeNull()
   expect(game.isCellFree(3, 9, 'outpost')).toBe(true)
@@ -40,6 +42,7 @@ it('гарнизон стреляет, держит огра до разруше
     waves: [[['ogre', 1, 0, 0]], [['rebel', 1, 0, 0]]],
   })
   game.reset()
+  game.state.selectedRewards.push({ rewardId: 'outpost', wave: 5 })
   const [col, row] = [...game.level.outpostSites.keys()][0].split(',').map(Number)
   const tower = game.build('outpost', col, row)!
   const wall = tower.barricade!
@@ -75,13 +78,14 @@ it('гарнизон стреляет, держит огра до разруше
   expect(shots).toBe(shotsBefore)
   expect(game.state.phase).toBe('build')
   expect(wall.hp).toBe(wall.maxHp)
-  expect(game.sell(col, row)).toBe(235)
+  expect(game.sell(col, row)).toBe(160)
 })
 
 function outpostWithAspect(id: string) {
   const game = createGame(PLAYABLE_LEVELS[0])
   game.reset()
-  game.state.gold = 375
+  game.state.selectedRewards.push({ rewardId: 'outpost', wave: 5 })
+  game.state.gold = 300
   const [col, row] = [...game.level.outpostSites.keys()].at(-1)!.split(',').map(Number)
   const tower = game.build('outpost', col, row)!
   expect(game.specialize(col, row, id)).toBe(false)

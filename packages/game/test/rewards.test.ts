@@ -69,7 +69,7 @@ describe('благословения после волн', () => {
         (rarity) =>
           REWARD_LIST.filter((card) => card.setId === setId && card.rarity === rarity).length,
       )
-    expect(REWARD_LIST).toHaveLength(18)
+    expect(REWARD_LIST).toHaveLength(20)
     expect(raritiesIn('arsenal')).toEqual([3, 2, 1])
     expect(raritiesIn('supplies')).toEqual([3, 2, 1])
     expect(raritiesIn('watch')).toEqual([3, 2, 1])
@@ -225,7 +225,7 @@ describe('благословения после волн', () => {
   it('обновление пропускает текущую тройку и возвращает ранее показанные карты в пул', () => {
     const game = newGame()
     game.state.gold = 500
-    game.state.rewardSeed = 8
+    game.state.rewardSeed = 153
     finishWave(game, 10)
     const first = waveOffer(game)
     const gold = game.state.gold
@@ -865,4 +865,20 @@ describe('благословения после волн', () => {
       },
     ])
   })
+})
+
+it('карта открывает бесплатные Шипы только в этой партии, улучшения платные', () => {
+  const game = newGame()
+  game.state.gold = 0
+  const [col, row] = [...game.level.outpostSites.keys()][0].split(',').map(Number)
+  expect(game.build('spike-plate', col, row)).toBeNull()
+  expect(game.build('outpost', col, row)).toBeNull()
+  choose(game, 'spike-plate', 5)
+  expect(rewardSetCounts(game.state.selectedRewards)).toEqual({ watch: 0, supplies: 0, arsenal: 0 })
+  expect(game.build('outpost', col, row)).toBeNull()
+  expect(game.build('spike-plate', col, row)).toBeTruthy()
+  expect(game.upgrade(col, row)).toBe(false)
+  expect(game.sell(col, row)).toBe(0)
+  game.reset()
+  expect(game.build('spike-plate', col, row)).toBeNull()
 })

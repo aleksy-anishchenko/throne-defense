@@ -34,7 +34,11 @@ const lastHotkeyDigit = Math.min(MAX_HOTKEY_DIGIT, TOWER_LIST.length)
             {{ placementReach(selection.placementTower) }}. Столбец
             {{ selection.pendingPlacement.cell.col + 1 }}, ряд
             {{ selection.pendingPlacement.cell.row + 1 }}. Цена
-            {{ selection.placementTower.cost }} золота. {{ selection.hint }}
+            {{
+              selection.placementTower.cost
+                ? selection.placementTower.cost + ' золота'
+                : 'Бесплатно'
+            }}. {{ selection.hint }}
           </template>
         </span>
       </template>

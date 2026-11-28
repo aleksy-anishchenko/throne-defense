@@ -66,6 +66,7 @@ export function placementReach(def: TowerDef): string {
 }
 
 export function shopTowerLabel(def: TowerDef, isUnaffordable: boolean): string {
+  if (!def.cost) return `${def.name}, бесплатно`
   const label = `${def.name}, цена ${def.cost}`
   return isUnaffordable ? `${label}, недостаточно золота` : label
 }

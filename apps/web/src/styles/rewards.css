@@ -47,6 +47,11 @@
   gap: 10px;
 }
 
+[data-rarity='unique'] {
+  --reward-accent: #74d9c0;
+  --reward-line: #579888;
+  --reward-wash: #345f59;
+}
 [data-rarity='common'] {
   --reward-accent: #e0cbae;
   --reward-line: #8e7965;
@@ -113,6 +118,10 @@
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
+[data-rarity='unique'] .reward-rarity-chip {
+  white-space: normal;
+  text-align: center;
+}
 .reward-mark {
   position: relative;
   width: 58px;
@@ -129,6 +138,7 @@
   background: radial-gradient(ellipse at 50% 15%, var(--reward-wash), transparent 90%), #1a1d2c;
   content: '';
 }
+.reward-mark canvas,
 .reward-mark img {
   position: relative;
   width: 88%;

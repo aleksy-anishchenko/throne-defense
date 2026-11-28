@@ -37,7 +37,10 @@ export const STREAMS: EnemyStream[] = [
 ]
 
 export const DAMAGE_TOWERS = TOWER_LIST.filter(
-  (def) => (def.tiers[0].damage > 0 || (def.tiers[0].burnDamage ?? 0) > 0) && def.id !== 'frost',
+  (def) =>
+    !def.carpetFortification &&
+    (def.tiers[0].damage > 0 || (def.tiers[0].burnDamage ?? 0) > 0) &&
+    def.id !== 'frost',
 )
 export const MEASUREMENT_WAVES = [1, 10, 20] as const
 /** Сопоставляем ступени с этапами, где их покупают: I — начало, II — развитие, III — середина. */
@@ -190,7 +193,7 @@ export function measureArmy(
   for (let remaining = budget; remaining >= cost; remaining -= cost) {
     const cell = findBestCell(game, def.tiers[0].range)
     if (!cell) break
-    game.build(def.id, cell.col, cell.row)
+    if (!game.build(def.id, cell.col, cell.row)) break
     for (let i = 0; i < tier; i++) game.upgrade(cell.col, cell.row)
   }
   return runStream(game, stream)

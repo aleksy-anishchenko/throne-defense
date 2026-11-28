@@ -114,6 +114,15 @@ export function rollRewardOptions(
       break
     }
   }
+  // Уникальный страж занимает одно обычное место в тройке, сохраняя розыгрыш легендарной карты.
+  const guards = available.filter(({ rarity }) => rarity === 'unique').map(({ id }) => id)
+  const guardRoll = nextRandom(hashString(`guard:${levelId}:${wave}:${state.rewardSeed}:${roll}`))
+  if (guards.length && guardRoll / RANDOM_RANGE < 0.25) {
+    const slot = options.map((id) => REWARDS[id].rarity !== 'legendary').lastIndexOf(true)
+    const guard = takeReward(guards, nextRandom(guardRoll))
+    if (options.length < REWARD_OPTION_COUNT) options.push(guard)
+    else if (slot >= 0) options[slot] = guard
+  }
   return options
 }
 
@@ -155,7 +164,7 @@ export function rewardSetCounts(picks: readonly RewardPick[]): Record<RewardSetI
   const counts = { arsenal: 0, supplies: 0, watch: 0 }
   for (const { rewardId } of picks) {
     const reward = REWARDS[rewardId]
-    if (reward) counts[reward.setId]++
+    if (reward?.setId) counts[reward.setId]++
   }
   return counts
 }
@@ -201,12 +210,10 @@ export function applyReward(
     state.lives = Math.max(state.lives, state.maxLives)
   }
   state.selectedRewards.push(pick)
-  const set = REWARD_SETS[reward.setId]
-  const completesSet = rewardSetCounts(state.selectedRewards)[reward.setId] === REWARD_SET_SIZE
-  state.pendingReward =
-    completesSet && set.effect.kind === 'crown-gift'
-      ? offerCrownGift(state, pending, levelId)
-      : null
+  const completesGift =
+    reward.setId === 'supplies' &&
+    rewardSetCounts(state.selectedRewards).supplies === REWARD_SET_SIZE
+  state.pendingReward = completesGift ? offerCrownGift(state, pending, levelId) : null
   if (!state.pendingReward) state.phase = 'build'
   return pick
 }

@@ -20,6 +20,10 @@ function newGame() {
     ],
   })
   game.reset()
+  game.state.selectedRewards.push(
+    { rewardId: 'outpost', wave: 5 },
+    { rewardId: 'spike-plate', wave: 10 },
+  )
   game.state.gold = 10_000
   return game
 }

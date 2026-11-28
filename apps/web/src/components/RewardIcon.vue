@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TowerIcon from './TowerIcon.vue'
 import type { RewardId } from '@throne/game'
 import warChest from '@/assets/rewards/war-chest.svg'
 import fieldMedic from '@/assets/rewards/field-medic.svg'
@@ -40,11 +41,12 @@ const illustrations = {
   'ice-and-fire': iceAndFire,
   buyback,
   'ice-needles': iceNeedles,
-} satisfies Record<RewardId, string>
+} satisfies Record<Exclude<RewardId, 'outpost' | 'spike-plate'>, string>
 </script>
 
 <template>
   <span class="reward-mark" aria-hidden="true">
-    <img :src="illustrations[rewardId]" alt="" draggable="false" />
+    <TowerIcon v-if="rewardId === 'outpost' || rewardId === 'spike-plate'" :tower-id="rewardId" />
+    <img v-else :src="illustrations[rewardId]" alt="" draggable="false" />
   </span>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { REWARD_RARITIES, REWARD_SET_SIZE, type RewardId } from '@throne/game'
+import { rewardRarityLabel, REWARD_SET_SIZE, type RewardId } from '@throne/game'
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import { useGameStore } from '@/stores/game'
 import { useSelectionStore } from '@/stores/selection'
@@ -88,7 +88,7 @@ onUnmounted(() => {
         <span v-if="blessing.count > 1" class="reward-count" aria-hidden="true">
           ×{{ blessing.count }}
         </span>
-        <span class="reward-progress" aria-hidden="true">
+        <span v-if="blessing.setId" class="reward-progress" aria-hidden="true">
           <span
             v-for="part in REWARD_SET_SIZE"
             :key="part"
@@ -103,10 +103,11 @@ onUnmounted(() => {
         role="tooltip"
       >
         <div class="reward-tooltip-body">
-          <span class="reward-rarity">{{ REWARD_RARITIES[blessing.rarity].label }}</span>
+          <span class="reward-rarity">{{ rewardRarityLabel(blessing.rarity) }}</span>
           <strong>{{ blessing.name }}</strong>
           <span class="reward-tooltip-effect">{{ blessing.description }}</span>
           <RewardSetStrip
+            v-if="blessing.setId"
             :set-id="blessing.setId"
             :count="store.blessingSetCounts[blessing.setId]"
           />
