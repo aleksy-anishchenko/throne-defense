@@ -831,10 +831,14 @@ export function drawTower(
   aspectId: string | null = null,
   recoil = 0,
   healthShare = 1,
+  wallAngle = 0,
 ) {
   if (towerId === 'outpost') {
     ctx.save()
-    if (!drawOutpostSprite(ctx, tier, healthShare === 0, aspectId)) {
+    const sideView = Math.abs(wallAngle) === Math.PI / 2
+    if (sideView && wallAngle > 0) ctx.scale(-1, 1)
+    if (!drawOutpostSprite(ctx, tier, healthShare === 0, aspectId, sideView)) {
+      if (sideView) ctx.rotate(-Math.PI / 2)
       // Деревянный щит до загрузки общего атласа.
       ctx.fillStyle = '#a87047'
       ctx.fillRect(-0.45, -0.03, healthShare > 0 ? 0.9 : 0.22, 0.24)

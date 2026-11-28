@@ -315,6 +315,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
         tower.aspectId,
         effects.towerRecoil(tower),
         tower.barricade ? tower.barricade.hp / tower.barricade.maxHp : 1,
+        wall?.angle,
       )
       ctx.restore()
       // Значок закреплён в углу клетки и не увеличивается при улучшении стража.
@@ -342,7 +343,7 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
       const width = 0.066 * Math.min(1, phase * 16) * neck
       const bend = Math.sin(phase * 9 + index) * 0.031
       ctx.save()
-      ctx.translate(x, 0.04)
+      ctx.translate(x, Math.abs(wall.angle) === Math.PI / 2 ? 0.11 : 0.04)
       ctx.fillStyle = '#54301e'
       ctx.strokeStyle = '#35232a'
       ctx.lineWidth = 0.014
@@ -471,7 +472,8 @@ export function createRenderer(canvas: HTMLCanvasElement, game: Game): Renderer 
     else if (!isTouchPlacement) ctx.globalAlpha = 0.7
     if (receivingBellPreview && canAfford) drawBuffRing(ctx, time)
     if (isTouchPlacement) drawSelectionRing()
-    drawTower(ctx, def.id, 0, TOWER_IDLE_AIM_ANGLE, time, true)
+    const site = game.level.outpostSites.get(`${cell.col},${cell.row}`)
+    drawTower(ctx, def.id, 0, TOWER_IDLE_AIM_ANGLE, time, true, null, 0, 1, site?.angle)
     ctx.restore()
     if (treasuryPreview) {
       drawTreasuryBonus(ctx, position, treasuryPreview.bonus, cellCssPx, true, canAfford)

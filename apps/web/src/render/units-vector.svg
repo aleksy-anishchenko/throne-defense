@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="768" height="2880" viewBox="0 0 768 2880" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="3264" viewBox="0 0 768 3264" role="img">
   <title>Стражи и враги «Защиты трона»</title>
   <!-- Ячейки 192×192 в четыре столбца. Индексы ячеек заданы в unitSprites.ts. -->
   <style>
@@ -1184,5 +1184,60 @@
     <path class="ink" fill="#85573f" d="m8 92 1-28 6 7 6-11-1 17 9-2-5 19zm93-9 5-13 4 3 9-12-2 32-16 1zM30 94l12-11 18 2-9 4 13 1-7 6z"/>
     <path class="ink" fill="#9b6d4a" d="m68 89 11-8 11 3-7 4 11 3-10 5z"/>
     <use href="#outpost-crest" transform="translate(-14 70) rotate(-18 65 79) scale(.61 .30)"/>
+  </g>
+  <defs>
+    <!-- Вид с правого фланга. Стена уходит в глубину, лучники стоят один за другим. -->
+    <g id="flank-garrison">
+      <ellipse fill="#141825" opacity=".45" cx="63" cy="70" rx="25" ry="53"/>
+      <use href="#archer" transform="translate(12 -1) scale(.34)"/>
+      <use href="#archer" transform="translate(8 46) scale(.38)"/>
+    </g>
+    <g id="flank-watchwall">
+      <use href="#flank-garrison"/>
+      <path class="ink" fill="#576574" d="m57 15 14-5 13 88-11 18-17-9z"/>
+      <path class="ink" fill="#8798a2" d="m56 14 10-6 7 5 1 11-8 5 3 16 8-6 2 15-9 7 2 17 10-7 3 23-13 15-7-5z"/>
+      <path class="line" stroke="#3e4c59" stroke-width="2" d="m66 36 9-6m-6 40 10-9m-6 35 10-11"/>
+    </g>
+    <g id="flank-keep">
+      <use href="#flank-watchwall"/>
+      <path class="line" stroke="#efbc62" stroke-width="3" d="M68 23V3"/>
+      <path class="ink" fill="#aa4049" d="m69 4 15 2-5 4 3 4-13-2z"/>
+      <use href="#outpost-turret" transform="translate(54 -11) scale(.62 .57)"/>
+      <use href="#outpost-turret" transform="translate(57 50) scale(.86 .68)"/>
+      <path class="ink" fill="#963b43" d="m66 87 13 1-1 17-7 7-5-8z"/>
+      <path fill="#edbd61" d="m69 92 2 2 2-4 2 4 2-2-1 7-6 1z"/>
+    </g>
+  </defs>
+  <g id="flank-outpost" transform="translate(0 2880) scale(1.5)">
+    <use href="#flank-garrison"/>
+    <path class="ink" fill="#845334" d="m58 12 13-3 14 92-11 17-12-6z"/>
+    <path fill="#c48b55" d="m60 14 8-2 14 89-8 8z"/>
+    <path class="line" stroke="#634135" stroke-width="2.5" d="m62 28 11 79m-9-62 7-3m-5 29 9-4"/>
+    <path class="ink" fill="#785139" d="m54 15 5-9 5 4 4 26-9 4zm9 77 6-9 6 4 4 26-10 5z"/>
+  </g>
+  <g id="flank-outpost-stone" transform="translate(192 2880) scale(1.5)">
+    <use href="#flank-watchwall"/>
+  </g>
+  <g id="flank-outpost-royal" transform="translate(384 2880) scale(1.5)">
+    <use href="#flank-keep"/>
+  </g>
+  <g id="flank-reinforced-wall" transform="translate(576 2880) scale(1.5)">
+    <use href="#flank-keep"/>
+    <path class="ink" fill="#536c82" d="m66 39 14-9 10 7-2 29-10 22-10-10z"/>
+    <path fill="#c6d9e4" d="m69 42 11-8 6 4-6 2-7 7 2 20-4-4z"/>
+    <path fill="#91aebf" d="m79 44 5-4-1 23-5 12z"/>
+  </g>
+  <g id="flank-machicolations" transform="translate(0 3072) scale(1.5)">
+    <use href="#flank-keep"/>
+    <path class="ink" fill="#748697" d="m62 33 12-9 10 65-11 13z"/>
+    <path fill="#afbec6" d="m63 32 10-6 2 6-10 8z"/>
+    <path fill="#28333c" d="m68 42 10-5 1 7-10 5zm4 23 10-6 1 7-10 7zm4 24 9-7 1 7-9 7z"/>
+  </g>
+  <g id="flank-outpost-ruins" transform="translate(192 3072) scale(1.5)">
+    <path class="ink" fill="#8e603f" d="m65 12 7 16-3 11-9-10zm5 39 6 10-3 6-6-6zm1 44 7-9 7 21-10 9-3-8z"/>
+  </g>
+  <g id="flank-outpost-rubble" transform="translate(384 3072) scale(1.5)">
+    <path class="ink" fill="#788898" d="m60 18 8-8 8 4-1 15-9 5-6-5zm10 31 7-6 5 8-4 8-7-1zm2 43 10-8 7 12-5 14-14 3-3-10z"/>
+    <path fill="#adbac5" d="m63 19 6-6 4 3-7 7zm10 76 9-7 3 6-10 6z"/>
   </g>
 </svg>

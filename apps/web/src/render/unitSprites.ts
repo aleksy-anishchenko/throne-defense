@@ -141,6 +141,8 @@ function drawFrame(
 }
 
 const outpostFrames: TierFrames = [52, 53, 54]
+const sideOutpostFrames: TierFrames = [60, 61, 62]
+const sideOutpostRuins: TierFrames = [65, 66, 66]
 const outpostRuins: TierFrames = [55, 51, 51]
 
 export function drawOutpostSprite(
@@ -148,12 +150,15 @@ export function drawOutpostSprite(
   tier: number,
   ruined: boolean,
   aspectId: string | null,
+  sideView: boolean,
 ): boolean {
   if (!atlas) return false
-  const frames = ruined ? outpostRuins : outpostFrames
+  const intactFrames = sideView ? sideOutpostFrames : outpostFrames
+  const ruinedFrames = sideView ? sideOutpostRuins : outpostRuins
+  const frames = ruined ? ruinedFrames : intactFrames
   let frame = frameAtTier(frames, tier)
-  if (!ruined && aspectId === 'reinforced-wall') frame = 56
-  if (!ruined && aspectId === 'machicolations') frame = 57
+  if (!ruined && aspectId === 'reinforced-wall') frame = sideView ? 63 : 56
+  if (!ruined && aspectId === 'machicolations') frame = sideView ? 64 : 57
   drawFrame(ctx, atlas, frame, 1.03, 0.5)
   return true
 }
