@@ -200,6 +200,16 @@
     line-height: 1.2;
   }
 }
+/* Последнее укрепление занимает свободную ширину непарного ряда. */
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 1150px),
+  (min-width: 940px) and (min-aspect-ratio: 9/10) and (max-height: 1150px) {
+  .shop .card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'ico nm cost' 'ico ds cost';
+    align-content: center;
+  }
+}
 /* На невысоком экране меньше значки и отступы. */
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 760px) {
   .shop {
@@ -221,7 +231,7 @@
   }
 }
 /* На низком экране в боковой панели оставляем значок, название и цену. */
-@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 640px) {
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 685px) {
   .card {
     grid-template-areas: 'ico nm' 'ico cost';
   }
@@ -230,6 +240,9 @@
   }
 }
 @media (min-width: 640px) and (min-aspect-ratio: 1/1) and (max-height: 430px) {
+  .shop {
+    gap: 4px;
+  }
   .reward-inventory:has(.reward-inventory-entry:nth-child(6)) {
     grid-template-columns: repeat(2, max-content);
   }
